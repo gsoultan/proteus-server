@@ -1,5 +1,5 @@
 // Package metrics exposes Prometheus metrics for the server: RED metrics per
-// route, conversion outcomes and durations, pool saturation and queue depth.
+// RPC procedure, conversion outcomes and durations, pool saturation and queue depth.
 package metrics
 
 import (
@@ -35,12 +35,12 @@ func New(slots int) *Metrics {
 	m := &Metrics{
 		reg: reg,
 		requests: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "proteus_http_requests_total", Help: "HTTP requests by route, method and status code.",
-		}, []string{"route", "method", "code"}),
+			Name: "proteus_rpc_requests_total", Help: "RPCs by procedure, protocol (grpc, grpcweb, connect) and status code.",
+		}, []string{"procedure", "protocol", "code"}),
 		latency: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name: "proteus_http_request_duration_seconds", Help: "HTTP request latency by route.",
+			Name: "proteus_rpc_duration_seconds", Help: "RPC latency by procedure.",
 			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60},
-		}, []string{"route", "method"}),
+		}, []string{"procedure"}),
 		conversions: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "proteus_conversions_total", Help: "Conversions by input format and outcome.",
 		}, []string{"format", "outcome"}),
@@ -81,10 +81,11 @@ func (m *Metrics) Handler() http.Handler {
 	return promhttp.HandlerFor(m.reg, promhttp.HandlerOpts{})
 }
 
-// ObserveRequest records one HTTP request.
-func (m *Metrics) ObserveRequest(route, method, code string, d time.Duration) {
-	m.requests.WithLabelValues(route, method, code).Inc()
-	m.latency.WithLabelValues(route, method).Observe(d.Seconds())
+// ObserveRPC records one RPC. procedure is the registered path, never
+// caller input, so label cardinality stays bounded.
+func (m *Metrics) ObserveRPC(procedure, protocol, code string, d time.Duration) {
+	m.requests.WithLabelValues(procedure, protocol, code).Inc()
+	m.latency.WithLabelValues(procedure).Observe(d.Seconds())
 }
 
 // ConversionDone implements convert.Observer.

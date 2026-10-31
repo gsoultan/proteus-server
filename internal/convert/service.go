@@ -148,7 +148,7 @@ func (s *Service) Run(ctx context.Context, req *Request) (*Result, error) {
 }
 
 func (s *Service) run(ctx context.Context, req *Request) (*Result, error) {
-	allowRemote := s.s.AllowRemote && s.s.Remote != nil && (req.Options.AllowRemote || req.URL != "")
+	allowRemote := s.s.AllowRemote && s.s.Remote != nil && (req.Options.GetAllowRemote() || req.URL != "")
 	var remote *safefetch.Client
 	if allowRemote {
 		remote = s.s.Remote
@@ -195,7 +195,7 @@ func (s *Service) run(ctx context.Context, req *Request) (*Result, error) {
 	for _, d := range s.s.FontDirs {
 		opts = append(opts, proteus.WithFontDir(d))
 	}
-	opts = append(opts, req.Options.engineOptions()...)
+	opts = append(opts, engineOptions(req.Options)...)
 
 	pdf, err := s.safeConvert(ctx, req.Format, src, opts)
 	if err != nil {
@@ -242,3 +242,6 @@ func dedupe(in []string) []string {
 	}
 	return out
 }
+
+// Timeout returns the per-conversion time limit.
+func (s *Service) Timeout() time.Duration { return s.s.Timeout }

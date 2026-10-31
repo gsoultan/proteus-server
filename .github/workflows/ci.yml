@@ -8,11 +8,34 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-retries 30
+    env:
+      PROTEUS_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Install buf and plugins
+        run: |
+          go install github.com/bufbuild/buf/cmd/buf@v1.75.0
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.12
+          go install connectrpc.com/connect/v2/cmd/protoc-gen-connect-go@v2.0.2
+          go install github.com/gsoultan/storm/cmd/storm@v1.11.0
+      - name: Buf lint
+        run: buf lint
+      - name: Generated code is current
+        run: |
+          buf generate
+          storm verify -stale internal/storage/store
+          git diff --exit-code -- gen internal/storage/store
       - name: Vet
         run: go vet ./...
       - name: Format
@@ -24,12 +47,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
       - name: Build image
         run: docker build -t proteus-server:ci .
-      - name: Smoke test
+      - name: Smoke test over gRPC
         run: |
+          go install github.com/bufbuild/buf/cmd/buf@v1.75.0
           docker run -d --name ps -p 8080:8080 -e PROTEUS_ALLOW_NO_AUTH=true proteus-server:ci
-          for i in $(seq 1 30); do curl -fsS localhost:8080/readyz && break; sleep 1; done
-          curl -fsS -o out.pdf -H 'Content-Type: text/markdown' --data-binary '# Hello' localhost:8080/v1/convert
-          head -c 5 out.pdf | grep -q '%PDF-'
+          for i in $(seq 1 30); do docker exec ps /proteus-server healthcheck && break; sleep 1; done
+          buf curl --protocol grpc --http2-prior-knowledge \
+            --data '{"document":{"format":"FORMAT_MARKDOWN","content":"IyBIZWxsbw=="}}' \
+            http://localhost:8080/proteus.v1.ConversionService/Convert > out.json
+          python3 -c "import json,base64; assert base64.b64decode(json.load(open('out.json'))['pdf']).startswith(b'%PDF-')"
           docker logs ps

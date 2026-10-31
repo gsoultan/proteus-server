@@ -1,77 +1,25 @@
 // Package convert turns API requests into calls to the proteus-converter engine.
-// It holds no conversion logic of its own: it parses and validates input,
-// builds engine options, and enforces concurrency and time limits.
+// It holds no conversion logic of its own: it validates input, builds engine
+// options, and enforces concurrency and time limits.
 package convert
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"mime"
-	"mime/multipart"
-	"net/http"
-	"path/filepath"
 	"strings"
 
 	proteus "github.com/gsoultan/proteus-converter"
 
+	proteusv1 "github.com/gsoultan/proteus-server/gen/proteus/v1"
 	"github.com/gsoultan/proteus-server/internal/loader"
 )
 
-// Request is one conversion, independent of how it arrived (JSON or multipart).
+// Request is one validated conversion.
 type Request struct {
 	Format  proteus.Format
 	Source  []byte            // document body; empty when URL is set
 	URL     string            // fetch the document from here instead
-	Assets  map[string][]byte // uploaded resources keyed by path
-	Options Options
-
-	// Async jobs only.
-	WebhookURL string
-}
-
-// Options are the engine options a caller may set. Everything else (fonts,
-// resource access) is decided by the server.
-type Options struct {
-	PageSize    string    `json:"page_size,omitempty"` // A3, A4, A5, Letter, Legal
-	Landscape   bool      `json:"landscape,omitempty"`
-	MarginMM    *float64  `json:"margin_mm,omitempty"` // all sides
-	Margins     *Margins  `json:"margins_mm,omitempty"`
-	Stylesheet  string    `json:"stylesheet,omitempty"` // extra CSS
-	MediaType   string    `json:"media_type,omitempty"` // print (default) or screen
-	Outline     *bool     `json:"outline,omitempty"`
-	Tagged      bool      `json:"tagged,omitempty"`
-	Metadata    *Metadata `json:"metadata,omitempty"`
-	AllowRemote bool      `json:"allow_remote,omitempty"` // fetch http(s) resources, if the server permits it
-}
-
-// Margins in millimetres.
-type Margins struct {
-	Top    float64 `json:"top"`
-	Right  float64 `json:"right"`
-	Bottom float64 `json:"bottom"`
-	Left   float64 `json:"left"`
-}
-
-// Metadata written to the PDF information dictionary.
-type Metadata struct {
-	Title    string `json:"title,omitempty"`
-	Author   string `json:"author,omitempty"`
-	Subject  string `json:"subject,omitempty"`
-	Keywords string `json:"keywords,omitempty"`
-	Language string `json:"language,omitempty"`
-}
-
-// jsonBody is the application/json request shape.
-type jsonBody struct {
-	Format     string  `json:"format,omitempty"` // html or markdown; inferred from the field used
-	HTML       string  `json:"html,omitempty"`
-	Markdown   string  `json:"markdown,omitempty"`
-	URL        string  `json:"url,omitempty"`
-	Options    Options `json:"options"`
-	WebhookURL string  `json:"webhook_url,omitempty"`
+	Assets  map[string][]byte // uploaded resources keyed by clean path
+	Options *proteusv1.Options
 }
 
 // BadRequestError is an input problem the caller can fix.
@@ -81,189 +29,75 @@ func (e *BadRequestError) Error() string { return e.Msg }
 
 func badf(format string, a ...any) error { return &BadRequestError{Msg: fmt.Sprintf(format, a...)} }
 
-// ErrBodyTooLarge is returned when the request body exceeds the configured limit.
-var ErrBodyTooLarge = errors.New("request body too large")
+// Limits bound what a request may carry.
+type Limits struct {
+	MaxAssets int // default 64
+}
 
-// ParseHTTP reads a conversion request from r. The body must already be
-// wrapped in http.MaxBytesReader.
-func ParseHTTP(r *http.Request, maxAssets int) (*Request, error) {
-	ct, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil {
-		return nil, badf("missing or invalid Content-Type")
+// FromProto validates an API document and options and returns the request.
+func FromProto(doc *proteusv1.Document, opts *proteusv1.Options, lim Limits) (*Request, error) {
+	if lim.MaxAssets <= 0 {
+		lim.MaxAssets = 64
 	}
-	switch ct {
-	case "application/json":
-		return parseJSON(r.Body)
-	case "multipart/form-data":
-		return parseMultipart(multipart.NewReader(r.Body, params["boundary"]), maxAssets)
-	case "text/html":
-		return rawBody(r.Body, proteus.FormatHTML)
-	case "text/markdown", "text/x-markdown":
-		return rawBody(r.Body, proteus.FormatMarkdown)
+	if doc == nil {
+		return nil, badf("document is required")
+	}
+	if opts == nil {
+		opts = &proteusv1.Options{}
+	}
+	req := &Request{Options: opts}
+	switch src := doc.GetSource().(type) {
+	case *proteusv1.Document_Content:
+		if len(src.Content) == 0 {
+			return nil, badf("document content is empty")
+		}
+		req.Source = src.Content
+	case *proteusv1.Document_Url:
+		if strings.TrimSpace(src.Url) == "" {
+			return nil, badf("document url is empty")
+		}
+		req.URL = strings.TrimSpace(src.Url)
 	default:
-		return nil, badf("unsupported Content-Type %q (use application/json, multipart/form-data, text/html or text/markdown)", ct)
+		return nil, badf("document needs content or url")
 	}
-}
-
-func readAll(r io.Reader) ([]byte, error) {
-	b, err := io.ReadAll(r)
-	var mbe *http.MaxBytesError
-	if errors.As(err, &mbe) {
-		return nil, ErrBodyTooLarge
-	}
-	return b, err
-}
-
-func rawBody(body io.Reader, f proteus.Format) (*Request, error) {
-	b, err := readAll(body)
-	if err != nil {
-		return nil, err
-	}
-	req := &Request{Format: f, Source: b}
-	return req, req.Validate()
-}
-
-func parseJSON(body io.Reader) (*Request, error) {
-	b, err := readAll(body)
-	if err != nil {
-		return nil, err
-	}
-	var jb jsonBody
-	dec := json.NewDecoder(bytes.NewReader(b))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&jb); err != nil {
-		return nil, badf("invalid JSON: %v", err)
-	}
-	set := 0
-	req := &Request{Options: jb.Options, WebhookURL: jb.WebhookURL}
-	if jb.HTML != "" {
-		set++
-		req.Format, req.Source = proteus.FormatHTML, []byte(jb.HTML)
-	}
-	if jb.Markdown != "" {
-		set++
-		req.Format, req.Source = proteus.FormatMarkdown, []byte(jb.Markdown)
-	}
-	if jb.URL != "" {
-		set++
-		req.URL = jb.URL
+	switch doc.GetFormat() {
+	case proteusv1.Format_FORMAT_HTML:
 		req.Format = proteus.FormatHTML
-	}
-	if set != 1 {
-		return nil, badf("exactly one of html, markdown or url is required")
-	}
-	if jb.Format != "" {
-		f, err := parseFormat(jb.Format)
-		if err != nil {
-			return nil, err
+	case proteusv1.Format_FORMAT_MARKDOWN:
+		req.Format = proteus.FormatMarkdown
+	case proteusv1.Format_FORMAT_UNSPECIFIED:
+		if req.URL == "" {
+			return nil, badf("document format is required (FORMAT_HTML or FORMAT_MARKDOWN)")
 		}
-		req.Format = f
-	}
-	return req, req.Validate()
-}
-
-// parseMultipart reads a "file" part (the document), an optional "options"
-// part (JSON Options), optional "format" and "webhook_url" parts, and any
-// number of other file parts, which become assets addressed by file name.
-func parseMultipart(mr *multipart.Reader, maxAssets int) (*Request, error) {
-	req := &Request{Assets: map[string][]byte{}}
-	var fileName, format string
-	for {
-		p, err := mr.NextPart()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			var mbe *http.MaxBytesError
-			if errors.As(err, &mbe) {
-				return nil, ErrBodyTooLarge
-			}
-			return nil, badf("invalid multipart body: %v", err)
-		}
-		data, err := readAll(p)
-		if err != nil {
-			return nil, err
-		}
-		switch name := p.FormName(); name {
-		case "file":
-			req.Source, fileName = data, p.FileName()
-		case "options":
-			dec := json.NewDecoder(bytes.NewReader(data))
-			dec.DisallowUnknownFields()
-			if err := dec.Decode(&req.Options); err != nil {
-				return nil, badf("invalid options JSON: %v", err)
-			}
-		case "format":
-			format = strings.TrimSpace(string(data))
-		case "webhook_url":
-			req.WebhookURL = strings.TrimSpace(string(data))
-		default:
-			fn := rawFileName(p)
-			if fn == "" {
-				return nil, badf("unknown form field %q", name)
-			}
-			key, ok := loader.CleanAssetPath(fn)
-			if !ok {
-				return nil, badf("invalid asset file name %q", fn)
-			}
-			if len(req.Assets) >= maxAssets {
-				return nil, badf("too many assets (max %d)", maxAssets)
-			}
-			req.Assets[key] = data
-		}
-		p.Close()
-	}
-	if req.Source == nil {
-		return nil, badf(`multipart body needs a "file" part with the document`)
-	}
-	switch {
-	case format != "":
-		f, err := parseFormat(format)
-		if err != nil {
-			return nil, err
-		}
-		req.Format = f
+		req.Format = proteus.FormatHTML
 	default:
-		f, err := proteus.FormatForPath(fileName)
-		if err != nil {
-			return nil, badf(`cannot tell the format from file name %q; add a "format" field`, fileName)
+		return nil, badf("unsupported format %v", doc.GetFormat())
+	}
+	if n := len(doc.GetAssets()); n > lim.MaxAssets {
+		return nil, badf("too many assets: %d (max %d)", n, lim.MaxAssets)
+	}
+	if len(doc.GetAssets()) > 0 {
+		req.Assets = make(map[string][]byte, len(doc.GetAssets()))
+		for _, a := range doc.GetAssets() {
+			key, ok := loader.CleanAssetPath(a.GetPath())
+			if !ok {
+				return nil, badf("invalid asset path %q", a.GetPath())
+			}
+			if _, dup := req.Assets[key]; dup {
+				return nil, badf("duplicate asset path %q", key)
+			}
+			req.Assets[key] = a.GetData()
 		}
-		req.Format = f
 	}
-	return req, req.Validate()
+	if err := validateOptions(opts); err != nil {
+		return nil, err
+	}
+	return req, nil
 }
 
-// rawFileName returns the filename parameter as sent. Part.FileName strips
-// directories, but assets keep theirs so "img/logo.png" matches the document.
-func rawFileName(p *multipart.Part) string {
-	_, params, err := mime.ParseMediaType(p.Header.Get("Content-Disposition"))
-	if err != nil {
-		return p.FileName()
-	}
-	return params["filename"]
-}
-
-func parseFormat(s string) (proteus.Format, error) {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "html", "htm":
-		return proteus.FormatHTML, nil
-	case "markdown", "md":
-		return proteus.FormatMarkdown, nil
-	}
-	return "", badf("unsupported format %q (html or markdown)", s)
-}
-
-// Validate checks option values that the engine would otherwise accept silently.
-func (r *Request) Validate() error {
-	if r.Format != proteus.FormatHTML && r.Format != proteus.FormatMarkdown {
-		return badf("unsupported format %q", r.Format)
-	}
-	if r.URL == "" && len(r.Source) == 0 {
-		return badf("document is empty")
-	}
-	o := r.Options
-	if _, ok := pageSizes[strings.ToLower(o.PageSize)]; o.PageSize != "" && !ok {
-		return badf("unknown page_size %q (A3, A4, A5, Letter, Legal)", o.PageSize)
+func validateOptions(o *proteusv1.Options) error {
+	if _, ok := pageSizes[o.GetPageSize()]; !ok && o.GetPageSize() != proteusv1.PageSize_PAGE_SIZE_UNSPECIFIED {
+		return badf("unknown page_size %v", o.GetPageSize())
 	}
 	check := func(name string, v float64) error {
 		if v < 0 || v > 100 {
@@ -271,75 +105,88 @@ func (r *Request) Validate() error {
 		}
 		return nil
 	}
-	if o.MarginMM != nil {
-		if err := check("margin_mm", *o.MarginMM); err != nil {
+	if o.MarginMm != nil {
+		if err := check("margin_mm", o.GetMarginMm()); err != nil {
 			return err
 		}
 	}
-	if m := o.Margins; m != nil {
-		for _, v := range []float64{m.Top, m.Right, m.Bottom, m.Left} {
-			if err := check("margins_mm", v); err != nil {
+	if m := o.GetMargins(); m != nil {
+		for _, v := range []float64{m.GetTop(), m.GetRight(), m.GetBottom(), m.GetLeft()} {
+			if err := check("margins", v); err != nil {
 				return err
 			}
 		}
 	}
-	if o.MediaType != "" && o.MediaType != "print" && o.MediaType != "screen" {
-		return badf("media_type must be print or screen")
+	switch o.GetMediaType() {
+	case proteusv1.MediaType_MEDIA_TYPE_UNSPECIFIED, proteusv1.MediaType_MEDIA_TYPE_PRINT, proteusv1.MediaType_MEDIA_TYPE_SCREEN:
+	default:
+		return badf("unknown media_type %v", o.GetMediaType())
 	}
-	if len(o.Stylesheet) > 1<<20 {
+	if len(o.GetStylesheet()) > 1<<20 {
 		return badf("stylesheet is larger than 1 MiB")
 	}
 	return nil
 }
 
-var pageSizes = map[string]proteus.PageSize{
-	"a3": proteus.A3, "a4": proteus.A4, "a5": proteus.A5,
-	"letter": proteus.Letter, "legal": proteus.Legal,
+var pageSizes = map[proteusv1.PageSize]proteus.PageSize{
+	proteusv1.PageSize_PAGE_SIZE_A3:     proteus.A3,
+	proteusv1.PageSize_PAGE_SIZE_A4:     proteus.A4,
+	proteusv1.PageSize_PAGE_SIZE_A5:     proteus.A5,
+	proteusv1.PageSize_PAGE_SIZE_LETTER: proteus.Letter,
+	proteusv1.PageSize_PAGE_SIZE_LEGAL:  proteus.Legal,
 }
 
 // engineOptions maps caller options to engine options.
-func (o Options) engineOptions() []proteus.Option {
+func engineOptions(o *proteusv1.Options) []proteus.Option {
+	if o == nil {
+		return nil
+	}
 	var opts []proteus.Option
-	if o.PageSize != "" || o.Landscape {
+	if o.GetPageSize() != proteusv1.PageSize_PAGE_SIZE_UNSPECIFIED || o.GetLandscape() {
 		size := proteus.A4
-		if s, ok := pageSizes[strings.ToLower(o.PageSize)]; ok {
+		if s, ok := pageSizes[o.GetPageSize()]; ok {
 			size = s
 		}
-		if o.Landscape {
+		if o.GetLandscape() {
 			size = size.Landscape()
 		}
 		opts = append(opts, proteus.WithPageSize(size))
 	}
 	switch {
-	case o.Margins != nil:
-		m := o.Margins
+	case o.GetMargins() != nil:
+		m := o.GetMargins()
 		opts = append(opts, proteus.WithMargins(proteus.Margins{
-			Top: proteus.Mm(m.Top), Right: proteus.Mm(m.Right), Bottom: proteus.Mm(m.Bottom), Left: proteus.Mm(m.Left),
+			Top: proteus.Mm(m.GetTop()), Right: proteus.Mm(m.GetRight()),
+			Bottom: proteus.Mm(m.GetBottom()), Left: proteus.Mm(m.GetLeft()),
 		}))
-	case o.MarginMM != nil:
-		opts = append(opts, proteus.WithMargins(proteus.UniformMargins(proteus.Mm(*o.MarginMM))))
+	case o.MarginMm != nil:
+		opts = append(opts, proteus.WithMargins(proteus.UniformMargins(proteus.Mm(o.GetMarginMm()))))
 	}
-	if o.Stylesheet != "" {
-		opts = append(opts, proteus.WithStylesheet(o.Stylesheet))
+	if o.GetStylesheet() != "" {
+		opts = append(opts, proteus.WithStylesheet(o.GetStylesheet()))
 	}
-	if o.MediaType != "" {
-		opts = append(opts, proteus.WithMediaType(o.MediaType))
+	switch o.GetMediaType() {
+	case proteusv1.MediaType_MEDIA_TYPE_SCREEN:
+		opts = append(opts, proteus.WithMediaType("screen"))
+	case proteusv1.MediaType_MEDIA_TYPE_PRINT:
+		opts = append(opts, proteus.WithMediaType("print"))
 	}
 	if o.Outline != nil {
-		opts = append(opts, proteus.WithOutline(*o.Outline))
+		opts = append(opts, proteus.WithOutline(o.GetOutline()))
 	}
-	if o.Tagged {
+	if o.GetTagged() {
 		opts = append(opts, proteus.WithTagged(true))
 	}
-	if m := o.Metadata; m != nil {
+	if m := o.GetMetadata(); m != nil {
 		opts = append(opts, proteus.WithMetadata(proteus.Metadata{
-			Title: m.Title, Author: m.Author, Subject: m.Subject, Keywords: m.Keywords, Language: m.Language,
+			Title: m.GetTitle(), Author: m.GetAuthor(), Subject: m.GetSubject(),
+			Keywords: m.GetKeywords(), Language: m.GetLanguage(),
 		}))
 	}
 	return opts
 }
 
-// FileName suggests a download name for the result.
+// FileName suggests a download name for a result with the given title.
 func FileName(title string) string {
 	title = strings.Map(func(r rune) rune {
 		switch {
@@ -356,5 +203,5 @@ func FileName(title string) string {
 	if len(title) > 64 {
 		title = title[:64]
 	}
-	return filepath.Base(title) + ".pdf"
+	return title + ".pdf"
 }

@@ -1,8 +1,10 @@
-// Command proteus-server serves HTML and Markdown to PDF conversion over HTTP.
+// Command proteus-server serves HTML and Markdown to PDF conversion over
+// gRPC (ConnectRPC: gRPC, gRPC-Web and the Connect protocol).
 //
 //	proteus-server              run the server (configured by PROTEUS_* variables)
 //	proteus-server keygen ID    print a new API key and its PROTEUS_API_KEYS entry
 //	proteus-server hash KEY     print the SHA-256 of an existing key
+//	proteus-server healthcheck  gRPC health check against PROTEUS_ADDR (for Docker)
 package main
 
 import (
@@ -19,14 +21,19 @@ import (
 	"syscall"
 	"time"
 
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+	"connectrpc.com/grpchealth/v2"
+
 	"github.com/gsoultan/proteus-server/internal/auth"
 	"github.com/gsoultan/proteus-server/internal/config"
 	"github.com/gsoultan/proteus-server/internal/convert"
-	"github.com/gsoultan/proteus-server/internal/httpapi"
 	"github.com/gsoultan/proteus-server/internal/jobs"
 	"github.com/gsoultan/proteus-server/internal/loader"
 	"github.com/gsoultan/proteus-server/internal/metrics"
+	"github.com/gsoultan/proteus-server/internal/rpc"
 	"github.com/gsoultan/proteus-server/internal/safefetch"
+	"github.com/gsoultan/proteus-server/internal/storage/pgstore"
 )
 
 func main() {
@@ -58,24 +65,40 @@ func subcommand(args []string) int {
 		fmt.Println(auth.HashKey(args[1]))
 		return 0
 	case "healthcheck":
-		// For container HEALTHCHECK in images without curl.
-		addr := os.Getenv("PROTEUS_ADDR")
-		switch {
-		case addr == "":
-			addr = "127.0.0.1:8080"
-		case strings.HasPrefix(addr, ":"):
-			addr = "127.0.0.1" + addr
-		}
-		c := http.Client{Timeout: 3 * time.Second}
-		resp, err := c.Get("http://" + addr + "/healthz")
-		if err != nil || resp.StatusCode != http.StatusOK {
+		if err := healthcheck(os.Getenv("PROTEUS_ADDR")); err != nil {
+			fmt.Fprintln(os.Stderr, "unhealthy:", err)
 			return 1
 		}
-		resp.Body.Close()
 		return 0
 	}
 	fmt.Fprintf(os.Stderr, "unknown command %q (keygen, hash, healthcheck)\n", args[0])
 	return 2
+}
+
+// h2cClient speaks HTTP/2 without TLS, which gRPC needs on a plain listener.
+func h2cClient(timeout time.Duration) *http.Client {
+	p := new(http.Protocols)
+	p.SetUnencryptedHTTP2(true)
+	return &http.Client{Timeout: timeout, Transport: &http.Transport{Protocols: p}}
+}
+
+func healthcheck(addr string) error {
+	switch {
+	case addr == "":
+		addr = "127.0.0.1:8080"
+	case strings.HasPrefix(addr, ":"):
+		addr = "127.0.0.1" + addr
+	}
+	client := grpchealth.NewClient(connect.NewClient(
+		connecthttp.NewTransport(h2cClient(3*time.Second), "http://"+addr, connecthttp.WithGRPC())))
+	res, err := client.Check(context.Background(), &grpchealth.CheckRequest{})
+	if err != nil {
+		return err
+	}
+	if res.Status != grpchealth.StatusServing {
+		return fmt.Errorf("status %s", res.Status)
+	}
+	return nil
 }
 
 func run() error {
@@ -107,10 +130,34 @@ func run() error {
 		jobWorkers = max(1, workers/2)
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	var (
+		store  jobs.Store
+		pingDB func(context.Context) error
+	)
+	if cfg.DatabaseURL != "" {
+		octx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		pg, err := pgstore.Open(octx, cfg.DatabaseURL, cfg.DatabaseSchema, cfg.AutoMigrate, func(f string, a ...any) {
+			log.Info("migrate: " + fmt.Sprintf(f, a...))
+		})
+		cancel()
+		if err != nil {
+			return err
+		}
+		defer pg.Close()
+		store, pingDB = pg, pg.Ping
+		log.Info("job store: postgres", "auto_migrate", cfg.AutoMigrate)
+	} else {
+		store = jobs.NewMemoryStore(cfg.MaxJobs)
+		log.Info("job store: memory (set PROTEUS_DATABASE_URL to share jobs across instances)")
+	}
+
 	m := metrics.New(workers)
 	fetch := safefetch.New(safefetch.Options{
 		Timeout: cfg.FetchTimeout, MaxBytes: cfg.MaxResource, AllowedHosts: cfg.AllowedHosts,
-		UserAgent: "proteus-server/" + httpapi.Version,
+		UserAgent: "proteus-server/" + rpc.Version,
 	})
 	svc := convert.NewService(convert.Settings{
 		Workers:        workers,
@@ -128,18 +175,23 @@ func run() error {
 	if cfg.WebhookSecret != "" {
 		secret = []byte(cfg.WebhookSecret)
 	}
-	jm := jobs.NewManager(svc, jobs.Settings{
-		Workers: jobWorkers, QueueSize: cfg.JobQueue, ResultTTL: cfg.JobTTL, MaxJobs: cfg.MaxJobs,
+	jm := jobs.NewManager(svc, store, jobs.Settings{
+		Workers: jobWorkers, QueueSize: int64(cfg.JobQueue), ResultTTL: cfg.JobTTL, MaxAssets: cfg.MaxAssets,
 		WebhookSecret: secret,
-		Webhook:       safefetch.New(safefetch.Options{Timeout: 10 * time.Second, MaxBytes: 1 << 20, UserAgent: "proteus-server/" + httpapi.Version}),
+		Webhook:       safefetch.New(safefetch.Options{Timeout: 10 * time.Second, MaxBytes: 1 << 20, UserAgent: "proteus-server/" + rpc.Version}),
 		Logger:        log, Observer: m,
 	})
-	api := httpapi.New(httpapi.Config{MaxBodyBytes: cfg.MaxBodyBytes, MaxAssets: cfg.MaxAssets},
-		svc, jm, auth.New(keys, cfg.RateLimit, cfg.RateBurst), m, log)
+	api := rpc.New(rpc.Config{MaxRequestBytes: cfg.MaxRequestBytes, MaxAssets: cfg.MaxAssets, MaxOutputBytes: cfg.MaxOutput},
+		svc, jm, auth.New(keys, cfg.RateLimit, cfg.RateBurst), m, log, pingDB)
 
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)            // Connect and gRPC-Web from browsers
+	protocols.SetUnencryptedHTTP2(true) // gRPC over h2c; terminate TLS at the load balancer
+	protocols.SetHTTP2(true)
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           api.Handler(),
+		Protocols:         protocols,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      cfg.Timeout + 60*time.Second,
@@ -151,19 +203,29 @@ func run() error {
 	if err != nil {
 		return err
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-	errc := make(chan error, 1)
+	errc := make(chan error, 2)
 	go func() { errc <- srv.Serve(ln) }()
-	// Warm up before reporting ready: the first conversion scans the system
-	// fonts, which would otherwise land on the first caller.
+
+	var admin *http.Server
+	if cfg.AdminAddr != "" {
+		mux := http.NewServeMux()
+		mux.Handle("GET /metrics", m.Handler())
+		admin = &http.Server{Addr: cfg.AdminAddr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+		aln, err := net.Listen("tcp", cfg.AdminAddr)
+		if err != nil {
+			return err
+		}
+		go func() { errc <- admin.Serve(aln) }()
+	}
+
+	// Warm up before reporting healthy: the first conversion scans the
+	// system fonts, which would otherwise land on the first caller.
 	if err := warmUp(ctx, svc); err != nil {
 		log.Warn("warm-up conversion failed", "error", err)
 	}
 	api.SetReady(true)
-	log.Info("listening", "addr", ln.Addr().String(), "workers", workers, "job_workers", jobWorkers,
-		"remote_resources", cfg.AllowRemote, "auth", len(keys) > 0, "version", httpapi.Version)
+	log.Info("listening", "addr", ln.Addr().String(), "admin", cfg.AdminAddr, "workers", workers,
+		"job_workers", jobWorkers, "remote_resources", cfg.AllowRemote, "auth", len(keys) > 0, "version", rpc.Version)
 
 	select {
 	case err := <-errc:
@@ -176,7 +238,11 @@ func run() error {
 	defer cancel()
 	httpErr := srv.Shutdown(sctx)
 	jobErr := jm.Shutdown(sctx)
-	if err := errors.Join(httpErr, jobErr); err != nil {
+	var adminErr error
+	if admin != nil {
+		adminErr = admin.Shutdown(sctx)
+	}
+	if err := errors.Join(httpErr, jobErr, adminErr); err != nil {
 		return fmt.Errorf("shutdown: %w", err)
 	}
 	log.Info("stopped")
