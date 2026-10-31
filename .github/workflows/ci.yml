@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Vet
+        run: go vet ./...
+      - name: Format
+        run: test -z "$(gofmt -l .)"
+      - name: Test
+        run: go test -race ./...
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t proteus-server:ci .
+      - name: Smoke test
+        run: |
+          docker run -d --name ps -p 8080:8080 -e PROTEUS_ALLOW_NO_AUTH=true proteus-server:ci
+          for i in $(seq 1 30); do curl -fsS localhost:8080/readyz && break; sleep 1; done
+          curl -fsS -o out.pdf -H 'Content-Type: text/markdown' --data-binary '# Hello' localhost:8080/v1/convert
+          head -c 5 out.pdf | grep -q '%PDF-'
+          docker logs ps
