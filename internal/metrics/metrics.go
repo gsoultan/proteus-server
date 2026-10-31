@@ -1,0 +1,109 @@
+// Package metrics exposes Prometheus metrics for the server: RED metrics per
+// route, conversion outcomes and durations, pool saturation and queue depth.
+package metrics
+
+import (
+	"net/http"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+// Metrics holds every collector on a private registry.
+type Metrics struct {
+	reg *prometheus.Registry
+
+	requests    *prometheus.CounterVec
+	latency     *prometheus.HistogramVec
+	conversions *prometheus.CounterVec
+	convTime    *prometheus.HistogramVec
+	outBytes    prometheus.Histogram
+	blocked     *prometheus.CounterVec
+	slotsInUse  prometheus.Gauge
+	slotsTotal  prometheus.Gauge
+	queueDepth  prometheus.Gauge
+	webhooks    *prometheus.CounterVec
+}
+
+// New registers all collectors. slots is the size of the conversion pool.
+func New(slots int) *Metrics {
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	f := func(c prometheus.Collector) { reg.MustRegister(c) }
+	m := &Metrics{
+		reg: reg,
+		requests: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "proteus_http_requests_total", Help: "HTTP requests by route, method and status code.",
+		}, []string{"route", "method", "code"}),
+		latency: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name: "proteus_http_request_duration_seconds", Help: "HTTP request latency by route.",
+			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60},
+		}, []string{"route", "method"}),
+		conversions: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "proteus_conversions_total", Help: "Conversions by input format and outcome.",
+		}, []string{"format", "outcome"}),
+		convTime: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name: "proteus_conversion_duration_seconds", Help: "Engine time per conversion.",
+			Buckets: []float64{.01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60},
+		}, []string{"format"}),
+		outBytes: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name: "proteus_output_bytes", Help: "Size of produced PDFs.",
+			Buckets: prometheus.ExponentialBuckets(4<<10, 4, 9),
+		}),
+		blocked: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "proteus_resource_blocked_total", Help: "Resource loads refused, by reason (ssrf, scheme, too_large, ...).",
+		}, []string{"reason"}),
+		slotsInUse: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "proteus_conversion_slots_in_use", Help: "Conversion slots currently taken.",
+		}),
+		slotsTotal: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "proteus_conversion_slots", Help: "Size of the conversion pool.",
+		}),
+		queueDepth: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "proteus_job_queue_depth", Help: "Async jobs waiting for a worker.",
+		}),
+		webhooks: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "proteus_webhook_deliveries_total", Help: "Webhook deliveries by outcome.",
+		}, []string{"outcome"}),
+	}
+	for _, c := range []prometheus.Collector{m.requests, m.latency, m.conversions, m.convTime, m.outBytes,
+		m.blocked, m.slotsInUse, m.slotsTotal, m.queueDepth, m.webhooks} {
+		f(c)
+	}
+	m.slotsTotal.Set(float64(slots))
+	return m
+}
+
+// Handler serves the metrics in the Prometheus text format.
+func (m *Metrics) Handler() http.Handler {
+	return promhttp.HandlerFor(m.reg, promhttp.HandlerOpts{})
+}
+
+// ObserveRequest records one HTTP request.
+func (m *Metrics) ObserveRequest(route, method, code string, d time.Duration) {
+	m.requests.WithLabelValues(route, method, code).Inc()
+	m.latency.WithLabelValues(route, method).Observe(d.Seconds())
+}
+
+// ConversionDone implements convert.Observer.
+func (m *Metrics) ConversionDone(format, outcome string, d time.Duration, bytes int) {
+	m.conversions.WithLabelValues(format, outcome).Inc()
+	m.convTime.WithLabelValues(format).Observe(d.Seconds())
+	if outcome == "ok" {
+		m.outBytes.Observe(float64(bytes))
+	}
+}
+
+// ResourceBlocked implements convert.Observer.
+func (m *Metrics) ResourceBlocked(reason string) { m.blocked.WithLabelValues(reason).Inc() }
+
+// SlotsInUse implements convert.Observer.
+func (m *Metrics) SlotsInUse(n int) { m.slotsInUse.Set(float64(n)) }
+
+// QueueDepth implements jobs.Observer.
+func (m *Metrics) QueueDepth(n int) { m.queueDepth.Set(float64(n)) }
+
+// WebhookDone implements jobs.Observer.
+func (m *Metrics) WebhookDone(outcome string) { m.webhooks.WithLabelValues(outcome).Inc() }

@@ -1,0 +1,146 @@
+{
+  ".github/workflows/ci.yml": {
+    "mtime": 1793444950.2906075,
+    "seen": 1793445027.4657311,
+    "ast_hash": "203c1d3786908190e01d2b7e246222f2",
+    "semantic_hash": ""
+  },
+  "cmd/proteus-server/main.go": {
+    "mtime": 1793444939.0807657,
+    "seen": 1793445027.4657378,
+    "ast_hash": "325288c3de8d2b36f4f88e7b989b0ceb",
+    "semantic_hash": ""
+  },
+  "go.mod": {
+    "mtime": 1793444702.4392538,
+    "seen": 1793445027.4657412,
+    "ast_hash": "0ee87fbbce3d6f072b650f93ce40d1b7",
+    "semantic_hash": ""
+  },
+  "internal/auth/auth.go": {
+    "mtime": 1793444580.9534583,
+    "seen": 1793445027.4657426,
+    "ast_hash": "7a471d1ff982c9b7671dcef7a204be46",
+    "semantic_hash": ""
+  },
+  "internal/auth/auth_test.go": {
+    "mtime": 1793444752.5734,
+    "seen": 1793445027.4657438,
+    "ast_hash": "934564b526d2d2a05d163e3bb443cbd5",
+    "semantic_hash": ""
+  },
+  "internal/config/config.go": {
+    "mtime": 1793444691.9031413,
+    "seen": 1793445027.465745,
+    "ast_hash": "d3cb4380bc2cb06d0e14ee0695cb8cb2",
+    "semantic_hash": ""
+  },
+  "internal/config/config_test.go": {
+    "mtime": 1793444752.574737,
+    "seen": 1793445027.465746,
+    "ast_hash": "5338e6c797c81dcb6cbdfd7aefa12c7b",
+    "semantic_hash": ""
+  },
+  "internal/convert/request.go": {
+    "mtime": 1793444860.551205,
+    "seen": 1793445027.465747,
+    "ast_hash": "0bdb51e38c91c9b6c29d92170eb41f4e",
+    "semantic_hash": ""
+  },
+  "internal/convert/service.go": {
+    "mtime": 1793444497.9432635,
+    "seen": 1793445027.4657483,
+    "ast_hash": "03b3df0e4bf68f469c162755dfad5cfd",
+    "semantic_hash": ""
+  },
+  "internal/convert/service_test.go": {
+    "mtime": 1793444926.099267,
+    "seen": 1793445027.4657495,
+    "ast_hash": "d8ca5c5f2ba3346290cef5ab5c70ead6",
+    "semantic_hash": ""
+  },
+  "internal/httpapi/api_test.go": {
+    "mtime": 1793444843.4408786,
+    "seen": 1793445027.4657505,
+    "ast_hash": "7200a0bf4967c98ea57381489b5156e5",
+    "semantic_hash": ""
+  },
+  "internal/httpapi/handlers.go": {
+    "mtime": 1793444650.0805626,
+    "seen": 1793445027.465752,
+    "ast_hash": "ea8f3bb1ddb0f81ae12a34c2a5879f8b",
+    "semantic_hash": ""
+  },
+  "internal/httpapi/server.go": {
+    "mtime": 1793444916.7868695,
+    "seen": 1793445027.4657528,
+    "ast_hash": "1fb4a0961454a0b943b5e518c9f84336",
+    "semantic_hash": ""
+  },
+  "internal/jobs/jobs.go": {
+    "mtime": 1793444560.7352452,
+    "seen": 1793445027.4657538,
+    "ast_hash": "ab6230e90f919a43044b0a630b85d89b",
+    "semantic_hash": ""
+  },
+  "internal/jobs/jobs_test.go": {
+    "mtime": 1793444901.7532878,
+    "seen": 1793445027.4657545,
+    "ast_hash": "f1d6bd21624166bcaa610655f8e8b6a2",
+    "semantic_hash": ""
+  },
+  "internal/loader/loader.go": {
+    "mtime": 1793444419.679237,
+    "seen": 1793445027.4657557,
+    "ast_hash": "bee58cbf047695c6de66473268af8e3c",
+    "semantic_hash": ""
+  },
+  "internal/loader/loader_test.go": {
+    "mtime": 1793444752.5718884,
+    "seen": 1793445027.4657567,
+    "ast_hash": "d4d5cf1917ae71ba727d779f987e94f6",
+    "semantic_hash": ""
+  },
+  "internal/metrics/metrics.go": {
+    "mtime": 1793444598.7072475,
+    "seen": 1793445027.4657576,
+    "ast_hash": "b796a196214943d43e2d4ace3d62c8d1",
+    "semantic_hash": ""
+  },
+  "internal/safefetch/safefetch.go": {
+    "mtime": 1793444397.9952357,
+    "seen": 1793445027.4657588,
+    "ast_hash": "2acdf39b9c4ff8ea3f08bcaa997db0fa",
+    "semantic_hash": ""
+  },
+  "internal/safefetch/safefetch_test.go": {
+    "mtime": 1793444926.099267,
+    "seen": 1793445027.4657595,
+    "ast_hash": "8db48a5ac6ec4ca63e137ac3c02bb4ed",
+    "semantic_hash": ""
+  },
+  ".serena/memories/conventions_and_gaps.md": {
+    "mtime": 1793445021.340099,
+    "seen": 1793445027.4657605,
+    "ast_hash": "7ae76a2881c276110f6a87a45137a9cf",
+    "semantic_hash": ""
+  },
+  ".serena/memories/project_overview.md": {
+    "mtime": 1793445021.3384185,
+    "seen": 1793445027.4657614,
+    "ast_hash": "76f1e6cb7d5a660f1f0fdd1b9ee4d290",
+    "semantic_hash": ""
+  },
+  ".serena/memories/task_completion_checklist.md": {
+    "mtime": 1793445021.3415241,
+    "seen": 1793445027.4657629,
+    "ast_hash": "9975eb9c11b5fa7d4c2e7d14b56e0d9c",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1793445001.8455758,
+    "seen": 1793445027.4657638,
+    "ast_hash": "109ca58d540ccbabcc0db9f49b1202d2",
+    "semantic_hash": ""
+  }
+}

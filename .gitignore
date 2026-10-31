@@ -1,0 +1,8 @@
+/proteus-server
+*.pdf
+*.test
+*.out
+.idea/
+.vscode/
+graphify-out/cache/
+graphify-out/.graphify_*
