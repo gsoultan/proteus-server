@@ -12,9 +12,10 @@ import (
 
 	"github.com/gsoultan/proteus-server/internal/jobs/storetest"
 	"github.com/gsoultan/proteus-server/internal/storage/pgstore"
+	tplstoretest "github.com/gsoultan/proteus-server/internal/templates/storetest"
 )
 
-// TestStore runs the store conformance suite against a real PostgreSQL in a
+// TestStore runs the job and template store conformance suites against a real PostgreSQL in a
 // schema of its own. Set PROTEUS_TEST_DATABASE_URL to run it.
 func TestStore(t *testing.T) {
 	dsn := os.Getenv("PROTEUS_TEST_DATABASE_URL")
@@ -50,5 +51,7 @@ func TestStore(t *testing.T) {
 	if err := pgstore.Migrate(ctx, pool, schema, t.Logf); err != nil {
 		t.Fatal(err)
 	}
-	storetest.Run(t, pgstore.New(pool))
+	store := pgstore.New(pool)
+	t.Run("Jobs", func(t *testing.T) { storetest.Run(t, store) })
+	t.Run("Templates", func(t *testing.T) { tplstoretest.Run(t, store.Templates()) })
 }

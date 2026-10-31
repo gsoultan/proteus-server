@@ -30,6 +30,7 @@ import (
 	"github.com/gsoultan/proteus-server/internal/loader"
 	"github.com/gsoultan/proteus-server/internal/metrics"
 	"github.com/gsoultan/proteus-server/internal/safefetch"
+	"github.com/gsoultan/proteus-server/internal/templates"
 )
 
 const (
@@ -76,7 +77,8 @@ func newEnv(t *testing.T, o envOpts) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
-	api := New(Config{MaxRequestBytes: o.maxRequest}, svc, jm, auth.New(keys, 0, 0), m, log, nil)
+	ts := templates.NewService(templates.NewMemoryStore(), templates.Settings{MaxPerOwner: 5})
+	api := New(Config{MaxRequestBytes: o.maxRequest}, svc, jm, ts, auth.New(keys, 0, 0), m, log, nil)
 	api.SetReady(true)
 	srv := httptest.NewUnstartedServer(api.Handler())
 	p := new(http.Protocols)

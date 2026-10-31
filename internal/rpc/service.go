@@ -53,6 +53,11 @@ func (s *conversionService) toConnect(ctx context.Context, err error) error {
 // Convert implements the synchronous conversion. A full pool answers
 // RESOURCE_EXHAUSTED at once instead of queueing.
 func (s *conversionService) Convert(ctx context.Context, req *proteusv1.ConvertRequest) (*proteusv1.ConvertResponse, error) {
+	return s.convert(ctx, req)
+}
+
+// convert runs a synchronous conversion and returns RPC errors.
+func (s *conversionService) convert(ctx context.Context, req *proteusv1.ConvertRequest) (*proteusv1.ConvertResponse, error) {
 	parsed, err := convert.FromProto(req.GetDocument(), req.GetOutputFormat(), req.GetOptions(), convert.Limits{MaxAssets: s.api.cfg.MaxAssets})
 	if err == nil {
 		err = s.api.svc.Check(parsed)
