@@ -53,7 +53,10 @@ func (s *conversionService) toConnect(ctx context.Context, err error) error {
 // Convert implements the synchronous conversion. A full pool answers
 // RESOURCE_EXHAUSTED at once instead of queueing.
 func (s *conversionService) Convert(ctx context.Context, req *proteusv1.ConvertRequest) (*proteusv1.ConvertResponse, error) {
-	parsed, err := convert.FromProto(req.GetDocument(), req.GetOptions(), convert.Limits{MaxAssets: s.api.cfg.MaxAssets})
+	parsed, err := convert.FromProto(req.GetDocument(), req.GetOutputFormat(), req.GetOptions(), convert.Limits{MaxAssets: s.api.cfg.MaxAssets})
+	if err == nil {
+		err = s.api.svc.Check(parsed)
+	}
 	if err != nil {
 		return nil, s.toConnect(ctx, err)
 	}
@@ -67,11 +70,26 @@ func (s *conversionService) Convert(ctx context.Context, req *proteusv1.ConvertR
 		return nil, s.toConnect(ctx, err)
 	}
 	return &proteusv1.ConvertResponse{
-		Pdf:        res.PDF,
-		Warnings:   res.Warnings,
-		DurationMs: res.Duration.Milliseconds(),
-		FileName:   convert.FileName(req.GetOptions().GetMetadata().GetTitle()),
+		Content:      res.Content,
+		OutputFormat: convert.OutputToProto(res.Target.Format),
+		MimeType:     res.Target.MIMEType,
+		FileName:     convert.FileName(req.GetOptions().GetMetadata().GetTitle(), res.Target.Format),
+		Warnings:     res.Warnings,
+		DurationMs:   res.Duration.Milliseconds(),
 	}, nil
+}
+
+// ListFormats returns the conversions the server supports.
+func (s *conversionService) ListFormats(context.Context, *proteusv1.ListFormatsRequest) (*proteusv1.ListFormatsResponse, error) {
+	res := &proteusv1.ListFormatsResponse{}
+	for _, rt := range s.api.svc.Routes() {
+		t, _ := convert.TargetOf(rt.To)
+		res.Conversions = append(res.Conversions, &proteusv1.Conversion{
+			InputFormat: convert.InputToProto(rt.From), OutputFormat: convert.OutputToProto(rt.To),
+			MimeType: t.MIMEType, FileExtension: t.Extension,
+		})
+	}
+	return res, nil
 }
 
 // SubmitJob queues a conversion.
@@ -92,22 +110,22 @@ func (s *conversionService) GetJob(ctx context.Context, req *proteusv1.GetJobReq
 	return &proteusv1.GetJobResponse{Job: jobs.ToProto(rec)}, nil
 }
 
-// DownloadJobResult streams the PDF in chunks of at most 1 MiB.
+// DownloadJobResult streams the output in chunks of at most 1 MiB.
 func (s *conversionService) DownloadJobResult(ctx context.Context, req *proteusv1.DownloadJobResultRequest,
 	stream proteusv1connect.ConversionServiceDownloadJobResultServerStream) error {
-	rec, pdf, err := s.api.jobs.Result(ctx, auth.Caller(ctx), req.GetId())
+	rec, out, err := s.api.jobs.Result(ctx, auth.Caller(ctx), req.GetId())
 	if errors.Is(err, jobs.ErrNotFinished) && rec != nil && rec.Status == jobs.Failed {
 		return connect.Errorf(connect.CodeFailedPrecondition, "job failed: %s", rec.Error)
 	}
 	if err != nil {
 		return s.toConnect(ctx, err)
 	}
-	for len(pdf) > 0 {
-		n := min(len(pdf), chunkSize)
-		if err := stream.Send(&proteusv1.DownloadJobResultResponse{Chunk: pdf[:n]}); err != nil {
+	for len(out) > 0 {
+		n := min(len(out), chunkSize)
+		if err := stream.Send(&proteusv1.DownloadJobResultResponse{Chunk: out[:n]}); err != nil {
 			return err
 		}
-		pdf = pdf[n:]
+		out = out[n:]
 	}
 	return nil
 }

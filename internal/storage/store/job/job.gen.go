@@ -26,7 +26,9 @@ type Row struct {
 	UpdatedAt    time.Time
 	Owner        string
 	Status       string
-	Format       string
+	InputFormat  string
+	OutputFormat string
+	FileName     string
 	Payload      []byte
 	WebhookURL   runtime.Null[string]
 	Attempts     int32
@@ -82,7 +84,7 @@ const (
 	opNotExists runtime.Op = 33
 )
 
-const nCols = 17
+const nCols = 19
 
 // Query is a value type: composing one allocates nothing. Predicates
 // are a postfix token stream, so disjunction and negation are
@@ -220,72 +222,86 @@ func (q *Query) cursor(col uint32, r Row) {
 			q.over = true
 			return
 		}
-		q.strs[q.ns] = r.Format
+		q.strs[q.ns] = r.InputFormat
 		q.ns++
 	case 6:
+		if int(q.ns) >= len(q.strs) {
+			q.over = true
+			return
+		}
+		q.strs[q.ns] = r.OutputFormat
+		q.ns++
+	case 7:
+		if int(q.ns) >= len(q.strs) {
+			q.over = true
+			return
+		}
+		q.strs[q.ns] = r.FileName
+		q.ns++
+	case 8:
 		if int(q.nby) >= len(q.byts) {
 			q.over = true
 			return
 		}
 		q.byts[q.nby] = r.Payload
 		q.nby++
-	case 7:
+	case 9:
 		if int(q.ns) >= len(q.strs) {
 			q.over = true
 			return
 		}
 		q.strs[q.ns] = r.WebhookURL.V
 		q.ns++
-	case 8:
+	case 10:
 		if int(q.nn) >= len(q.nums) {
 			q.over = true
 			return
 		}
 		q.nums[q.nn] = int64(r.Attempts)
 		q.nn++
-	case 9:
+	case 11:
 		if int(q.ntm) >= len(q.tims) {
 			q.over = true
 			return
 		}
 		q.tims[q.ntm] = r.LeaseExpires.V
 		q.ntm++
-	case 10:
+	case 12:
 		if int(q.ntm) >= len(q.tims) {
 			q.over = true
 			return
 		}
 		q.tims[q.ntm] = r.StartedAt.V
 		q.ntm++
-	case 11:
+	case 13:
 		if int(q.ntm) >= len(q.tims) {
 			q.over = true
 			return
 		}
 		q.tims[q.ntm] = r.FinishedAt.V
 		q.ntm++
-	case 12:
+	case 14:
 		if int(q.ntm) >= len(q.tims) {
 			q.over = true
 			return
 		}
 		q.tims[q.ntm] = r.ExpiresAt.V
 		q.ntm++
-	case 13:
+	case 15:
 		if int(q.ns) >= len(q.strs) {
 			q.over = true
 			return
 		}
 		q.strs[q.ns] = r.Error.V
 		q.ns++
-	case 15:
+	case 17:
 		if int(q.nn) >= len(q.nums) {
 			q.over = true
 			return
 		}
 		q.nums[q.nn] = int64(r.ResultBytes)
 		q.nn++
-	case 16:
+	case 18:
 		if int(q.nby) >= len(q.byts) {
 			q.over = true
 			return
@@ -452,18 +468,20 @@ var (
 	UpdatedAt    = TimeCol{2}
 	Owner        = TextCol{3}
 	Status       = TextCol{4}
-	Format       = TextCol{5}
-	Payload      = NullBytesCol{6}
-	WebhookURL   = NullTextCol{7}
-	Attempts     = Int32Col{8}
-	LeaseExpires = NullTimeCol{9}
-	StartedAt    = NullTimeCol{10}
-	FinishedAt   = NullTimeCol{11}
-	ExpiresAt    = NullTimeCol{12}
-	Error        = NullTextCol{13}
-	Warnings     = NullTextArrayCol{14}
-	ResultBytes  = Int64Col{15}
-	Result       = NullBytesCol{16}
+	InputFormat  = TextCol{5}
+	OutputFormat = TextCol{6}
+	FileName     = TextCol{7}
+	Payload      = NullBytesCol{8}
+	WebhookURL   = NullTextCol{9}
+	Attempts     = Int32Col{10}
+	LeaseExpires = NullTimeCol{11}
+	StartedAt    = NullTimeCol{12}
+	FinishedAt   = NullTimeCol{13}
+	ExpiresAt    = NullTimeCol{14}
+	Error        = NullTextCol{15}
+	Warnings     = NullTextArrayCol{16}
+	ResultBytes  = Int64Col{17}
+	Result       = NullBytesCol{18}
 )
 
 // UUIDCol addresses a uuid column.
@@ -825,21 +843,21 @@ func (q *Query) leaf(p Pred) {
 			}
 			q.anyRaw[q.nar] = p.anyRaw
 			q.nar++
-		case 3, 4, 5, 7, 13, 14:
+		case 3, 4, 5, 6, 7, 9, 15, 16:
 			if int(q.nas) >= 3 {
 				q.over = true
 				return
 			}
 			q.anyStr[q.nas] = p.anyStr
 			q.nas++
-		case 8:
+		case 10:
 			if int(q.nai32) >= 3 {
 				q.over = true
 				return
 			}
 			q.anyI32[q.nai32] = p.anyI32
 			q.nai32++
-		case 15:
+		case 17:
 			if int(q.nai64) >= 3 {
 				q.over = true
 				return
@@ -862,28 +880,28 @@ func (q *Query) leaf(p Pred) {
 		}
 		q.raws[q.nr] = p.raw
 		q.nr++
-	case 1, 2, 9, 10, 11, 12:
+	case 1, 2, 11, 12, 13, 14:
 		if int(q.ntm) >= 4 {
 			q.over = true
 			return
 		}
 		q.tims[q.ntm] = p.tim
 		q.ntm++
-	case 3, 4, 5, 7, 13:
+	case 3, 4, 5, 6, 7, 9, 15:
 		if int(q.ns) >= 6 {
 			q.over = true
 			return
 		}
 		q.strs[q.ns] = p.str
 		q.ns++
-	case 6, 16:
+	case 8, 18:
 		if int(q.nby) >= 2 {
 			q.over = true
 			return
 		}
 		q.byts[q.nby] = p.byt
 		q.nby++
-	case 8, 15:
+	case 10, 17:
 		if int(q.nn) >= 6 {
 			q.over = true
 			return
@@ -939,20 +957,48 @@ func (q Query) StatusNotIn(v ...string) Query         { return q.Where(Status.No
 func (q Query) StatusHasPrefix(v string) Query        { return q.Where(Status.HasPrefix(v)) }
 func (q Query) StatusHasSuffix(v string) Query        { return q.Where(Status.HasSuffix(v)) }
 func (q Query) StatusContains(v string) Query         { return q.Where(Status.Contains(v)) }
-func (q Query) FormatEq(v string) Query               { return q.Where(Format.Eq(v)) }
-func (q Query) FormatNotEq(v string) Query            { return q.Where(Format.NotEq(v)) }
-func (q Query) FormatGt(v string) Query               { return q.Where(Format.Gt(v)) }
-func (q Query) FormatGte(v string) Query              { return q.Where(Format.Gte(v)) }
-func (q Query) FormatLt(v string) Query               { return q.Where(Format.Lt(v)) }
-func (q Query) FormatLte(v string) Query              { return q.Where(Format.Lte(v)) }
-func (q Query) FormatEqLower(v string) Query          { return q.Where(Format.EqLower(v)) }
-func (q Query) FormatLike(v string) Query             { return q.Where(Format.Like(v)) }
-func (q Query) FormatILike(v string) Query            { return q.Where(Format.ILike(v)) }
-func (q Query) FormatIn(v ...string) Query            { return q.Where(Format.In(v...)) }
-func (q Query) FormatNotIn(v ...string) Query         { return q.Where(Format.NotIn(v...)) }
-func (q Query) FormatHasPrefix(v string) Query        { return q.Where(Format.HasPrefix(v)) }
-func (q Query) FormatHasSuffix(v string) Query        { return q.Where(Format.HasSuffix(v)) }
-func (q Query) FormatContains(v string) Query         { return q.Where(Format.Contains(v)) }
+func (q Query) InputFormatEq(v string) Query          { return q.Where(InputFormat.Eq(v)) }
+func (q Query) InputFormatNotEq(v string) Query       { return q.Where(InputFormat.NotEq(v)) }
+func (q Query) InputFormatGt(v string) Query          { return q.Where(InputFormat.Gt(v)) }
+func (q Query) InputFormatGte(v string) Query         { return q.Where(InputFormat.Gte(v)) }
+func (q Query) InputFormatLt(v string) Query          { return q.Where(InputFormat.Lt(v)) }
+func (q Query) InputFormatLte(v string) Query         { return q.Where(InputFormat.Lte(v)) }
+func (q Query) InputFormatEqLower(v string) Query     { return q.Where(InputFormat.EqLower(v)) }
+func (q Query) InputFormatLike(v string) Query        { return q.Where(InputFormat.Like(v)) }
+func (q Query) InputFormatILike(v string) Query       { return q.Where(InputFormat.ILike(v)) }
+func (q Query) InputFormatIn(v ...string) Query       { return q.Where(InputFormat.In(v...)) }
+func (q Query) InputFormatNotIn(v ...string) Query    { return q.Where(InputFormat.NotIn(v...)) }
+func (q Query) InputFormatHasPrefix(v string) Query   { return q.Where(InputFormat.HasPrefix(v)) }
+func (q Query) InputFormatHasSuffix(v string) Query   { return q.Where(InputFormat.HasSuffix(v)) }
+func (q Query) InputFormatContains(v string) Query    { return q.Where(InputFormat.Contains(v)) }
+func (q Query) OutputFormatEq(v string) Query         { return q.Where(OutputFormat.Eq(v)) }
+func (q Query) OutputFormatNotEq(v string) Query      { return q.Where(OutputFormat.NotEq(v)) }
+func (q Query) OutputFormatGt(v string) Query         { return q.Where(OutputFormat.Gt(v)) }
+func (q Query) OutputFormatGte(v string) Query        { return q.Where(OutputFormat.Gte(v)) }
+func (q Query) OutputFormatLt(v string) Query         { return q.Where(OutputFormat.Lt(v)) }
+func (q Query) OutputFormatLte(v string) Query        { return q.Where(OutputFormat.Lte(v)) }
+func (q Query) OutputFormatEqLower(v string) Query    { return q.Where(OutputFormat.EqLower(v)) }
+func (q Query) OutputFormatLike(v string) Query       { return q.Where(OutputFormat.Like(v)) }
+func (q Query) OutputFormatILike(v string) Query      { return q.Where(OutputFormat.ILike(v)) }
+func (q Query) OutputFormatIn(v ...string) Query      { return q.Where(OutputFormat.In(v...)) }
+func (q Query) OutputFormatNotIn(v ...string) Query   { return q.Where(OutputFormat.NotIn(v...)) }
+func (q Query) OutputFormatHasPrefix(v string) Query  { return q.Where(OutputFormat.HasPrefix(v)) }
+func (q Query) OutputFormatHasSuffix(v string) Query  { return q.Where(OutputFormat.HasSuffix(v)) }
+func (q Query) OutputFormatContains(v string) Query   { return q.Where(OutputFormat.Contains(v)) }
+func (q Query) FileNameEq(v string) Query             { return q.Where(FileName.Eq(v)) }
+func (q Query) FileNameNotEq(v string) Query          { return q.Where(FileName.NotEq(v)) }
+func (q Query) FileNameGt(v string) Query             { return q.Where(FileName.Gt(v)) }
+func (q Query) FileNameGte(v string) Query            { return q.Where(FileName.Gte(v)) }
+func (q Query) FileNameLt(v string) Query             { return q.Where(FileName.Lt(v)) }
+func (q Query) FileNameLte(v string) Query            { return q.Where(FileName.Lte(v)) }
+func (q Query) FileNameEqLower(v string) Query        { return q.Where(FileName.EqLower(v)) }
+func (q Query) FileNameLike(v string) Query           { return q.Where(FileName.Like(v)) }
+func (q Query) FileNameILike(v string) Query          { return q.Where(FileName.ILike(v)) }
+func (q Query) FileNameIn(v ...string) Query          { return q.Where(FileName.In(v...)) }
+func (q Query) FileNameNotIn(v ...string) Query       { return q.Where(FileName.NotIn(v...)) }
+func (q Query) FileNameHasPrefix(v string) Query      { return q.Where(FileName.HasPrefix(v)) }
+func (q Query) FileNameHasSuffix(v string) Query      { return q.Where(FileName.HasSuffix(v)) }
+func (q Query) FileNameContains(v string) Query       { return q.Where(FileName.Contains(v)) }
 func (q Query) PayloadEq(v []byte) Query              { return q.Where(Payload.Eq(v)) }
 func (q Query) PayloadNotEq(v []byte) Query           { return q.Where(Payload.NotEq(v)) }
 func (q Query) PayloadIsNull() Query                  { return q.Where(Payload.IsNull()) }
@@ -1049,7 +1095,7 @@ func (q Query) ResultNotEq(v []byte) Query            { return q.Where(Result.No
 func (q Query) ResultIsNull() Query                   { return q.Where(Result.IsNull()) }
 func (q Query) ResultIsNotNull() Query                { return q.Where(Result.IsNotNull()) }
 
-const selectPrefix = `SELECT "id", "created_at", "updated_at", "owner", "status", "format", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result" FROM "jobs"`
+const selectPrefix = `SELECT "id", "created_at", "updated_at", "owner", "status", "input_format", "output_format", "file_name", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result" FROM "jobs"`
 const countPrefix = `SELECT count(*) FROM "jobs"`
 const existsPrefix = `SELECT 1 FROM "jobs"`
 const existsSuffix = ` LIMIT 1`
@@ -1089,7 +1135,9 @@ var orderTable = [nCols][4]string{
 	{"\"updated_at\"", "\"updated_at\" DESC", "\"updated_at\" ASC NULLS FIRST", "\"updated_at\" DESC NULLS LAST"},
 	{"\"owner\"", "\"owner\" DESC", "\"owner\" ASC NULLS FIRST", "\"owner\" DESC NULLS LAST"},
 	{"\"status\"", "\"status\" DESC", "\"status\" ASC NULLS FIRST", "\"status\" DESC NULLS LAST"},
-	{"\"format\"", "\"format\" DESC", "\"format\" ASC NULLS FIRST", "\"format\" DESC NULLS LAST"},
+	{"\"input_format\"", "\"input_format\" DESC", "\"input_format\" ASC NULLS FIRST", "\"input_format\" DESC NULLS LAST"},
+	{"\"output_format\"", "\"output_format\" DESC", "\"output_format\" ASC NULLS FIRST", "\"output_format\" DESC NULLS LAST"},
+	{"\"file_name\"", "\"file_name\" DESC", "\"file_name\" ASC NULLS FIRST", "\"file_name\" DESC NULLS LAST"},
 	{"\"payload\"", "\"payload\" DESC", "\"payload\" ASC NULLS FIRST", "\"payload\" DESC NULLS LAST"},
 	{"\"webhook_url\"", "\"webhook_url\" DESC", "\"webhook_url\" ASC NULLS FIRST", "\"webhook_url\" DESC NULLS LAST"},
 	{"\"attempts\"", "\"attempts\" DESC", "\"attempts\" ASC NULLS FIRST", "\"attempts\" DESC NULLS LAST"},
@@ -1111,7 +1159,9 @@ var identTable = [nCols]string{
 	"\"updated_at\"",
 	"\"owner\"",
 	"\"status\"",
-	"\"format\"",
+	"\"input_format\"",
+	"\"output_format\"",
+	"\"file_name\"",
 	"\"payload\"",
 	"\"webhook_url\"",
 	"\"attempts\"",
@@ -1155,7 +1205,7 @@ func orderOf(dir, col uint32) string {
 
 // fragTable is every predicate this table can produce, lowered at build
 // time. Runtime splices; it never formats.
-var fragTable = [17][34]runtime.Frag{
+var fragTable = [19][34]runtime.Frag{
 	{ // id
 		opEq:    {A: "\"id\" = $"},
 		opNotEq: {A: "\"id\" <> $"},
@@ -1210,21 +1260,53 @@ var fragTable = [17][34]runtime.Frag{
 		opTextHasSuffix: {A: "\"status\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_')) ESCAPE '!'"},
 		opTextContains:  {A: "\"status\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
 	},
-	{ // format
-		opEq:            {A: "\"format\" = $"},
-		opNotEq:         {A: "\"format\" <> $"},
-		opGt:            {A: "\"format\" > $"},
-		opGte:           {A: "\"format\" >= $"},
-		opLt:            {A: "\"format\" < $"},
-		opLte:           {A: "\"format\" <= $"},
-		opEqLower:       {A: "lower(\"format\") = lower($", B: ")"},
-		opLike:          {A: "\"format\" LIKE $"},
-		opILike:         {A: "\"format\" ILIKE $"},
-		opIn:            {A: "\"format\" = ANY($", B: ")"},
-		opNotIn:         {A: "\"format\" <> ALL($", B: ")"},
-		opTextHasPrefix: {A: "\"format\" LIKE (replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
-		opTextHasSuffix: {A: "\"format\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_')) ESCAPE '!'"},
-		opTextContains:  {A: "\"format\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
+	{ // input_format
+		opEq:            {A: "\"input_format\" = $"},
+		opNotEq:         {A: "\"input_format\" <> $"},
+		opGt:            {A: "\"input_format\" > $"},
+		opGte:           {A: "\"input_format\" >= $"},
+		opLt:            {A: "\"input_format\" < $"},
+		opLte:           {A: "\"input_format\" <= $"},
+		opEqLower:       {A: "lower(\"input_format\") = lower($", B: ")"},
+		opLike:          {A: "\"input_format\" LIKE $"},
+		opILike:         {A: "\"input_format\" ILIKE $"},
+		opIn:            {A: "\"input_format\" = ANY($", B: ")"},
+		opNotIn:         {A: "\"input_format\" <> ALL($", B: ")"},
+		opTextHasPrefix: {A: "\"input_format\" LIKE (replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
+		opTextHasSuffix: {A: "\"input_format\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_')) ESCAPE '!'"},
+		opTextContains:  {A: "\"input_format\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
+	},
+	{ // output_format
+		opEq:            {A: "\"output_format\" = $"},
+		opNotEq:         {A: "\"output_format\" <> $"},
+		opGt:            {A: "\"output_format\" > $"},
+		opGte:           {A: "\"output_format\" >= $"},
+		opLt:            {A: "\"output_format\" < $"},
+		opLte:           {A: "\"output_format\" <= $"},
+		opEqLower:       {A: "lower(\"output_format\") = lower($", B: ")"},
+		opLike:          {A: "\"output_format\" LIKE $"},
+		opILike:         {A: "\"output_format\" ILIKE $"},
+		opIn:            {A: "\"output_format\" = ANY($", B: ")"},
+		opNotIn:         {A: "\"output_format\" <> ALL($", B: ")"},
+		opTextHasPrefix: {A: "\"output_format\" LIKE (replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
+		opTextHasSuffix: {A: "\"output_format\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_')) ESCAPE '!'"},
+		opTextContains:  {A: "\"output_format\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
+	},
+	{ // file_name
+		opEq:            {A: "\"file_name\" = $"},
+		opNotEq:         {A: "\"file_name\" <> $"},
+		opGt:            {A: "\"file_name\" > $"},
+		opGte:           {A: "\"file_name\" >= $"},
+		opLt:            {A: "\"file_name\" < $"},
+		opLte:           {A: "\"file_name\" <= $"},
+		opEqLower:       {A: "lower(\"file_name\") = lower($", B: ")"},
+		opLike:          {A: "\"file_name\" LIKE $"},
+		opILike:         {A: "\"file_name\" ILIKE $"},
+		opIn:            {A: "\"file_name\" = ANY($", B: ")"},
+		opNotIn:         {A: "\"file_name\" <> ALL($", B: ")"},
+		opTextHasPrefix: {A: "\"file_name\" LIKE (replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
+		opTextHasSuffix: {A: "\"file_name\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_')) ESCAPE '!'"},
+		opTextContains:  {A: "\"file_name\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
 	},
 	{ // payload
 		opEq:        {A: "\"payload\" = $"},
@@ -1425,7 +1507,7 @@ func (q Query) existsStmt(toks []runtime.Tok) *runtime.Stmt { return existsStmtF
 const (
 	distinctOpen = "SELECT DISTINCT ON ("
 	distinctSep  = ", "
-	distinctTail = ") \"id\", \"created_at\", \"updated_at\", \"owner\", \"status\", \"format\", \"payload\", \"webhook_url\", \"attempts\", \"lease_expires\", \"started_at\", \"finished_at\", \"expires_at\", \"error\", \"warnings\", \"result_bytes\", \"result\" FROM \"jobs\""
+	distinctTail = ") \"id\", \"created_at\", \"updated_at\", \"owner\", \"status\", \"input_format\", \"output_format\", \"file_name\", \"payload\", \"webhook_url\", \"attempts\", \"lease_expires\", \"started_at\", \"finished_at\", \"expires_at\", \"error\", \"warnings\", \"result_bytes\", \"result\" FROM \"jobs\""
 )
 
 // distinctCaches are AllDistinctOn's, without and with an offset. The
@@ -1594,39 +1676,41 @@ func scan(rv [][]byte, r *Row, sl *runtime.Slab) error {
 	r.UpdatedAt = runtime.Timestamptz(rv[2])
 	r.Owner = sl.Str(rv[3])
 	r.Status = sl.Str(rv[4])
-	r.Format = sl.Str(rv[5])
-	r.Payload = runtime.Bytes(rv[6])
-	r.WebhookURL = runtime.NullText(rv[7], sl)
-	if len(rv[8]) != 4 {
-		return runtime.ShapeErr("attempts", "int4", 4, rv[8])
+	r.InputFormat = sl.Str(rv[5])
+	r.OutputFormat = sl.Str(rv[6])
+	r.FileName = sl.Str(rv[7])
+	r.Payload = runtime.Bytes(rv[8])
+	r.WebhookURL = runtime.NullText(rv[9], sl)
+	if len(rv[10]) != 4 {
+		return runtime.ShapeErr("attempts", "int4", 4, rv[10])
 	}
-	r.Attempts = runtime.Int4(rv[8])
-	if b := rv[9]; b != nil && len(b) != 8 {
+	r.Attempts = runtime.Int4(rv[10])
+	if b := rv[11]; b != nil && len(b) != 8 {
 		return runtime.ShapeErr("lease_expires", "timestamptz", 8, b)
 	}
-	r.LeaseExpires = runtime.Nullable(rv[9], runtime.Timestamptz)
-	if b := rv[10]; b != nil && len(b) != 8 {
+	r.LeaseExpires = runtime.Nullable(rv[11], runtime.Timestamptz)
+	if b := rv[12]; b != nil && len(b) != 8 {
 		return runtime.ShapeErr("started_at", "timestamptz", 8, b)
 	}
-	r.StartedAt = runtime.Nullable(rv[10], runtime.Timestamptz)
-	if b := rv[11]; b != nil && len(b) != 8 {
+	r.StartedAt = runtime.Nullable(rv[12], runtime.Timestamptz)
+	if b := rv[13]; b != nil && len(b) != 8 {
 		return runtime.ShapeErr("finished_at", "timestamptz", 8, b)
 	}
-	r.FinishedAt = runtime.Nullable(rv[11], runtime.Timestamptz)
-	if b := rv[12]; b != nil && len(b) != 8 {
+	r.FinishedAt = runtime.Nullable(rv[13], runtime.Timestamptz)
+	if b := rv[14]; b != nil && len(b) != 8 {
 		return runtime.ShapeErr("expires_at", "timestamptz", 8, b)
 	}
-	r.ExpiresAt = runtime.Nullable(rv[12], runtime.Timestamptz)
-	r.Error = runtime.NullText(rv[13], sl)
-	r.Warnings, decErr = runtime.TextArray(rv[14], sl)
+	r.ExpiresAt = runtime.Nullable(rv[14], runtime.Timestamptz)
+	r.Error = runtime.NullText(rv[15], sl)
+	r.Warnings, decErr = runtime.TextArray(rv[16], sl)
 	if decErr != nil {
 		return decErr
 	}
-	if len(rv[15]) != 8 {
-		return runtime.ShapeErr("result_bytes", "int8", 8, rv[15])
+	if len(rv[17]) != 8 {
+		return runtime.ShapeErr("result_bytes", "int8", 8, rv[17])
 	}
-	r.ResultBytes = runtime.Int8(rv[15])
-	r.Result = runtime.Bytes(rv[16])
+	r.ResultBytes = runtime.Int8(rv[17])
+	r.Result = runtime.Bytes(rv[18])
 	return decErr
 }
 
@@ -1698,15 +1782,15 @@ func (q Query) bindPreds(b *binder) []any {
 				b.anyRaw[nar] = q.anyRaw[nar]
 				v = append(v, &b.anyRaw[nar])
 				nar++
-			case 3, 4, 5, 7, 13, 14:
+			case 3, 4, 5, 6, 7, 9, 15, 16:
 				b.anyStr[nas] = q.anyStr[nas]
 				v = append(v, &b.anyStr[nas])
 				nas++
-			case 8:
+			case 10:
 				b.anyI32[nai32] = q.anyI32[nai32]
 				v = append(v, &b.anyI32[nai32])
 				nai32++
-			case 15:
+			case 17:
 				b.anyI64[nai64] = q.anyI64[nai64]
 				v = append(v, &b.anyI64[nai64])
 				nai64++
@@ -1718,19 +1802,19 @@ func (q Query) bindPreds(b *binder) []any {
 			b.raws[nr] = q.raws[nr]
 			v = append(v, &b.raws[nr])
 			nr++
-		case 1, 2, 9, 10, 11, 12:
+		case 1, 2, 11, 12, 13, 14:
 			b.tims[ntm] = q.tims[ntm]
 			v = append(v, &b.tims[ntm])
 			ntm++
-		case 3, 4, 5, 7, 13:
+		case 3, 4, 5, 6, 7, 9, 15:
 			b.strs[ns] = q.strs[ns]
 			v = append(v, &b.strs[ns])
 			ns++
-		case 6, 16:
+		case 8, 18:
 			b.byts[nby] = q.byts[nby]
 			v = append(v, &b.byts[nby])
 			nby++
-		case 8, 15:
+		case 10, 17:
 			b.nums[nn] = q.nums[nn]
 			v = append(v, &b.nums[nn])
 			nn++
@@ -1921,27 +2005,29 @@ func (q Query) Prepare(b *Binder) (string, []any) {
 	return q.readStmt(q.stream(&buf)).SQL, q.bind(b)
 }
 
-// MetaRow is the "Meta" projection: the same read, 13 column(s) instead of
+// MetaRow is the "Meta" projection: the same read, 15 column(s) instead of
 // the whole row. Narrower tuples, no TOAST fetch for what nobody asked,
 // and an index-only scan becomes POSSIBLE — the full-row read forecloses
 // it by construction.
 type MetaRow struct {
-	ID          [16]byte
-	Owner       string
-	Status      string
-	Format      string
-	WebhookURL  runtime.Null[string]
-	Attempts    int32
-	CreatedAt   time.Time
-	StartedAt   runtime.Null[time.Time]
-	FinishedAt  runtime.Null[time.Time]
-	ExpiresAt   runtime.Null[time.Time]
-	Error       runtime.Null[string]
-	Warnings    []string
-	ResultBytes int64
+	ID           [16]byte
+	Owner        string
+	Status       string
+	InputFormat  string
+	OutputFormat string
+	FileName     string
+	WebhookURL   runtime.Null[string]
+	Attempts     int32
+	CreatedAt    time.Time
+	StartedAt    runtime.Null[time.Time]
+	FinishedAt   runtime.Null[time.Time]
+	ExpiresAt    runtime.Null[time.Time]
+	Error        runtime.Null[string]
+	Warnings     []string
+	ResultBytes  int64
 }
 
-const metaPrefix = `SELECT "id", "owner", "status", "format", "webhook_url", "attempts", "created_at", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes" FROM "jobs"`
+const metaPrefix = `SELECT "id", "owner", "status", "input_format", "output_format", "file_name", "webhook_url", "attempts", "created_at", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes" FROM "jobs"`
 
 var (
 	metaCache       = runtime.NewTreeCache()
@@ -1967,37 +2053,39 @@ func scanMeta(rv [][]byte, r *MetaRow, sl *runtime.Slab) error {
 	copy(r.ID[:], rv[0])
 	r.Owner = sl.Str(rv[1])
 	r.Status = sl.Str(rv[2])
-	r.Format = sl.Str(rv[3])
-	r.WebhookURL = runtime.NullText(rv[4], sl)
-	if len(rv[5]) != 4 {
-		return runtime.ShapeErr("attempts", "int4", 4, rv[5])
+	r.InputFormat = sl.Str(rv[3])
+	r.OutputFormat = sl.Str(rv[4])
+	r.FileName = sl.Str(rv[5])
+	r.WebhookURL = runtime.NullText(rv[6], sl)
+	if len(rv[7]) != 4 {
+		return runtime.ShapeErr("attempts", "int4", 4, rv[7])
 	}
-	r.Attempts = runtime.Int4(rv[5])
-	if len(rv[6]) != 8 {
-		return runtime.ShapeErr("created_at", "timestamptz", 8, rv[6])
+	r.Attempts = runtime.Int4(rv[7])
+	if len(rv[8]) != 8 {
+		return runtime.ShapeErr("created_at", "timestamptz", 8, rv[8])
 	}
-	r.CreatedAt = runtime.Timestamptz(rv[6])
-	if b := rv[7]; b != nil && len(b) != 8 {
+	r.CreatedAt = runtime.Timestamptz(rv[8])
+	if b := rv[9]; b != nil && len(b) != 8 {
 		return runtime.ShapeErr("started_at", "timestamptz", 8, b)
 	}
-	r.StartedAt = runtime.Nullable(rv[7], runtime.Timestamptz)
-	if b := rv[8]; b != nil && len(b) != 8 {
+	r.StartedAt = runtime.Nullable(rv[9], runtime.Timestamptz)
+	if b := rv[10]; b != nil && len(b) != 8 {
 		return runtime.ShapeErr("finished_at", "timestamptz", 8, b)
 	}
-	r.FinishedAt = runtime.Nullable(rv[8], runtime.Timestamptz)
-	if b := rv[9]; b != nil && len(b) != 8 {
+	r.FinishedAt = runtime.Nullable(rv[10], runtime.Timestamptz)
+	if b := rv[11]; b != nil && len(b) != 8 {
 		return runtime.ShapeErr("expires_at", "timestamptz", 8, b)
 	}
-	r.ExpiresAt = runtime.Nullable(rv[9], runtime.Timestamptz)
-	r.Error = runtime.NullText(rv[10], sl)
-	r.Warnings, decErr = runtime.TextArray(rv[11], sl)
+	r.ExpiresAt = runtime.Nullable(rv[11], runtime.Timestamptz)
+	r.Error = runtime.NullText(rv[12], sl)
+	r.Warnings, decErr = runtime.TextArray(rv[13], sl)
 	if decErr != nil {
 		return decErr
 	}
-	if len(rv[12]) != 8 {
-		return runtime.ShapeErr("result_bytes", "int8", 8, rv[12])
+	if len(rv[14]) != 8 {
+		return runtime.ShapeErr("result_bytes", "int8", 8, rv[14])
 	}
-	r.ResultBytes = runtime.Int8(rv[12])
+	r.ResultBytes = runtime.Int8(rv[14])
 	return nil
 }
 
@@ -2051,7 +2139,7 @@ func (q Query) OneMeta(ctx context.Context, ex runtime.Executor) (MetaRow, bool,
 
 // insertSQL does not vary: the column list is fixed by the table, so
 // the placeholders are known at build time and nothing is spliced.
-const insertSQL = `INSERT INTO "jobs" ("id", "created_at", "updated_at", "owner", "status", "format", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING "id", "created_at", "updated_at", "owner", "status", "format", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result"`
+const insertSQL = `INSERT INTO "jobs" ("id", "created_at", "updated_at", "owner", "status", "input_format", "output_format", "file_name", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING "id", "created_at", "updated_at", "owner", "status", "input_format", "output_format", "file_name", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result"`
 
 const updatePrefix = `UPDATE "jobs" SET `
 const deletePrefix = `DELETE FROM "jobs"`
@@ -2062,28 +2150,32 @@ const (
 	dUpdatedAt    uint64 = 1 << 0
 	dOwner        uint64 = 1 << 1
 	dStatus       uint64 = 1 << 2
-	dFormat       uint64 = 1 << 3
-	dPayload      uint64 = 1 << 4
-	dWebhookURL   uint64 = 1 << 5
-	dAttempts     uint64 = 1 << 6
-	dLeaseExpires uint64 = 1 << 7
-	dStartedAt    uint64 = 1 << 8
-	dFinishedAt   uint64 = 1 << 9
-	dExpiresAt    uint64 = 1 << 10
-	dError        uint64 = 1 << 11
-	dWarnings     uint64 = 1 << 12
-	dResultBytes  uint64 = 1 << 13
-	dResult       uint64 = 1 << 14
+	dInputFormat  uint64 = 1 << 3
+	dOutputFormat uint64 = 1 << 4
+	dFileName     uint64 = 1 << 5
+	dPayload      uint64 = 1 << 6
+	dWebhookURL   uint64 = 1 << 7
+	dAttempts     uint64 = 1 << 8
+	dLeaseExpires uint64 = 1 << 9
+	dStartedAt    uint64 = 1 << 10
+	dFinishedAt   uint64 = 1 << 11
+	dExpiresAt    uint64 = 1 << 12
+	dError        uint64 = 1 << 13
+	dWarnings     uint64 = 1 << 14
+	dResultBytes  uint64 = 1 << 15
+	dResult       uint64 = 1 << 16
 )
 
-const nUpdatable = 15
+const nUpdatable = 17
 
 // setFrags is every assignment this table can make, lowered at build time.
 var setFrags = [nUpdatable]runtime.Frag{
 	{A: "\"updated_at\" = $", B: ""},    // updated_at
 	{A: "\"owner\" = $", B: ""},         // owner
 	{A: "\"status\" = $", B: ""},        // status
-	{A: "\"format\" = $", B: ""},        // format
+	{A: "\"input_format\" = $", B: ""},  // input_format
+	{A: "\"output_format\" = $", B: ""}, // output_format
+	{A: "\"file_name\" = $", B: ""},     // file_name
 	{A: "\"payload\" = $", B: ""},       // payload
 	{A: "\"webhook_url\" = $", B: ""},   // webhook_url
 	{A: "\"attempts\" = $", B: ""},      // attempts
@@ -2104,7 +2196,9 @@ var exprFrags = [nUpdatable]runtime.Frag{
 	{A: "\"updated_at\" = now()", B: ""}, // updated_at = the database's clock
 	{},                                   // owner has no server-side form
 	{},                                   // status has no server-side form
-	{},                                   // format has no server-side form
+	{},                                   // input_format has no server-side form
+	{},                                   // output_format has no server-side form
+	{},                                   // file_name has no server-side form
 	{},                                   // payload has no server-side form
 	{},                                   // webhook_url has no server-side form
 	{A: "\"attempts\" = \"attempts\" + 1", B: ""}, // attempts = its own value plus one
@@ -2127,7 +2221,9 @@ var addFrags = [nUpdatable]runtime.Frag{
 	{}, // updated_at cannot be added to
 	{}, // owner cannot be added to
 	{}, // status cannot be added to
-	{}, // format cannot be added to
+	{}, // input_format cannot be added to
+	{}, // output_format cannot be added to
+	{}, // file_name cannot be added to
 	{}, // payload cannot be added to
 	{}, // webhook_url cannot be added to
 	{A: "\"attempts\" = \"attempts\" + $", B: ""}, // attempts = its own value plus an amount
@@ -2155,21 +2251,23 @@ const (
 	iUpdatedAt    uint64 = 1 << 2
 	iOwner        uint64 = 1 << 3
 	iStatus       uint64 = 1 << 4
-	iFormat       uint64 = 1 << 5
-	iPayload      uint64 = 1 << 6
-	iWebhookURL   uint64 = 1 << 7
-	iAttempts     uint64 = 1 << 8
-	iLeaseExpires uint64 = 1 << 9
-	iStartedAt    uint64 = 1 << 10
-	iFinishedAt   uint64 = 1 << 11
-	iExpiresAt    uint64 = 1 << 12
-	iError        uint64 = 1 << 13
-	iWarnings     uint64 = 1 << 14
-	iResultBytes  uint64 = 1 << 15
-	iResult       uint64 = 1 << 16
+	iInputFormat  uint64 = 1 << 5
+	iOutputFormat uint64 = 1 << 6
+	iFileName     uint64 = 1 << 7
+	iPayload      uint64 = 1 << 8
+	iWebhookURL   uint64 = 1 << 9
+	iAttempts     uint64 = 1 << 10
+	iLeaseExpires uint64 = 1 << 11
+	iStartedAt    uint64 = 1 << 12
+	iFinishedAt   uint64 = 1 << 13
+	iExpiresAt    uint64 = 1 << 14
+	iError        uint64 = 1 << 15
+	iWarnings     uint64 = 1 << 16
+	iResultBytes  uint64 = 1 << 17
+	iResult       uint64 = 1 << 18
 )
 
-const nInsertable = 17
+const nInsertable = 19
 
 // insCols is the quoted column name for each insert bit.
 var insCols = [nInsertable]string{
@@ -2178,7 +2276,9 @@ var insCols = [nInsertable]string{
 	"\"updated_at\"",
 	"\"owner\"",
 	"\"status\"",
-	"\"format\"",
+	"\"input_format\"",
+	"\"output_format\"",
+	"\"file_name\"",
 	"\"payload\"",
 	"\"webhook_url\"",
 	"\"attempts\"",
@@ -2198,7 +2298,7 @@ var insParts = runtime.InsertParts{Open: " (", Sep: ", ", Mid: ") VALUES (", Clo
 var insPlaceholder = runtime.Placeholder{}
 
 const insPrefix = "INSERT INTO \"jobs\""
-const insReturning = " RETURNING \"id\", \"created_at\", \"updated_at\", \"owner\", \"status\", \"format\", \"payload\", \"webhook_url\", \"attempts\", \"lease_expires\", \"started_at\", \"finished_at\", \"expires_at\", \"error\", \"warnings\", \"result_bytes\", \"result\""
+const insReturning = " RETURNING \"id\", \"created_at\", \"updated_at\", \"owner\", \"status\", \"input_format\", \"output_format\", \"file_name\", \"payload\", \"webhook_url\", \"attempts\", \"lease_expires\", \"started_at\", \"finished_at\", \"expires_at\", \"error\", \"warnings\", \"result_bytes\", \"result\""
 
 var insCache = runtime.NewMaskCache()
 
@@ -2217,7 +2317,7 @@ var updOpCache = runtime.NewMaskCache()
 // part of it. Without it m.Row() would hold what the row held BEFORE
 // the statement, so a caller reading back the counter it just
 // incremented would get the old number and never know.
-const updReturning = " RETURNING \"id\", \"created_at\", \"updated_at\", \"owner\", \"status\", \"format\", \"payload\", \"webhook_url\", \"attempts\", \"lease_expires\", \"started_at\", \"finished_at\", \"expires_at\", \"error\", \"warnings\", \"result_bytes\", \"result\""
+const updReturning = " RETURNING \"id\", \"created_at\", \"updated_at\", \"owner\", \"status\", \"input_format\", \"output_format\", \"file_name\", \"payload\", \"webhook_url\", \"attempts\", \"lease_expires\", \"started_at\", \"finished_at\", \"expires_at\", \"error\", \"warnings\", \"result_bytes\", \"result\""
 
 // Masks reports how many distinct UPDATE shapes have compiled.
 func Masks() int { return updCache.Masks() }
@@ -2289,10 +2389,22 @@ func (m *Mut) SetStatus(v string) {
 	m.expr &^= dStatus
 }
 
-func (m *Mut) SetFormat(v string) {
-	m.row.Format = v
-	m.dirty |= dFormat
-	m.expr &^= dFormat
+func (m *Mut) SetInputFormat(v string) {
+	m.row.InputFormat = v
+	m.dirty |= dInputFormat
+	m.expr &^= dInputFormat
+}
+
+func (m *Mut) SetOutputFormat(v string) {
+	m.row.OutputFormat = v
+	m.dirty |= dOutputFormat
+	m.expr &^= dOutputFormat
+}
+
+func (m *Mut) SetFileName(v string) {
+	m.row.FileName = v
+	m.dirty |= dFileName
+	m.expr &^= dFileName
 }
 
 func (m *Mut) SetPayload(v []byte) {
@@ -2509,28 +2621,32 @@ func (n *Ins) insertArgs(args []any) []any {
 		case 4:
 			args = append(args, n.row.Status)
 		case 5:
-			args = append(args, n.row.Format)
+			args = append(args, n.row.InputFormat)
 		case 6:
-			args = append(args, n.row.Payload)
+			args = append(args, n.row.OutputFormat)
 		case 7:
-			args = append(args, n.row.WebhookURL.Arg())
+			args = append(args, n.row.FileName)
 		case 8:
-			args = append(args, n.row.Attempts)
+			args = append(args, n.row.Payload)
 		case 9:
-			args = append(args, n.row.LeaseExpires.Arg())
+			args = append(args, n.row.WebhookURL.Arg())
 		case 10:
-			args = append(args, n.row.StartedAt.Arg())
+			args = append(args, n.row.Attempts)
 		case 11:
-			args = append(args, n.row.FinishedAt.Arg())
+			args = append(args, n.row.LeaseExpires.Arg())
 		case 12:
-			args = append(args, n.row.ExpiresAt.Arg())
+			args = append(args, n.row.StartedAt.Arg())
 		case 13:
-			args = append(args, n.row.Error.Arg())
+			args = append(args, n.row.FinishedAt.Arg())
 		case 14:
-			args = append(args, n.row.Warnings)
+			args = append(args, n.row.ExpiresAt.Arg())
 		case 15:
-			args = append(args, n.row.ResultBytes)
+			args = append(args, n.row.Error.Arg())
 		case 16:
+			args = append(args, n.row.Warnings)
+		case 17:
+			args = append(args, n.row.ResultBytes)
+		case 18:
 			args = append(args, n.row.Result)
 		}
 	}
@@ -2562,9 +2678,19 @@ func (n *Ins) SetStatus(v string) {
 	n.set |= iStatus
 }
 
-func (n *Ins) SetFormat(v string) {
-	n.row.Format = v
-	n.set |= iFormat
+func (n *Ins) SetInputFormat(v string) {
+	n.row.InputFormat = v
+	n.set |= iInputFormat
+}
+
+func (n *Ins) SetOutputFormat(v string) {
+	n.row.OutputFormat = v
+	n.set |= iOutputFormat
+}
+
+func (n *Ins) SetFileName(v string) {
+	n.row.FileName = v
+	n.set |= iFileName
 }
 
 func (n *Ins) SetPayload(v []byte) {
@@ -2719,7 +2845,7 @@ var conflictSpecs = []string{
 
 // assignable is the columns target i may overwrite, given the mask.
 func assignable(i uint8, mask uint64) []string {
-	set := make([]string, 0, 15)
+	set := make([]string, 0, 17)
 	for j, bit := range assignBits[i] {
 		if mask&(1<<bit) != 0 {
 			set = append(set, assignNames[i][j])
@@ -2732,11 +2858,11 @@ func assignable(i uint8, mask uint64) []string {
 // of each column it may overwrite. An empty row is a target whose key
 // covers every updatable column.
 var assignBits = [1][]uint8{
-	{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+	{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18},
 }
 
 var assignNames = [1][]string{
-	{"updated_at", "owner", "status", "format", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result"},
+	{"updated_at", "owner", "status", "input_format", "output_format", "file_name", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result"},
 }
 
 // OnConflictID upserts on the unique index over (id).
@@ -2793,7 +2919,9 @@ var assignFor = map[string]string{
 	"updated_at":    "\"updated_at\" = EXCLUDED.\"updated_at\"",
 	"owner":         "\"owner\" = EXCLUDED.\"owner\"",
 	"status":        "\"status\" = EXCLUDED.\"status\"",
-	"format":        "\"format\" = EXCLUDED.\"format\"",
+	"input_format":  "\"input_format\" = EXCLUDED.\"input_format\"",
+	"output_format": "\"output_format\" = EXCLUDED.\"output_format\"",
+	"file_name":     "\"file_name\" = EXCLUDED.\"file_name\"",
 	"payload":       "\"payload\" = EXCLUDED.\"payload\"",
 	"webhook_url":   "\"webhook_url\" = EXCLUDED.\"webhook_url\"",
 	"attempts":      "\"attempts\" = EXCLUDED.\"attempts\"",
@@ -2880,13 +3008,15 @@ func Inserts() int { return insCache.Masks() }
 // Insert writes every insertable column, zero values included, and reads
 // the row back so database defaults land in r.
 func Insert(ctx context.Context, ex runtime.Executor, r *Row) error {
-	args := make([]any, 0, 17)
+	args := make([]any, 0, 19)
 	args = append(args, r.ID)
 	args = append(args, r.CreatedAt)
 	args = append(args, r.UpdatedAt)
 	args = append(args, r.Owner)
 	args = append(args, r.Status)
-	args = append(args, r.Format)
+	args = append(args, r.InputFormat)
+	args = append(args, r.OutputFormat)
+	args = append(args, r.FileName)
 	args = append(args, r.Payload)
 	args = append(args, r.WebhookURL.Arg())
 	args = append(args, r.Attempts)
@@ -2929,7 +3059,9 @@ var copyCols = []string{
 	"updated_at",
 	"owner",
 	"status",
-	"format",
+	"input_format",
+	"output_format",
+	"file_name",
 	"payload",
 	"webhook_url",
 	"attempts",
@@ -2947,7 +3079,7 @@ var copyCols = []string{
 type rowSource struct {
 	rows []Row
 	i    int
-	buf  [17]any
+	buf  [19]any
 }
 
 func (s *rowSource) Next() bool {
@@ -2964,18 +3096,20 @@ func (s *rowSource) Values() []any {
 	s.buf[2] = &r.UpdatedAt
 	s.buf[3] = &r.Owner
 	s.buf[4] = &r.Status
-	s.buf[5] = &r.Format
-	s.buf[6] = &r.Payload
-	s.buf[7] = r.WebhookURL.Ptr()
-	s.buf[8] = &r.Attempts
-	s.buf[9] = r.LeaseExpires.Ptr()
-	s.buf[10] = r.StartedAt.Ptr()
-	s.buf[11] = r.FinishedAt.Ptr()
-	s.buf[12] = r.ExpiresAt.Ptr()
-	s.buf[13] = r.Error.Ptr()
-	s.buf[14] = &r.Warnings
-	s.buf[15] = &r.ResultBytes
-	s.buf[16] = &r.Result
+	s.buf[5] = &r.InputFormat
+	s.buf[6] = &r.OutputFormat
+	s.buf[7] = &r.FileName
+	s.buf[8] = &r.Payload
+	s.buf[9] = r.WebhookURL.Ptr()
+	s.buf[10] = &r.Attempts
+	s.buf[11] = r.LeaseExpires.Ptr()
+	s.buf[12] = r.StartedAt.Ptr()
+	s.buf[13] = r.FinishedAt.Ptr()
+	s.buf[14] = r.ExpiresAt.Ptr()
+	s.buf[15] = r.Error.Ptr()
+	s.buf[16] = &r.Warnings
+	s.buf[17] = &r.ResultBytes
+	s.buf[18] = &r.Result
 	return s.buf[:]
 }
 
@@ -2996,13 +3130,15 @@ func InsertAll(ctx context.Context, ex runtime.Executor, rows []Row) (int64, err
 func InsertOp(r Row) runtime.BatchOp {
 	const mask = 1<<nInsertable - 1 // every insertable column
 	st := stmtForInsertNoReturn(mask, 0, 0)
-	args := make([]any, 0, 17)
+	args := make([]any, 0, 19)
 	args = append(args, r.ID)
 	args = append(args, r.CreatedAt)
 	args = append(args, r.UpdatedAt)
 	args = append(args, r.Owner)
 	args = append(args, r.Status)
-	args = append(args, r.Format)
+	args = append(args, r.InputFormat)
+	args = append(args, r.OutputFormat)
+	args = append(args, r.FileName)
 	args = append(args, r.Payload)
 	args = append(args, r.WebhookURL.Arg())
 	args = append(args, r.Attempts)
@@ -3236,28 +3372,32 @@ func (m Mut) updateArgs(args []any) []any {
 		case 2:
 			args = append(args, m.row.Status)
 		case 3:
-			args = append(args, m.row.Format)
+			args = append(args, m.row.InputFormat)
 		case 4:
-			args = append(args, m.row.Payload)
+			args = append(args, m.row.OutputFormat)
 		case 5:
-			args = append(args, m.row.WebhookURL.Arg())
+			args = append(args, m.row.FileName)
 		case 6:
-			args = append(args, m.row.Attempts)
+			args = append(args, m.row.Payload)
 		case 7:
-			args = append(args, m.row.LeaseExpires.Arg())
+			args = append(args, m.row.WebhookURL.Arg())
 		case 8:
-			args = append(args, m.row.StartedAt.Arg())
+			args = append(args, m.row.Attempts)
 		case 9:
-			args = append(args, m.row.FinishedAt.Arg())
+			args = append(args, m.row.LeaseExpires.Arg())
 		case 10:
-			args = append(args, m.row.ExpiresAt.Arg())
+			args = append(args, m.row.StartedAt.Arg())
 		case 11:
-			args = append(args, m.row.Error.Arg())
+			args = append(args, m.row.FinishedAt.Arg())
 		case 12:
-			args = append(args, m.row.Warnings)
+			args = append(args, m.row.ExpiresAt.Arg())
 		case 13:
-			args = append(args, m.row.ResultBytes)
+			args = append(args, m.row.Error.Arg())
 		case 14:
+			args = append(args, m.row.Warnings)
+		case 15:
+			args = append(args, m.row.ResultBytes)
+		case 16:
 			args = append(args, m.row.Result)
 		}
 	}

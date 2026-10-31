@@ -1,7 +1,6 @@
 package convert
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,8 +9,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	proteus "github.com/gsoultan/proteus-converter"
 
 	"github.com/gsoultan/proteus-server/internal/loader"
 	"github.com/gsoultan/proteus-server/internal/safefetch"
@@ -27,34 +24,37 @@ var ErrTimeout = errors.New("conversion timed out")
 type Settings struct {
 	Workers        int           // concurrent conversions; default 4
 	Timeout        time.Duration // per conversion; default 30s
-	MaxOutputBytes int64         // reject PDFs larger than this; default 100 MiB
+	MaxOutputBytes int64         // reject outputs larger than this; default 100 MiB
 	AllowRemote    bool          // whether callers may enable remote resources at all
 	Remote         *safefetch.Client
 	LoaderLimits   loader.Limits
 	FontDirs       []string
 	SystemFonts    bool
-	Logger         *slog.Logger
-	Metrics        Observer
+	// Registry maps routes to converters. Nil registers the proteus engine
+	// (html and markdown to pdf) with FontDirs, SystemFonts and the
+	// per-resource limit.
+	Registry *Registry
+	Logger   *slog.Logger
+	Metrics  Observer
 }
 
 // Observer receives conversion telemetry. Implementations must be safe for concurrent use.
 type Observer interface {
-	ConversionDone(format string, outcome string, d time.Duration, bytes int)
+	ConversionDone(input, output, outcome string, d time.Duration, bytes int)
 	ResourceBlocked(reason string)
 	SlotsInUse(n int)
 }
 
 type nopObserver struct{}
 
-func (nopObserver) ConversionDone(string, string, time.Duration, int) {}
-func (nopObserver) ResourceBlocked(string)                            {}
-func (nopObserver) SlotsInUse(int)                                    {}
+func (nopObserver) ConversionDone(string, string, string, time.Duration, int) {}
+func (nopObserver) ResourceBlocked(string)                                    {}
+func (nopObserver) SlotsInUse(int)                                            {}
 
 // Service runs conversions on a bounded pool of slots.
 type Service struct {
 	s     Settings
 	slots chan struct{}
-	conv  func(ctx context.Context, f proteus.Format, src []byte, opts ...proteus.Option) ([]byte, error)
 }
 
 // NewService returns a Service with s applied over the defaults.
@@ -74,7 +74,22 @@ func NewService(s Settings) *Service {
 	if s.Metrics == nil {
 		s.Metrics = nopObserver{}
 	}
-	return &Service{s: s, slots: make(chan struct{}, s.Workers), conv: proteus.ConvertBytes}
+	if s.Registry == nil {
+		s.Registry = NewRegistry()
+		(&ProteusEngine{FontDirs: s.FontDirs, SystemFonts: s.SystemFonts, MaxResource: s.LoaderLimits.MaxEach}).Register(s.Registry)
+	}
+	return &Service{s: s, slots: make(chan struct{}, s.Workers)}
+}
+
+// Routes returns the conversions this service supports.
+func (s *Service) Routes() []Route { return s.s.Registry.Routes() }
+
+// Check reports whether the service supports the request's conversion.
+func (s *Service) Check(req *Request) error {
+	if _, ok := s.s.Registry.Lookup(req.Route()); !ok {
+		return badf("conversion from %s to %s is not supported", req.Format, req.Output)
+	}
+	return nil
 }
 
 // Capacity returns the number of conversion slots.
@@ -108,9 +123,10 @@ func (s *Service) release() {
 	s.s.Metrics.SlotsInUse(len(s.slots))
 }
 
-// Result is a finished PDF.
+// Result is a finished conversion.
 type Result struct {
-	PDF      []byte
+	Content  []byte
+	Target   Target
 	Warnings []string
 	Duration time.Duration
 }
@@ -129,7 +145,7 @@ func (s *Service) Run(ctx context.Context, req *Request) (*Result, error) {
 	outcome, size := "ok", 0
 	switch {
 	case err == nil:
-		size = len(res.PDF)
+		size = len(res.Content)
 		res.Duration = d
 	case errors.Is(err, context.DeadlineExceeded) || errors.Is(err, ErrTimeout):
 		outcome, err = "timeout", ErrTimeout
@@ -143,7 +159,7 @@ func (s *Service) Run(ctx context.Context, req *Request) (*Result, error) {
 			outcome = "error"
 		}
 	}
-	s.s.Metrics.ConversionDone(string(req.Format), outcome, d, size)
+	s.s.Metrics.ConversionDone(string(req.Format), string(req.Output), outcome, d, size)
 	return res, err
 }
 
@@ -168,6 +184,11 @@ func (s *Service) run(ctx context.Context, req *Request) (*Result, error) {
 		src, base = data, req.URL
 	}
 
+	conv, ok := s.s.Registry.Lookup(req.Route())
+	if !ok {
+		return nil, s.Check(req)
+	}
+	target := targets[req.Output]
 	ld := loader.New(req.Assets, remote, s.s.LoaderLimits)
 	ld.OnBlocked = s.s.Metrics.ResourceBlocked
 
@@ -175,31 +196,19 @@ func (s *Service) run(ctx context.Context, req *Request) (*Result, error) {
 		mu       sync.Mutex
 		warnings []string
 	)
-	opts := []proteus.Option{
-		proteus.WithResourceLoader(ld),
-		proteus.WithLocalFiles(false),
-		proteus.WithHTTP(allowRemote),
-		proteus.WithMaxResourceSize(s.s.LoaderLimits.MaxEach),
-		proteus.WithSystemFonts(s.s.SystemFonts),
-		proteus.WithWarningHandler(func(msg string) {
+	in := &Input{
+		Format: req.Format, Source: src, BaseURL: base, Loader: ld, AllowRemote: allowRemote, Options: req.Options,
+		Warn: func(msg string) {
 			mu.Lock()
 			defer mu.Unlock()
 			if len(warnings) < 50 {
 				warnings = append(warnings, msg)
 			}
-		}),
+		},
 	}
-	if base != "" {
-		opts = append(opts, proteus.WithBaseURL(base))
-	}
-	for _, d := range s.s.FontDirs {
-		opts = append(opts, proteus.WithFontDir(d))
-	}
-	opts = append(opts, engineOptions(req.Options)...)
-
-	pdf, err := s.safeConvert(ctx, req.Format, src, opts)
+	out, err := s.safeConvert(ctx, conv, in)
 	if err != nil {
-		if errors.Is(err, proteus.ErrResourceDenied) || errors.Is(err, proteus.ErrResourceTooLarge) {
+		if errors.Is(err, loader.ErrDenied) || errors.Is(err, loader.ErrTooLarge) {
 			return nil, badf("%v", err)
 		}
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -207,28 +216,31 @@ func (s *Service) run(ctx context.Context, req *Request) (*Result, error) {
 		}
 		return nil, err
 	}
-	if int64(len(pdf)) > s.s.MaxOutputBytes {
-		return nil, badf("output PDF is larger than the %d byte limit", s.s.MaxOutputBytes)
+	if int64(len(out)) > s.s.MaxOutputBytes {
+		return nil, badf("output is larger than the %d byte limit", s.s.MaxOutputBytes)
 	}
-	if !bytes.HasPrefix(pdf, []byte("%PDF-")) {
-		return nil, errors.New("engine returned invalid PDF output")
+	if target.Check != nil {
+		if err := target.Check(out); err != nil {
+			return nil, err
+		}
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	return &Result{PDF: pdf, Warnings: dedupe(warnings)}, nil
+	return &Result{Content: out, Target: target, Warnings: dedupe(warnings)}, nil
 }
 
-// safeConvert calls the engine and turns a panic into an error so one bad
+// safeConvert calls the converter and turns a panic into an error so one bad
 // document cannot take the process down.
-func (s *Service) safeConvert(ctx context.Context, f proteus.Format, src []byte, opts []proteus.Option) (pdf []byte, err error) {
+func (s *Service) safeConvert(ctx context.Context, c Converter, in *Input) (out []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			s.s.Logger.Error("engine panic", "panic", fmt.Sprint(r), "stack", string(debug.Stack()))
-			pdf, err = nil, fmt.Errorf("engine panic: %v", r)
+			s.s.Logger.Error("converter panic", "panic", fmt.Sprint(r), "stack", string(debug.Stack()))
+			out, err = nil, fmt.Errorf("converter panic: %v", r)
 		}
 	}()
-	return s.conv(ctx, f, src, opts...)
+	return c.Convert(ctx, in)
 }
+
 func dedupe(in []string) []string {
 	seen := map[string]bool{}
 	out := in[:0]

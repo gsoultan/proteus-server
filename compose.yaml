@@ -2,7 +2,7 @@
 #   docker compose up --build
 # Then call it with gRPC, for example:
 #   buf curl --protocol grpc --http2-prior-knowledge \
-#     --data '{"document":{"format":"FORMAT_MARKDOWN","content":"IyBIaQ=="}}' \
+#     --data '{"document":{"format":"INPUT_FORMAT_MARKDOWN","content":"IyBIaQ=="}}' \
 #     http://localhost:8080/proteus.v1.ConversionService/Convert
 services:
   postgres:

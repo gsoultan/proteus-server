@@ -124,11 +124,11 @@ func (e *env) connectClient(key string) proteusv1connect.ConversionServiceClient
 }
 
 func md(s string) *proteusv1.Document {
-	return &proteusv1.Document{Format: proteusv1.Format_FORMAT_MARKDOWN, Source: &proteusv1.Document_Content{Content: []byte(s)}}
+	return &proteusv1.Document{Format: proteusv1.InputFormat_INPUT_FORMAT_MARKDOWN, Source: &proteusv1.Document_Content{Content: []byte(s)}}
 }
 
 func html(s string) *proteusv1.Document {
-	return &proteusv1.Document{Format: proteusv1.Format_FORMAT_HTML, Source: &proteusv1.Document_Content{Content: []byte(s)}}
+	return &proteusv1.Document{Format: proteusv1.InputFormat_INPUT_FORMAT_HTML, Source: &proteusv1.Document_Content{Content: []byte(s)}}
 }
 
 func expectPDF(t *testing.T, b []byte) {
@@ -158,15 +158,16 @@ func TestConvertOverGRPCAndConnect(t *testing.T) {
 			ctx, info := connect.NewClientContext(ctx)
 			res, err := c.Convert(ctx, &proteusv1.ConvertRequest{
 				Document: md("# Title\n\n- one\n- two\n"),
-				Options: &proteusv1.Options{PageSize: proteusv1.PageSize_PAGE_SIZE_LETTER,
+				Options: &proteusv1.Options{Page: &proteusv1.PageOptions{Size: proteusv1.PageSize_PAGE_SIZE_LETTER},
 					Metadata: &proteusv1.Metadata{Title: "Q3 report"}},
 			})
 			if err != nil {
 				t.Fatal(err)
 			}
-			expectPDF(t, res.GetPdf())
-			if res.GetFileName() != "Q3-report.pdf" {
-				t.Errorf("file name %q", res.GetFileName())
+			expectPDF(t, res.GetContent())
+			if res.GetFileName() != "Q3-report.pdf" || res.GetMimeType() != "application/pdf" ||
+				res.GetOutputFormat() != proteusv1.OutputFormat_OUTPUT_FORMAT_PDF {
+				t.Errorf("file name %q, mime type %q, format %v", res.GetFileName(), res.GetMimeType(), res.GetOutputFormat())
 			}
 			if info.ResponseHeader().Get("X-Request-Id") == "" {
 				t.Error("missing X-Request-Id")
@@ -191,16 +192,16 @@ func TestConvertWithAssets(t *testing.T) {
 		{Path: "img/logo.png", Data: pngPixel()},
 	}
 	res, err := e.grpcClient(keyA).Convert(context.Background(), &proteusv1.ConvertRequest{
-		Document: doc, Options: &proteusv1.Options{PageSize: proteusv1.PageSize_PAGE_SIZE_A5, Landscape: true},
+		Document: doc, Options: &proteusv1.Options{Page: &proteusv1.PageOptions{Size: proteusv1.PageSize_PAGE_SIZE_A5, Landscape: true}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectPDF(t, res.GetPdf())
+	expectPDF(t, res.GetContent())
 	if len(res.GetWarnings()) != 0 {
 		t.Errorf("unexpected warnings: %v", res.GetWarnings())
 	}
-	if !bytes.Contains(res.GetPdf(), []byte("/Image")) {
+	if !bytes.Contains(res.GetContent(), []byte("/Image")) {
 		t.Error("uploaded image not embedded")
 	}
 }
@@ -263,12 +264,13 @@ func TestValidation(t *testing.T) {
 	ctx := context.Background()
 	margin := 500.0
 	cases := map[string]*proteusv1.ConvertRequest{
-		"no document": {},
-		"empty":       {Document: html("")},
-		"no format":   {Document: &proteusv1.Document{Source: &proteusv1.Document_Content{Content: []byte("x")}}},
-		"margin":      {Document: html("x"), Options: &proteusv1.Options{MarginMm: &margin}},
-		"asset path":  {Document: &proteusv1.Document{Format: proteusv1.Format_FORMAT_HTML, Source: &proteusv1.Document_Content{Content: []byte("x")}, Assets: []*proteusv1.Asset{{Path: "../etc/passwd"}}}},
-		"url off":     {Document: &proteusv1.Document{Source: &proteusv1.Document_Url{Url: "https://example.com"}}},
+		"no document":   {},
+		"empty":         {Document: html("")},
+		"no format":     {Document: &proteusv1.Document{Source: &proteusv1.Document_Content{Content: []byte("x")}}},
+		"margin":        {Document: html("x"), Options: &proteusv1.Options{Page: &proteusv1.PageOptions{MarginMm: &margin}}},
+		"output format": {Document: html("x"), OutputFormat: 99},
+		"asset path":    {Document: &proteusv1.Document{Format: proteusv1.InputFormat_INPUT_FORMAT_HTML, Source: &proteusv1.Document_Content{Content: []byte("x")}, Assets: []*proteusv1.Asset{{Path: "../etc/passwd"}}}},
+		"url off":       {Document: &proteusv1.Document{Source: &proteusv1.Document_Url{Url: "https://example.com"}}},
 	}
 	for name, req := range cases {
 		_, err := c.Convert(ctx, req)
@@ -302,7 +304,7 @@ func TestSSRFAndLocalFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectPDF(t, res.GetPdf())
+	expectPDF(t, res.GetContent())
 	if n := hits.Load(); n != 0 {
 		t.Fatalf("internal server reached %d times", n)
 	}
@@ -310,6 +312,27 @@ func TestSSRFAndLocalFiles(t *testing.T) {
 	expectCode(t, err, connect.CodeInvalidArgument)
 	if n := hits.Load(); n != 0 {
 		t.Fatalf("internal server reached %d times", n)
+	}
+}
+
+func TestListFormats(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	res, err := e.grpcClient(keyA).ListFormats(context.Background(), &proteusv1.ListFormatsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[proteusv1.InputFormat]*proteusv1.Conversion{}
+	for _, c := range res.GetConversions() {
+		got[c.GetInputFormat()] = c
+	}
+	for _, in := range []proteusv1.InputFormat{proteusv1.InputFormat_INPUT_FORMAT_HTML, proteusv1.InputFormat_INPUT_FORMAT_MARKDOWN} {
+		c := got[in]
+		if c.GetOutputFormat() != proteusv1.OutputFormat_OUTPUT_FORMAT_PDF || c.GetMimeType() != "application/pdf" || c.GetFileExtension() != ".pdf" {
+			t.Errorf("%v: %v", in, c)
+		}
+	}
+	if len(res.GetConversions()) != 2 {
+		t.Errorf("conversions %v", res.GetConversions())
 	}
 }
 
@@ -375,7 +398,10 @@ func TestJobsLifecycle(t *testing.T) {
 	expectCode(t, err, connect.CodeNotFound)
 
 	job := waitJob(t, a, id)
-	if job.GetStatus() != proteusv1.JobStatus_JOB_STATUS_SUCCEEDED || job.GetResultBytes() == 0 {
+	if job.GetStatus() != proteusv1.JobStatus_JOB_STATUS_SUCCEEDED || job.GetResultBytes() == 0 ||
+		job.GetInputFormat() != proteusv1.InputFormat_INPUT_FORMAT_MARKDOWN ||
+		job.GetOutputFormat() != proteusv1.OutputFormat_OUTPUT_FORMAT_PDF ||
+		job.GetMimeType() != "application/pdf" || job.GetFileName() != "document.pdf" {
 		t.Fatalf("job %v", job)
 	}
 

@@ -137,8 +137,11 @@ func (m *Manager) Submit(ctx context.Context, owner string, req *proteusv1.Submi
 	if closed {
 		return nil, ErrClosed
 	}
-	parsed, err := convert.FromProto(req.GetDocument(), req.GetOptions(), convert.Limits{MaxAssets: m.s.MaxAssets})
+	parsed, err := convert.FromProto(req.GetDocument(), req.GetOutputFormat(), req.GetOptions(), convert.Limits{MaxAssets: m.s.MaxAssets})
 	if err != nil {
+		return nil, err
+	}
+	if err := m.svc.Check(parsed); err != nil {
 		return nil, err
 	}
 	if hook := req.GetWebhookUrl(); hook != "" {
@@ -161,7 +164,11 @@ func (m *Manager) Submit(ctx context.Context, owner string, req *proteusv1.Submi
 	if err != nil {
 		return nil, err
 	}
-	r := &Record{Owner: owner, Format: string(parsed.Format), Payload: payload, WebhookURL: req.GetWebhookUrl()}
+	r := &Record{
+		Owner: owner, InputFormat: string(parsed.Format), OutputFormat: string(parsed.Output),
+		FileName: convert.FileName(req.GetOptions().GetMetadata().GetTitle(), parsed.Output),
+		Payload:  payload, WebhookURL: req.GetWebhookUrl(),
+	}
 	if err := m.store.Create(ctx, r); err != nil {
 		return nil, err
 	}
@@ -178,7 +185,7 @@ func (m *Manager) Get(ctx context.Context, owner, id string) (*Record, error) {
 	return m.store.Get(ctx, owner, id)
 }
 
-// Result returns the PDF of owner's succeeded job.
+// Result returns the output of owner's succeeded job.
 func (m *Manager) Result(ctx context.Context, owner, id string) (*Record, []byte, error) {
 	r, err := m.store.Get(ctx, owner, id)
 	if err != nil {
@@ -187,8 +194,8 @@ func (m *Manager) Result(ctx context.Context, owner, id string) (*Record, []byte
 	if r.Status != Succeeded {
 		return r, nil, ErrNotFinished
 	}
-	pdf, err := m.store.Result(ctx, owner, id)
-	return r, pdf, err
+	out, err := m.store.Result(ctx, owner, id)
+	return r, out, err
 }
 
 // Delete removes owner's finished job.
@@ -280,8 +287,8 @@ func (m *Manager) runOne() (bool, error) {
 		o.Status, o.Error = Failed, publicError(runErr)
 		m.s.Logger.Warn("job failed", "job_id", rec.ID, "error", runErr)
 	} else {
-		o.Status, o.PDF, o.Warnings = Succeeded, res.PDF, res.Warnings
-		m.s.Logger.Info("job succeeded", "job_id", rec.ID, "bytes", len(res.PDF))
+		o.Status, o.Result, o.Warnings = Succeeded, res.Content, res.Warnings
+		m.s.Logger.Info("job succeeded", "job_id", rec.ID, "output", rec.OutputFormat, "bytes", len(res.Content))
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -290,7 +297,7 @@ func (m *Manager) runOne() (bool, error) {
 	}
 	if rec.WebhookURL != "" {
 		rec.Status, rec.Error, rec.Warnings = o.Status, o.Error, o.Warnings
-		rec.FinishedAt, rec.ExpiresAt, rec.ResultBytes = o.FinishedAt, o.ExpiresAt, int64(len(o.PDF))
+		rec.FinishedAt, rec.ExpiresAt, rec.ResultBytes = o.FinishedAt, o.ExpiresAt, int64(len(o.Result))
 		m.deliver(rec.WebhookURL, rec)
 	}
 	return true, nil
@@ -301,7 +308,7 @@ func (m *Manager) convert(rec *Record) (*convert.Result, error) {
 	if err := proto.Unmarshal(rec.Payload, &req); err != nil {
 		return nil, &convert.BadRequestError{Msg: "stored job is unreadable"}
 	}
-	parsed, err := convert.FromProto(req.GetDocument(), req.GetOptions(), convert.Limits{MaxAssets: m.s.MaxAssets})
+	parsed, err := convert.FromProto(req.GetDocument(), req.GetOutputFormat(), req.GetOptions(), convert.Limits{MaxAssets: m.s.MaxAssets})
 	if err != nil {
 		return nil, err
 	}
@@ -335,12 +342,13 @@ func ToProto(r *Record) *proteusv1.Job {
 	case Failed:
 		j.Status = proteusv1.JobStatus_JOB_STATUS_FAILED
 	}
-	switch r.Format {
-	case "html":
-		j.Format = proteusv1.Format_FORMAT_HTML
-	case "markdown":
-		j.Format = proteusv1.Format_FORMAT_MARKDOWN
+	j.InputFormat = convert.InputToProto(convert.InputFormat(r.InputFormat))
+	out := convert.OutputFormat(r.OutputFormat)
+	j.OutputFormat = convert.OutputToProto(out)
+	if t, ok := convert.TargetOf(out); ok {
+		j.MimeType = t.MIMEType
 	}
+	j.FileName = r.FileName
 	return j
 }
 

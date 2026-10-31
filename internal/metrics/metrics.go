@@ -42,14 +42,14 @@ func New(slots int) *Metrics {
 			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60},
 		}, []string{"procedure"}),
 		conversions: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "proteus_conversions_total", Help: "Conversions by input format and outcome.",
-		}, []string{"format", "outcome"}),
+			Name: "proteus_conversions_total", Help: "Conversions by input format, output format and outcome.",
+		}, []string{"input", "output", "outcome"}),
 		convTime: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name: "proteus_conversion_duration_seconds", Help: "Engine time per conversion.",
+			Name: "proteus_conversion_duration_seconds", Help: "Converter time per conversion.",
 			Buckets: []float64{.01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60},
-		}, []string{"format"}),
+		}, []string{"input", "output"}),
 		outBytes: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Name: "proteus_output_bytes", Help: "Size of produced PDFs.",
+			Name: "proteus_output_bytes", Help: "Size of produced outputs.",
 			Buckets: prometheus.ExponentialBuckets(4<<10, 4, 9),
 		}),
 		blocked: prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -89,9 +89,9 @@ func (m *Metrics) ObserveRPC(procedure, protocol, code string, d time.Duration) 
 }
 
 // ConversionDone implements convert.Observer.
-func (m *Metrics) ConversionDone(format, outcome string, d time.Duration, bytes int) {
-	m.conversions.WithLabelValues(format, outcome).Inc()
-	m.convTime.WithLabelValues(format).Observe(d.Seconds())
+func (m *Metrics) ConversionDone(input, output, outcome string, d time.Duration, bytes int) {
+	m.conversions.WithLabelValues(input, output, outcome).Inc()
+	m.convTime.WithLabelValues(input, output).Observe(d.Seconds())
 	if outcome == "ok" {
 		m.outBytes.Observe(float64(bytes))
 	}

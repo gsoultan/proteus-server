@@ -15,7 +15,8 @@ import (
 
 // Request is one validated conversion.
 type Request struct {
-	Format  proteus.Format
+	Format  InputFormat
+	Output  OutputFormat
 	Source  []byte            // document body; empty when URL is set
 	URL     string            // fetch the document from here instead
 	Assets  map[string][]byte // uploaded resources keyed by clean path
@@ -34,8 +35,13 @@ type Limits struct {
 	MaxAssets int // default 64
 }
 
-// FromProto validates an API document and options and returns the request.
-func FromProto(doc *proteusv1.Document, opts *proteusv1.Options, lim Limits) (*Request, error) {
+// Route is the conversion the request asks for.
+func (r *Request) Route() Route { return Route{From: r.Format, To: r.Output} }
+
+// FromProto validates an API document, output format and options and returns
+// the request. Whether the server supports the route is checked by
+// Service.Check.
+func FromProto(doc *proteusv1.Document, out proteusv1.OutputFormat, opts *proteusv1.Options, lim Limits) (*Request, error) {
 	if lim.MaxAssets <= 0 {
 		lim.MaxAssets = 64
 	}
@@ -46,6 +52,10 @@ func FromProto(doc *proteusv1.Document, opts *proteusv1.Options, lim Limits) (*R
 		opts = &proteusv1.Options{}
 	}
 	req := &Request{Options: opts}
+	var ok bool
+	if req.Output, ok = outputFromProto[out]; !ok {
+		return nil, badf("unsupported output_format %v", out)
+	}
 	switch src := doc.GetSource().(type) {
 	case *proteusv1.Document_Content:
 		if len(src.Content) == 0 {
@@ -60,18 +70,16 @@ func FromProto(doc *proteusv1.Document, opts *proteusv1.Options, lim Limits) (*R
 	default:
 		return nil, badf("document needs content or url")
 	}
-	switch doc.GetFormat() {
-	case proteusv1.Format_FORMAT_HTML:
-		req.Format = proteus.FormatHTML
-	case proteusv1.Format_FORMAT_MARKDOWN:
-		req.Format = proteus.FormatMarkdown
-	case proteusv1.Format_FORMAT_UNSPECIFIED:
+	switch f := doc.GetFormat(); {
+	case f == proteusv1.InputFormat_INPUT_FORMAT_UNSPECIFIED:
 		if req.URL == "" {
-			return nil, badf("document format is required (FORMAT_HTML or FORMAT_MARKDOWN)")
+			return nil, badf("document format is required (INPUT_FORMAT_HTML or INPUT_FORMAT_MARKDOWN)")
 		}
-		req.Format = proteus.FormatHTML
+		req.Format = HTML
 	default:
-		return nil, badf("unsupported format %v", doc.GetFormat())
+		if req.Format, ok = inputFromProto[f]; !ok {
+			return nil, badf("unsupported document format %v", f)
+		}
 	}
 	if n := len(doc.GetAssets()); n > lim.MaxAssets {
 		return nil, badf("too many assets: %d (max %d)", n, lim.MaxAssets)
@@ -89,31 +97,39 @@ func FromProto(doc *proteusv1.Document, opts *proteusv1.Options, lim Limits) (*R
 			req.Assets[key] = a.GetData()
 		}
 	}
-	if err := validateOptions(opts); err != nil {
+	if err := validateOptions(opts, targets[req.Output]); err != nil {
 		return nil, err
 	}
 	return req, nil
 }
 
-func validateOptions(o *proteusv1.Options) error {
-	if _, ok := pageSizes[o.GetPageSize()]; !ok && o.GetPageSize() != proteusv1.PageSize_PAGE_SIZE_UNSPECIFIED {
-		return badf("unknown page_size %v", o.GetPageSize())
+func validateOptions(o *proteusv1.Options, t Target) error {
+	if o.GetPdf() != nil && t.Format != PDF {
+		return badf("pdf options need output_format PDF")
 	}
-	check := func(name string, v float64) error {
-		if v < 0 || v > 100 {
-			return badf("%s must be between 0 and 100 mm", name)
+	if p := o.GetPage(); p != nil {
+		if !t.Paged {
+			return badf("page options do not apply to %s output", t.Format)
 		}
-		return nil
-	}
-	if o.MarginMm != nil {
-		if err := check("margin_mm", o.GetMarginMm()); err != nil {
-			return err
+		if _, ok := pageSizes[p.GetSize()]; !ok && p.GetSize() != proteusv1.PageSize_PAGE_SIZE_UNSPECIFIED {
+			return badf("unknown page size %v", p.GetSize())
 		}
-	}
-	if m := o.GetMargins(); m != nil {
-		for _, v := range []float64{m.GetTop(), m.GetRight(), m.GetBottom(), m.GetLeft()} {
-			if err := check("margins", v); err != nil {
+		check := func(name string, v float64) error {
+			if v < 0 || v > 100 {
+				return badf("%s must be between 0 and 100 mm", name)
+			}
+			return nil
+		}
+		if p.MarginMm != nil {
+			if err := check("margin_mm", p.GetMarginMm()); err != nil {
 				return err
+			}
+		}
+		if m := p.GetMargins(); m != nil {
+			for _, v := range []float64{m.GetTop(), m.GetRight(), m.GetBottom(), m.GetLeft()} {
+				if err := check("margins", v); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -136,58 +152,9 @@ var pageSizes = map[proteusv1.PageSize]proteus.PageSize{
 	proteusv1.PageSize_PAGE_SIZE_LEGAL:  proteus.Legal,
 }
 
-// engineOptions maps caller options to engine options.
-func engineOptions(o *proteusv1.Options) []proteus.Option {
-	if o == nil {
-		return nil
-	}
-	var opts []proteus.Option
-	if o.GetPageSize() != proteusv1.PageSize_PAGE_SIZE_UNSPECIFIED || o.GetLandscape() {
-		size := proteus.A4
-		if s, ok := pageSizes[o.GetPageSize()]; ok {
-			size = s
-		}
-		if o.GetLandscape() {
-			size = size.Landscape()
-		}
-		opts = append(opts, proteus.WithPageSize(size))
-	}
-	switch {
-	case o.GetMargins() != nil:
-		m := o.GetMargins()
-		opts = append(opts, proteus.WithMargins(proteus.Margins{
-			Top: proteus.Mm(m.GetTop()), Right: proteus.Mm(m.GetRight()),
-			Bottom: proteus.Mm(m.GetBottom()), Left: proteus.Mm(m.GetLeft()),
-		}))
-	case o.MarginMm != nil:
-		opts = append(opts, proteus.WithMargins(proteus.UniformMargins(proteus.Mm(o.GetMarginMm()))))
-	}
-	if o.GetStylesheet() != "" {
-		opts = append(opts, proteus.WithStylesheet(o.GetStylesheet()))
-	}
-	switch o.GetMediaType() {
-	case proteusv1.MediaType_MEDIA_TYPE_SCREEN:
-		opts = append(opts, proteus.WithMediaType("screen"))
-	case proteusv1.MediaType_MEDIA_TYPE_PRINT:
-		opts = append(opts, proteus.WithMediaType("print"))
-	}
-	if o.Outline != nil {
-		opts = append(opts, proteus.WithOutline(o.GetOutline()))
-	}
-	if o.GetTagged() {
-		opts = append(opts, proteus.WithTagged(true))
-	}
-	if m := o.GetMetadata(); m != nil {
-		opts = append(opts, proteus.WithMetadata(proteus.Metadata{
-			Title: m.GetTitle(), Author: m.GetAuthor(), Subject: m.GetSubject(),
-			Keywords: m.GetKeywords(), Language: m.GetLanguage(),
-		}))
-	}
-	return opts
-}
-
-// FileName suggests a download name for a result with the given title.
-func FileName(title string) string {
+// FileName suggests a download name for a result with the given title and
+// output format.
+func FileName(title string, f OutputFormat) string {
 	title = strings.Map(func(r rune) rune {
 		switch {
 		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_':
@@ -203,5 +170,5 @@ func FileName(title string) string {
 	if len(title) > 64 {
 		title = title[:64]
 	}
-	return title + ".pdf"
+	return title + targets[f].Extension
 }

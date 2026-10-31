@@ -10,15 +10,18 @@ import (
 )
 
 // Job is one asynchronous conversion. Payload is the serialized
-// SubmitJobRequest; Result is the PDF once the job has succeeded.
+// SubmitJobRequest; Result is the converted document once the job has
+// succeeded.
 type Job struct {
 	storm.Model // uuid id + created_at/updated_at
 
-	Owner      string // API key id that submitted the job
-	Status     string // queued, running, succeeded, failed
-	Format     string
-	Payload    []byte
-	WebhookURL *string
+	Owner        string // API key id that submitted the job
+	Status       string // queued, running, succeeded, failed
+	InputFormat  string // html, markdown
+	OutputFormat string // pdf
+	FileName     string // suggested download name of the result
+	Payload      []byte
+	WebhookURL   *string
 
 	Attempts     int32
 	LeaseExpires *time.Time
@@ -45,9 +48,9 @@ func (j *Job) Schema(t *storm.Table) {
 	t.Takes()
 }
 
-// Projections: Meta is every column but the payload and the PDF, so status
+// Projections: Meta is every column but the payload and the result, so status
 // reads never pull the result bytes.
 func (j *Job) Projections(p *storm.Projections) {
-	p.Named("Meta", &j.ID, &j.Owner, &j.Status, &j.Format, &j.WebhookURL, &j.Attempts,
+	p.Named("Meta", &j.ID, &j.Owner, &j.Status, &j.InputFormat, &j.OutputFormat, &j.FileName, &j.WebhookURL, &j.Attempts,
 		&j.CreatedAt, &j.StartedAt, &j.FinishedAt, &j.ExpiresAt, &j.Error, &j.Warnings, &j.ResultBytes)
 }

@@ -58,7 +58,7 @@ jobs:
           docker run -d --name ps -p 8080:8080 -e PROTEUS_ALLOW_NO_AUTH=true proteus-server:ci
           for i in $(seq 1 30); do docker exec ps /proteus-server healthcheck && break; sleep 1; done
           buf curl --protocol grpc --http2-prior-knowledge \
-            --data '{"document":{"format":"FORMAT_MARKDOWN","content":"IyBIZWxsbw=="}}' \
+            --data '{"document":{"format":"INPUT_FORMAT_MARKDOWN","content":"IyBIZWxsbw=="}}' \
             http://localhost:8080/proteus.v1.ConversionService/Convert > out.json
-          python3 -c "import json,base64; assert base64.b64decode(json.load(open('out.json'))['pdf']).startswith(b'%PDF-')"
+          python3 -c "import json,base64; r=json.load(open('out.json')); assert r['mimeType']=='application/pdf' and base64.b64decode(r['content']).startswith(b'%PDF-')"
           docker logs ps

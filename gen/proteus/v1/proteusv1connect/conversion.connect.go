@@ -24,6 +24,9 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// ConversionServiceListFormatsProcedure is the procedure name of the ConversionService's
+	// ListFormats RPC.
+	ConversionServiceListFormatsProcedure = "/proteus.v1.ConversionService/ListFormats"
 	// ConversionServiceConvertProcedure is the procedure name of the ConversionService's Convert RPC.
 	ConversionServiceConvertProcedure = "/proteus.v1.ConversionService/Convert"
 	// ConversionServiceSubmitJobProcedure is the procedure name of the ConversionService's SubmitJob
@@ -40,6 +43,14 @@ const (
 )
 
 var (
+	conversionServiceListFormatsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_proteus_v1_conversion_proto.Services().ByName("ConversionService").Methods().ByName("ListFormats"),
+			Procedure:        ConversionServiceListFormatsProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
 	conversionServiceConvertSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -82,7 +93,9 @@ var (
 
 // ConversionServiceClient is a client for the proteus.v1.ConversionService service.
 type ConversionServiceClient interface {
-	// Convert converts a document synchronously and returns the PDF. A server
+	// ListFormats returns the conversions this server supports.
+	ListFormats(context.Context, *v1.ListFormatsRequest) (*v1.ListFormatsResponse, error)
+	// Convert converts a document synchronously and returns the output. A server
 	// with every conversion slot busy answers RESOURCE_EXHAUSTED at once
 	// rather than queueing; use SubmitJob for work that can wait.
 	Convert(context.Context, *v1.ConvertRequest) (*v1.ConvertResponse, error)
@@ -90,7 +103,7 @@ type ConversionServiceClient interface {
 	SubmitJob(context.Context, *v1.SubmitJobRequest) (*v1.SubmitJobResponse, error)
 	// GetJob returns a job's current state.
 	GetJob(context.Context, *v1.GetJobRequest) (*v1.GetJobResponse, error)
-	// DownloadJobResult streams the PDF of a succeeded job in chunks.
+	// DownloadJobResult streams the output of a succeeded job in chunks.
 	DownloadJobResult(context.Context, *v1.DownloadJobResultRequest) (ConversionServiceDownloadJobResultClientStream, error)
 	// DeleteJob removes a finished job and its result.
 	DeleteJob(context.Context, *v1.DeleteJobRequest) (*v1.DeleteJobResponse, error)
@@ -125,7 +138,9 @@ func (s ConversionServiceDownloadJobResultClientStream) Close() error {
 
 // ConversionServiceHandler is an implementation of the proteus.v1.ConversionService service.
 type ConversionServiceHandler interface {
-	// Convert converts a document synchronously and returns the PDF. A server
+	// ListFormats returns the conversions this server supports.
+	ListFormats(context.Context, *v1.ListFormatsRequest) (*v1.ListFormatsResponse, error)
+	// Convert converts a document synchronously and returns the output. A server
 	// with every conversion slot busy answers RESOURCE_EXHAUSTED at once
 	// rather than queueing; use SubmitJob for work that can wait.
 	Convert(context.Context, *v1.ConvertRequest) (*v1.ConvertResponse, error)
@@ -133,7 +148,7 @@ type ConversionServiceHandler interface {
 	SubmitJob(context.Context, *v1.SubmitJobRequest) (*v1.SubmitJobResponse, error)
 	// GetJob returns a job's current state.
 	GetJob(context.Context, *v1.GetJobRequest) (*v1.GetJobResponse, error)
-	// DownloadJobResult streams the PDF of a succeeded job in chunks.
+	// DownloadJobResult streams the output of a succeeded job in chunks.
 	DownloadJobResult(context.Context, *v1.DownloadJobResultRequest, ConversionServiceDownloadJobResultServerStream) error
 	// DeleteJob removes a finished job and its result.
 	DeleteJob(context.Context, *v1.DeleteJobRequest) (*v1.DeleteJobResponse, error)
@@ -144,6 +159,7 @@ type ConversionServiceHandler interface {
 func RegisterConversionServiceHandler(server *connect.Server, svc ConversionServiceHandler) {
 	adapter := conversionServiceHandler{svc: svc}
 	server.Register(
+		connect.Method{Spec: conversionServiceListFormatsSpec(), Handler: adapter.listFormats},
 		connect.Method{Spec: conversionServiceConvertSpec(), Handler: adapter.convert},
 		connect.Method{Spec: conversionServiceSubmitJobSpec(), Handler: adapter.submitJob},
 		connect.Method{Spec: conversionServiceGetJobSpec(), Handler: adapter.getJob},
@@ -171,6 +187,10 @@ func (s ConversionServiceDownloadJobResultServerStream) Send(res *v1.DownloadJob
 // UnimplementedConversionServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedConversionServiceHandler struct{}
 
+func (UnimplementedConversionServiceHandler) ListFormats(context.Context, *v1.ListFormatsRequest) (*v1.ListFormatsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "proteus.v1.ConversionService.ListFormats is not implemented")
+}
+
 func (UnimplementedConversionServiceHandler) Convert(context.Context, *v1.ConvertRequest) (*v1.ConvertResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "proteus.v1.ConversionService.Convert is not implemented")
 }
@@ -193,6 +213,14 @@ func (UnimplementedConversionServiceHandler) DeleteJob(context.Context, *v1.Dele
 
 type conversionServiceClient struct {
 	client *connect.Client
+}
+
+func (c *conversionServiceClient) ListFormats(ctx context.Context, req *v1.ListFormatsRequest) (*v1.ListFormatsResponse, error) {
+	var res v1.ListFormatsResponse
+	if err := c.client.CallUnary(ctx, conversionServiceListFormatsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
 }
 
 func (c *conversionServiceClient) Convert(ctx context.Context, req *v1.ConvertRequest) (*v1.ConvertResponse, error) {
@@ -236,6 +264,18 @@ func (c *conversionServiceClient) DeleteJob(ctx context.Context, req *v1.DeleteJ
 }
 
 type conversionServiceHandler struct{ svc ConversionServiceHandler }
+
+func (h conversionServiceHandler) listFormats(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListFormatsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListFormats(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
 
 func (h conversionServiceHandler) convert(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
 	var req v1.ConvertRequest

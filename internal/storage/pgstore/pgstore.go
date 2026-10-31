@@ -103,7 +103,9 @@ func (s *Store) Create(ctx context.Context, r *jobs.Record) error {
 	n := job.Create()
 	n.SetOwner(r.Owner)
 	n.SetStatus(statusQueued)
-	n.SetFormat(r.Format)
+	n.SetInputFormat(r.InputFormat)
+	n.SetOutputFormat(r.OutputFormat)
+	n.SetFileName(r.FileName)
 	n.SetPayload(r.Payload)
 	if r.WebhookURL != "" {
 		n.SetWebhookURL(r.WebhookURL)
@@ -179,8 +181,8 @@ func (s *Store) Finish(ctx context.Context, id string, o jobs.Outcome) error {
 		m.SetWarnings(o.Warnings)
 	}
 	if o.Status == jobs.Succeeded {
-		m.SetResult(o.PDF)
-		m.SetResultBytes(int64(len(o.PDF)))
+		m.SetResult(o.Result)
+		m.SetResultBytes(int64(len(o.Result)))
 	}
 	if err := m.Update(ctx, s.ex); err != nil {
 		return fmt.Errorf("pgstore: finish job: %w", err)
@@ -269,7 +271,8 @@ func (s *Store) Sweep(ctx context.Context, now time.Time) (int64, error) {
 
 func fromRow(r job.Row) *jobs.Record {
 	return &jobs.Record{
-		ID: idString(r.ID), Owner: r.Owner, Status: jobs.Status(r.Status), Format: r.Format,
+		ID: idString(r.ID), Owner: r.Owner, Status: jobs.Status(r.Status),
+		InputFormat: r.InputFormat, OutputFormat: r.OutputFormat, FileName: r.FileName,
 		WebhookURL: r.WebhookURL.V, Attempts: int(r.Attempts), CreatedAt: r.CreatedAt,
 		StartedAt: r.StartedAt.V, FinishedAt: r.FinishedAt.V, ExpiresAt: r.ExpiresAt.V,
 		Error: r.Error.V, Warnings: r.Warnings, ResultBytes: r.ResultBytes,
@@ -278,7 +281,8 @@ func fromRow(r job.Row) *jobs.Record {
 
 func fromMeta(r job.MetaRow) *jobs.Record {
 	return &jobs.Record{
-		ID: idString(r.ID), Owner: r.Owner, Status: jobs.Status(r.Status), Format: r.Format,
+		ID: idString(r.ID), Owner: r.Owner, Status: jobs.Status(r.Status),
+		InputFormat: r.InputFormat, OutputFormat: r.OutputFormat, FileName: r.FileName,
 		WebhookURL: r.WebhookURL.V, Attempts: int(r.Attempts), CreatedAt: r.CreatedAt,
 		StartedAt: r.StartedAt.V, FinishedAt: r.FinishedAt.V, ExpiresAt: r.ExpiresAt.V,
 		Error: r.Error.V, Warnings: r.Warnings, ResultBytes: r.ResultBytes,

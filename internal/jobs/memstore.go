@@ -19,8 +19,8 @@ type MemoryStore struct {
 
 type memJob struct {
 	Record
-	lease time.Time
-	pdf   []byte
+	lease  time.Time
+	result []byte
 }
 
 // NewMemoryStore returns a store holding at most maxJobs jobs (default 1000).
@@ -99,7 +99,7 @@ func (s *MemoryStore) Finish(_ context.Context, id string, o Outcome) error {
 	}
 	j.Status, j.Error, j.Warnings = o.Status, o.Error, append([]string(nil), o.Warnings...)
 	j.FinishedAt, j.ExpiresAt = o.FinishedAt, o.ExpiresAt
-	j.pdf, j.ResultBytes, j.Payload = o.PDF, int64(len(o.PDF)), nil
+	j.result, j.ResultBytes, j.Payload = o.Result, int64(len(o.Result)), nil
 	return nil
 }
 
@@ -143,7 +143,7 @@ func (s *MemoryStore) Result(_ context.Context, owner, id string) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
-	return j.pdf, nil
+	return j.result, nil
 }
 
 // Delete implements Store.

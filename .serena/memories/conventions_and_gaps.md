@@ -2,13 +2,18 @@
 
 - Every engine call goes through convert.Service.Run with the server loader
   (WithResourceLoader + WithLocalFiles(false)); never let a request reach the default engine loader.
+- Output formats: proto OutputFormat + InputFormat enums; Options split into common fields,
+  options.page (paged formats) and options.pdf (PDF only). Responses and jobs carry
+  output_format, mime_type and file_name. To add a format: proto enum, target in
+  convert/formats.go, register a Converter per input; ListFormats picks it up. Converters must
+  load resources only through Input.Loader.
 - Remote fetch needs both PROTEUS_ALLOW_REMOTE=true and per-request allow_remote (or url input).
 - Errors (internal/rpc/service.go toConnect): BadRequestError -> InvalidArgument, ErrBusy /
   ErrQueueFull / rate limit -> ResourceExhausted, ErrTimeout -> DeadlineExceeded, ErrClosed ->
   Unavailable, ErrNotFound -> NotFound, ErrNotFinished or failed job -> FailedPrecondition, else
   Internal with the cause kept server-side only.
 - Jobs are scoped to the API key id that created them; others get NotFound (no IDOR).
-- Metric labels: procedure, protocol, code (never raw ids).
+- Metric labels: procedure, protocol, code; conversions by input, output, outcome (never raw ids).
 - Sync and async share the slot pool; job workers default to half the slots. A worker takes a
   slot before claiming so it never holds a lease while waiting.
 - Postgres job queue: lease = timeout + 1m, max 3 attempts, Release on shutdown requeues, results

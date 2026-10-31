@@ -12,7 +12,7 @@ import (
 
 func submitReq() *proteusv1.SubmitJobRequest {
 	return &proteusv1.SubmitJobRequest{Document: &proteusv1.Document{
-		Format: proteusv1.Format_FORMAT_MARKDOWN,
+		Format: proteusv1.InputFormat_INPUT_FORMAT_MARKDOWN,
 		Source: &proteusv1.Document_Content{Content: []byte("# x")},
 	}}
 }
@@ -104,7 +104,7 @@ func TestShutdownRequeuesRunningJob(t *testing.T) {
 		t.Fatalf("submit after shutdown = %v", err)
 	}
 	// A claimed job whose conversion is canceled goes back to the queue.
-	r := &Record{Owner: "k", Format: "markdown"}
+	r := &Record{Owner: "k", InputFormat: "markdown", OutputFormat: "pdf"}
 	if err := store.Create(ctx, r); err != nil {
 		t.Fatal(err)
 	}

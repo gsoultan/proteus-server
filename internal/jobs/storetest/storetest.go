@@ -23,7 +23,7 @@ func Run(t *testing.T, s jobs.Store) {
 		}
 	})
 
-	a := &jobs.Record{Owner: "alice", Format: "html", Payload: []byte("payload-a"), WebhookURL: "https://example.com/h"}
+	a := &jobs.Record{Owner: "alice", InputFormat: "html", OutputFormat: "pdf", FileName: "a.pdf", Payload: []byte("payload-a"), WebhookURL: "https://example.com/h"}
 	t.Run("Create", func(t *testing.T) {
 		if err := s.Create(ctx, a); err != nil {
 			t.Fatal(err)
@@ -44,7 +44,8 @@ func Run(t *testing.T, s jobs.Store) {
 			t.Fatalf("bad id Get = %v", err)
 		}
 		got, err := s.Get(ctx, "alice", a.ID)
-		if err != nil || got.Payload != nil || got.WebhookURL != a.WebhookURL {
+		if err != nil || got.Payload != nil || got.WebhookURL != a.WebhookURL ||
+			got.InputFormat != "html" || got.OutputFormat != "pdf" || got.FileName != "a.pdf" {
 			t.Fatalf("Get = %+v, %v", got, err)
 		}
 	})
@@ -60,18 +61,18 @@ func Run(t *testing.T, s jobs.Store) {
 		if err := s.Delete(ctx, "alice", a.ID); !errors.Is(err, jobs.ErrNotFound) {
 			t.Fatalf("Delete of running job = %v", err)
 		}
-		o := jobs.Outcome{Status: jobs.Succeeded, PDF: []byte("%PDF-1.7 x"), Warnings: []string{"w1"},
+		o := jobs.Outcome{Status: jobs.Succeeded, Result: []byte("%PDF-1.7 x"), Warnings: []string{"w1"},
 			FinishedAt: now, ExpiresAt: now.Add(time.Hour)}
 		if err := s.Finish(ctx, a.ID, o); err != nil {
 			t.Fatal(err)
 		}
 		got, err := s.Get(ctx, "alice", a.ID)
-		if err != nil || got.Status != jobs.Succeeded || got.ResultBytes != int64(len(o.PDF)) ||
+		if err != nil || got.Status != jobs.Succeeded || got.ResultBytes != int64(len(o.Result)) ||
 			len(got.Warnings) != 1 || got.ExpiresAt.IsZero() {
 			t.Fatalf("after Finish = %+v, %v", got, err)
 		}
 		pdf, err := s.Result(ctx, "alice", a.ID)
-		if err != nil || string(pdf) != string(o.PDF) {
+		if err != nil || string(pdf) != string(o.Result) {
 			t.Fatalf("Result = %q, %v", pdf, err)
 		}
 		if _, err := s.Result(ctx, "bob", a.ID); !errors.Is(err, jobs.ErrNotFound) {
@@ -80,7 +81,7 @@ func Run(t *testing.T, s jobs.Store) {
 	})
 
 	t.Run("LapsedLeaseIsReclaimed", func(t *testing.T) {
-		b := &jobs.Record{Owner: "alice", Format: "markdown", Payload: []byte("b")}
+		b := &jobs.Record{Owner: "alice", InputFormat: "markdown", OutputFormat: "pdf", Payload: []byte("b")}
 		if err := s.Create(ctx, b); err != nil {
 			t.Fatal(err)
 		}
@@ -104,7 +105,7 @@ func Run(t *testing.T, s jobs.Store) {
 	})
 
 	t.Run("Release", func(t *testing.T) {
-		c := &jobs.Record{Owner: "carol", Format: "html", Payload: []byte("c")}
+		c := &jobs.Record{Owner: "carol", InputFormat: "html", OutputFormat: "pdf", Payload: []byte("c")}
 		if err := s.Create(ctx, c); err != nil {
 			t.Fatal(err)
 		}
@@ -128,7 +129,7 @@ func Run(t *testing.T, s jobs.Store) {
 	t.Run("ConcurrentClaimsAreDisjoint", func(t *testing.T) {
 		const n = 20
 		for range n {
-			if err := s.Create(ctx, &jobs.Record{Owner: "dave", Format: "html", Payload: []byte("d")}); err != nil {
+			if err := s.Create(ctx, &jobs.Record{Owner: "dave", InputFormat: "html", OutputFormat: "pdf", Payload: []byte("d")}); err != nil {
 				t.Fatal(err)
 			}
 		}

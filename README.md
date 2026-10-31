@@ -1,6 +1,8 @@
 # proteus-server
 
-A gRPC server that converts HTML and Markdown to PDF. It is a thin layer over
+A gRPC server that converts documents between formats. Today it converts HTML
+and Markdown to PDF; the API and the server are built so that more output (and
+input) formats plug in without breaking clients. Conversions run on
 [proteus-converter](https://github.com/gsoultan/proteus-converter), the pure-Go
 conversion engine: this repo holds transport, authentication, limits, jobs and
 metrics, and no conversion logic. There is no browser or LibreOffice at runtime.
@@ -30,7 +32,7 @@ PROTEUS_API_KEYS='ci:3f9a...' go run ./cmd/proteus-server
 
 buf curl --protocol grpc --http2-prior-knowledge \
   -H "authorization: Bearer pk_..." \
-  --data "{\"document\":{\"format\":\"FORMAT_MARKDOWN\",\"content\":\"$(base64 -w0 README.md)\"}}" \
+  --data "{\"document\":{\"format\":\"INPUT_FORMAT_MARKDOWN\",\"content\":\"$(base64 -w0 README.md)\"}}" \
   http://localhost:8080/proteus.v1.ConversionService/Convert
 ```
 
@@ -48,10 +50,11 @@ docker compose up --build
 
 | RPC | Use |
 | --- | --- |
-| `Convert` | Convert synchronously; the response carries the PDF. |
+| `ListFormats` | The conversions this server supports, with MIME type and file extension. |
+| `Convert` | Convert synchronously; the response carries the output, its MIME type and a file name. |
 | `SubmitJob` | Queue a conversion; returns the job at once. |
-| `GetJob` | A job's status, timestamps, error and result size. |
-| `DownloadJobResult` | Server stream of the PDF in chunks of at most 1 MiB. |
+| `GetJob` | A job's status, timestamps, error, formats, MIME type, file name and result size. |
+| `DownloadJobResult` | Server stream of the result in chunks of at most 1 MiB. |
 | `DeleteJob` | Drop a finished job and its result. |
 
 Also served: `grpc.health.v1.Health` (Check and Watch; works with Kubernetes
@@ -64,13 +67,29 @@ visible only to the key that created it; any other key gets `NOT_FOUND`.
 
 ### Requests
 
-A `Document` has a `format` (`FORMAT_HTML` or `FORMAT_MARKDOWN`) and either
-`content` (the document bytes) or `url` (an HTML page to fetch; needs remote
-resources enabled). `assets` carries files the document references by relative
-path: an asset with path `img/logo.png` serves `<img src="img/logo.png">`.
-`Options` sets page size, orientation, margins in millimetres, extra CSS,
-media type, bookmarks, tagging, metadata and `allow_remote`. Every field is
-documented in the proto file.
+A `Document` has a `format` (`INPUT_FORMAT_HTML` or `INPUT_FORMAT_MARKDOWN`)
+and either `content` (the document bytes) or `url` (an HTML page to fetch;
+needs remote resources enabled). `assets` carries files the document references
+by relative path: an asset with path `img/logo.png` serves
+`<img src="img/logo.png">`.
+
+`output_format` picks the target and defaults to `OUTPUT_FORMAT_PDF`, the
+only one today. `Options` holds settings for every format (extra CSS, media
+type, metadata, `allow_remote`), `options.page` for paged formats (size,
+orientation, margins in millimetres) and `options.pdf` for PDF only
+(bookmarks, tagging); options that do not fit the output format are refused
+with `INVALID_ARGUMENT`. Every field is documented in the proto file.
+
+### Adding a format
+
+Conversions are looked up in a registry keyed by input and output format
+(`internal/convert`). To add an output format: add it to `OutputFormat` in the
+proto, add its MIME type, extension and output check to the target table in
+`internal/convert/formats.go`, and register a `Converter` for each input
+format it accepts. A converter gets the fetched document and the request's
+resource loader, so the security limits below apply to it unchanged.
+`ListFormats` reports the new routes on its own; requests for routes nobody
+registered get `INVALID_ARGUMENT`.
 
 ### Errors
 
@@ -87,7 +106,7 @@ documented in the proto file.
 Error messages are written for callers; internal causes stay in the server log.
 A full pool answers `RESOURCE_EXHAUSTED` at once rather than queueing; use
 `SubmitJob` for work that can wait. gRPC clients cap received messages at
-4 MiB by default, so raise that limit for large synchronous PDFs, or use jobs
+4 MiB by default, so raise that limit for large synchronous outputs, or use jobs
 and `DownloadJobResult`.
 
 ### Webhooks
@@ -121,7 +140,7 @@ can answer any job:
   running are put back in the queue.
 - Results are stored in the row (`bytea`) until `PROTEUS_JOB_TTL`, then a
   sweeper deletes them in batches. Status reads use a projection that never
-  loads the PDF.
+  loads the result.
 
 The schema is a storm model ([`internal/storage/model`](internal/storage/model)),
 with generated, typed queries in `internal/storage/store`. At startup the
@@ -149,7 +168,7 @@ It ignores proxy environment variables, caps redirects, time and size, and
 the loader also caps the number and total size of resources per document.
 
 Other limits: request message size, asset count, a per-conversion timeout
-passed to the engine through `context.Context`, output PDF size, a bounded
+passed to the engine through `context.Context`, output size, a bounded
 conversion pool, and per-key rate limits. API keys are stored only as SHA-256
 hashes. The server refuses to start without keys unless
 `PROTEUS_ALLOW_NO_AUTH=true`.
@@ -176,7 +195,7 @@ has no page-count or memory budget yet.
 | `PROTEUS_TIMEOUT` | `30s` | Per conversion. |
 | `PROTEUS_MAX_REQUEST_BYTES` | `20MiB` | Largest request message. |
 | `PROTEUS_MAX_ASSETS` | `64` | Assets per document. |
-| `PROTEUS_MAX_OUTPUT_BYTES` | `100MiB` | Largest PDF produced. |
+| `PROTEUS_MAX_OUTPUT_BYTES` | `100MiB` | Largest output produced. |
 | `PROTEUS_ALLOW_REMOTE` | `false` | Allow `url` input and remote resources. |
 | `PROTEUS_ALLOWED_HOSTS` | | Comma list; `.example.com` matches subdomains. Empty means any public host. |
 | `PROTEUS_FETCH_TIMEOUT` | `10s` | Per remote fetch. |
@@ -206,8 +225,8 @@ Sizes accept `K`, `M`, `G`, `KiB`, `MiB`, `GiB`.
   documents are never logged.
 - Metrics: `proteus_rpc_requests_total{procedure,protocol,code}` and
   `proteus_rpc_duration_seconds{procedure}` (RED),
-  `proteus_conversions_total{format,outcome}`,
-  `proteus_conversion_duration_seconds`, `proteus_output_bytes`,
+  `proteus_conversions_total{input,output,outcome}`,
+  `proteus_conversion_duration_seconds{input,output}`, `proteus_output_bytes`,
   `proteus_resource_blocked_total{reason}`, `proteus_conversion_slots` and
   `proteus_conversion_slots_in_use` (saturation), `proteus_job_queue_depth`,
   `proteus_webhook_deliveries_total`, plus Go and process metrics.
@@ -239,9 +258,11 @@ it is stale.
 ## Roadmap
 
 1. Done: gRPC API (ConnectRPC v2), safe resource loader, limits, API keys
-   with rate limits, metrics, Docker, Postgres job queue on storm.
+   with rate limits, metrics, Docker, Postgres job queue on storm, and a
+   converter registry keyed by input and output format.
 2. Results in object storage behind presigned URLs instead of `bytea`, and
    CORS for browser clients.
 3. Header and footer templates, PDF/A, templates (HTML plus JSON data),
    batch merging.
-4. DOCX input, once the engine supports it.
+4. More formats through the registry: output such as DOCX, PNG and HTML,
+   and DOCX input, as the engine (or another converter) supports them.

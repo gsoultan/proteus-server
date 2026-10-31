@@ -5,20 +5,20 @@ import (
 	"errors"
 	"testing"
 	"time"
-
-	proteus "github.com/gsoultan/proteus-converter"
 )
 
 func stubService(t *testing.T, timeout time.Duration, fn func(ctx context.Context) ([]byte, error)) *Service {
 	t.Helper()
-	s := NewService(Settings{Workers: 1, Timeout: timeout})
-	s.conv = func(ctx context.Context, _ proteus.Format, _ []byte, _ ...proteus.Option) ([]byte, error) {
-		return fn(ctx)
-	}
-	return s
+	return NewService(Settings{Workers: 1, Timeout: timeout, Registry: stubRegistry(fn)})
 }
 
-var htmlReq = &Request{Format: proteus.FormatHTML, Source: []byte("<p>x</p>")}
+func stubRegistry(fn func(ctx context.Context) ([]byte, error)) *Registry {
+	r := NewRegistry()
+	r.Register(HTML, PDF, ConverterFunc(func(ctx context.Context, _ *Input) ([]byte, error) { return fn(ctx) }))
+	return r
+}
+
+var htmlReq = &Request{Format: HTML, Output: PDF, Source: []byte("<p>x</p>")}
 
 func TestTimeout(t *testing.T) {
 	s := stubService(t, 20*time.Millisecond, func(ctx context.Context) ([]byte, error) {
@@ -42,10 +42,9 @@ func TestOutputChecks(t *testing.T) {
 	if _, err := s.Run(context.Background(), htmlReq); err == nil {
 		t.Fatal("non-PDF output accepted")
 	}
-	s = NewService(Settings{Workers: 1, MaxOutputBytes: 10})
-	s.conv = func(context.Context, proteus.Format, []byte, ...proteus.Option) ([]byte, error) {
+	s = NewService(Settings{Workers: 1, MaxOutputBytes: 10, Registry: stubRegistry(func(context.Context) ([]byte, error) {
 		return []byte("%PDF-1.7 and a lot more"), nil
-	}
+	})})
 	var bre *BadRequestError
 	if _, err := s.Run(context.Background(), htmlReq); !errors.As(err, &bre) {
 		t.Fatalf("oversized output: %v", err)
@@ -78,11 +77,31 @@ func TestSlots(t *testing.T) {
 
 func TestRealEngineMarkdown(t *testing.T) {
 	s := NewService(Settings{Workers: 1, SystemFonts: false})
-	res, err := s.Run(context.Background(), &Request{Format: proteus.FormatMarkdown, Source: []byte("# Hi\n\n| a | b |\n|---|---|\n| 1 | 2 |\n")})
+	res, err := s.Run(context.Background(), &Request{Format: Markdown, Output: PDF, Source: []byte("# Hi\n\n| a | b |\n|---|---|\n| 1 | 2 |\n")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(res.PDF) < 500 {
-		t.Fatalf("tiny PDF: %d bytes", len(res.PDF))
+	if len(res.Content) < 500 || res.Target.MIMEType != "application/pdf" {
+		t.Fatalf("result: %d bytes, %+v", len(res.Content), res.Target)
 	}
+}
+
+func TestRegistry(t *testing.T) {
+	s := NewService(Settings{Workers: 1})
+	if got := s.Routes(); len(got) != 2 || got[0] != (Route{HTML, PDF}) || got[1] != (Route{Markdown, PDF}) {
+		t.Fatalf("default routes %v", got)
+	}
+	var bre *BadRequestError
+	if err := s.Check(&Request{Format: HTML, Output: "docx"}); !errors.As(err, &bre) {
+		t.Fatalf("unsupported route: %v", err)
+	}
+	if _, err := s.Run(context.Background(), &Request{Format: "rtf", Output: PDF}); !errors.As(err, &bre) {
+		t.Fatalf("Run on unsupported route: %v", err)
+	}
+	defer func() {
+		if recover() == nil {
+			t.Fatal("registering an unknown output format should panic")
+		}
+	}()
+	NewRegistry().Register(HTML, "docx", ConverterFunc(nil))
 }

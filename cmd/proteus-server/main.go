@@ -1,5 +1,5 @@
-// Command proteus-server serves HTML and Markdown to PDF conversion over
-// gRPC (ConnectRPC: gRPC, gRPC-Web and the Connect protocol).
+// Command proteus-server serves document conversion (today HTML and Markdown
+// to PDF) over gRPC (ConnectRPC: gRPC, gRPC-Web and the Connect protocol).
 //
 //	proteus-server              run the server (configured by PROTEUS_* variables)
 //	proteus-server keygen ID    print a new API key and its PROTEUS_API_KEYS entry
@@ -255,7 +255,7 @@ func warmUp(ctx context.Context, svc *convert.Service) error {
 		return err
 	}
 	defer release()
-	_, err = svc.Run(ctx, &convert.Request{Format: "markdown", Source: []byte("# warm-up")})
+	_, err = svc.Run(ctx, &convert.Request{Format: convert.Markdown, Output: convert.PDF, Source: []byte("# warm-up")})
 	return err
 }
 
