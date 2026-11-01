@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Command proteus-server serves document conversion (today HTML and Markdown
 // to PDF) over gRPC (ConnectRPC: gRPC, gRPC-Web and the Connect protocol).
 //

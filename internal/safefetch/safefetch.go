@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package safefetch is an HTTP client for fetching untrusted URLs without
 // server-side request forgery (SSRF). Only http and https are allowed, every
 // connection is checked against the resolved IP address (so DNS rebinding and

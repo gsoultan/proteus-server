@@ -33,3 +33,5 @@ Known gaps / next steps:
 - Engine rescans Config.FontDirs on every conversion (prefer system font dirs).
 - Not yet: header/footer, PDF/A, templates, batch merge, DOCX, tracing.
 - Docker image build is verified in CI only (no Docker daemon in the dev container).
+
+- Copyright header: every hand-written Go file starts with `// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>` followed by a blank line (so it is not the package doc). CI step "Copyright headers" fails on any tracked .go file without it, except files marked `// Code generated ... DO NOT EDIT.` The .proto file carries the same header and protoc-gen-go / protoc-gen-connect-go copy it into gen/ on buf generate; storm has no header option, so its *.gen.go files stay without it.

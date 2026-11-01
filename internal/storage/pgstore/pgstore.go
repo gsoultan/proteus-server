@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package pgstore is the Postgres job store, built on storm. Every server
 // instance can share one database: a claim is a single UPDATE of the oldest
 // claimable row chosen with FOR UPDATE SKIP LOCKED, so two workers never take
