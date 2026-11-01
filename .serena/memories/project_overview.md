@@ -8,7 +8,11 @@ logic. DOCX comes later via the engine. User rule: gRPC only, no REST; storm for
 
 API: proto/proteus/v1/conversion.proto, service proteus.v1.ConversionService with ListFormats,
 Convert,
-SubmitJob, GetJob, DownloadJobResult (server stream, 1 MiB chunks), DeleteJob. Served by
+SubmitJob, GetJob, DownloadJobResult (server stream, 1 MiB chunks), DeleteJob; and
+proto/proteus/v1/template.proto, service proteus.v1.TemplateService with CreateTemplate,
+GetTemplate, ListTemplates (by name, page_token = base64url of last name), UpdateTemplate
+(revision = optimistic lock), DeleteTemplate, RenderTemplate (stored id or unsaved template,
+returns filled document), ConvertTemplate, SubmitTemplateJob (both take output_format). Served by
 connect-go v2 (connectrpc.com/connect/v2) so one h2c listener answers gRPC, gRPC-Web and Connect.
 Also grpc.health.v1 (grpchealth/v2) and reflection (grpcreflect/v2). Metrics on a separate admin
 listener (PROTEUS_ADMIN_ADDR :9090, GET /metrics).
@@ -27,12 +31,23 @@ Layout:
   options for other formats refused), service.go (slot pool, timeout, URL fetch, loader, registry
   lookup, Check(req) for unsupported routes, panic recovery, size + target check).
 - internal/rpc: connect server, interceptors (observe: request id/log/metrics; recoverer;
-  authenticate: Bearer or x-api-key, health/reflection exempt), conversionService, error mapping.
+  authenticate: Bearer or x-api-key, health/reflection exempt), conversionService, error mapping;
+  templates.go = templateService (adds NotFound/AlreadyExists/Aborted/ResourceExhausted for
+  template errors, reuses conversionService.convert and jobs.Submit).
+- internal/templates: Service (validate: name 1-200 runes unique per key, description <= 2000,
+  convert.FromProto checks of format/assets/options, size cap, parse, trial render with
+  sample_data to catch html/template context errors; Render/RenderDraft; mergeOptions lays
+  request options over template defaults and drops page/pdf defaults the output can't use),
+  render.go (html/template sandbox, see conventions), store.go (Store interface, MemoryStore),
+  storetest conformance suite. Body column = proto-marshalled Template with only content, assets,
+  options, sample_data.
 - internal/jobs: Manager over a Store interface (store.go), MemoryStore (memstore.go),
   storetest conformance suite; workers claim with leases, webhooks HMAC-signed.
-- internal/storage/model: storm model Job; internal/storage/store: storm-generated queries
-  (committed); internal/storage/pgstore: jobs.Store on Postgres (claim = Take with
-  ForUpdateSkipLocked, automigrate via migrate.AutoPool with Schema + DeclaredOnly).
+- internal/storage/model: storm models Job and Template (unique owner+name, Meta projection
+  without body); internal/storage/store: storm-generated queries (committed);
+  internal/storage/pgstore: jobs.Store on Postgres (claim = Take with ForUpdateSkipLocked,
+  automigrate of both models via migrate.AutoPool with Schema + DeclaredOnly) and
+  Store.Templates() = templates.Store (update is UpdateAll WHERE revision = read revision).
 - internal/auth: API keys "id:sha256hex", per-key rate limiter. internal/metrics: Prometheus.
 
 Docker: golang:1.27 build -> distroless static nonroot with fonts; compose.yaml adds postgres:17.
