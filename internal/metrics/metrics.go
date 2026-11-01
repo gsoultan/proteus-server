@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package metrics exposes Prometheus metrics for the server: RED metrics per
 // RPC procedure, conversion outcomes and durations, pool saturation and queue depth.
 package metrics

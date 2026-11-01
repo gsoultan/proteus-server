@@ -36,6 +36,12 @@ jobs:
           buf generate
           storm verify -stale internal/storage/store
           git diff --exit-code -- gen internal/storage/store
+      - name: Copyright headers
+        run: |
+          missing=$(git ls-files '*.go' \
+            | xargs grep -L -x '// Copyright (c) [0-9]\{4\} Gembit Soultan Shirazi <gembit.soultan@gmail.com>' \
+            | xargs -r grep -L '^// Code generated .* DO NOT EDIT\.$' || true)
+          if [ -n "$missing" ]; then echo "Missing copyright header:"; echo "$missing"; exit 1; fi
       - name: Vet
         run: go vet ./...
       - name: Format

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package rpc is the transport: the ConnectRPC ConversionService plus gRPC
 // health and reflection, behind interceptors for request ids, logging,
 // metrics, panic recovery and API keys. The same handlers answer gRPC,

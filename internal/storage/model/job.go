@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package model is the storm model for the Postgres job queue. Generated
 // code lives in internal/storage/store; regenerate with `storm generate
 // internal/storage/store` after editing this file.

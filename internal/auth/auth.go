@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package auth checks API keys and applies per-key rate limits.
 //
 // Keys are never stored in plain text: the server is configured with

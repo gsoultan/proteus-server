@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package loader is the resource loader the server hands to the conversion
 // engine. It replaces the engine's default loader so a document can never read
 // the server's disk: resources come from data URLs, from files uploaded with

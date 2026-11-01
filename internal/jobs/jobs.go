@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package jobs runs asynchronous conversions on top of a Store: a memory
 // store for a single instance, or the Postgres store so that every instance
 // shares one queue. Workers claim jobs with a lease, so a job whose worker

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package convert turns API requests into calls to the proteus-converter engine.
 // It holds no conversion logic of its own: it validates input, builds engine
 // options, and enforces concurrency and time limits.
