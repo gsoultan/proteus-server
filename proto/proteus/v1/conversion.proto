@@ -1,0 +1,254 @@
+syntax = "proto3";
+
+package proteus.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/gsoultan/proteus-server/gen/proteus/v1;proteusv1";
+
+// ConversionService converts documents from one format to another. Today it
+// converts HTML and Markdown to PDF; ListFormats tells which conversions a
+// server supports, so clients need no change when output formats are added.
+//
+// Every RPC needs an API key in the "authorization: Bearer <key>" or
+// "x-api-key" request header. Jobs are visible only to the key that
+// submitted them.
+service ConversionService {
+  // ListFormats returns the conversions this server supports.
+  rpc ListFormats(ListFormatsRequest) returns (ListFormatsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Convert converts a document synchronously and returns the output. A server
+  // with every conversion slot busy answers RESOURCE_EXHAUSTED at once
+  // rather than queueing; use SubmitJob for work that can wait.
+  rpc Convert(ConvertRequest) returns (ConvertResponse) {}
+
+  // SubmitJob queues a conversion and returns the job at once.
+  rpc SubmitJob(SubmitJobRequest) returns (SubmitJobResponse) {}
+
+  // GetJob returns a job's current state.
+  rpc GetJob(GetJobRequest) returns (GetJobResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // DownloadJobResult streams the output of a succeeded job in chunks.
+  rpc DownloadJobResult(DownloadJobResultRequest) returns (stream DownloadJobResultResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // DeleteJob removes a finished job and its result.
+  rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}
+
+// InputFormat is the format of the document to convert.
+enum InputFormat {
+  INPUT_FORMAT_UNSPECIFIED = 0;
+  INPUT_FORMAT_HTML = 1;
+  INPUT_FORMAT_MARKDOWN = 2;
+}
+
+// OutputFormat is the format to convert to. More values will be added; ask
+// ListFormats which ones a server supports.
+enum OutputFormat {
+  OUTPUT_FORMAT_UNSPECIFIED = 0; // PDF
+  OUTPUT_FORMAT_PDF = 1;
+}
+
+// Conversion is one supported input to output pair.
+message Conversion {
+  InputFormat input_format = 1;
+  OutputFormat output_format = 2;
+  // Media type of the output, such as "application/pdf".
+  string mime_type = 3;
+  // File extension of the output, with the dot, such as ".pdf".
+  string file_extension = 4;
+}
+
+message ListFormatsRequest {}
+
+message ListFormatsResponse {
+  repeated Conversion conversions = 1;
+}
+
+// Asset is a file the document references by relative path, such as
+// "img/logo.png" for <img src="img/logo.png">.
+message Asset {
+  string path = 1;
+  bytes data = 2;
+}
+
+// Document is the input to convert.
+message Document {
+  // Format of content. Defaults to HTML for url.
+  InputFormat format = 1;
+  oneof source {
+    // The document itself, UTF-8.
+    bytes content = 2;
+    // Fetch an HTML document from this public http(s) URL. Needs remote
+    // resources enabled on the server.
+    string url = 3;
+  }
+  // Files the document references. Paths may not contain "..".
+  repeated Asset assets = 4;
+}
+
+// PageSize names a standard page size.
+enum PageSize {
+  PAGE_SIZE_UNSPECIFIED = 0; // CSS @page size, else A4
+  PAGE_SIZE_A3 = 1;
+  PAGE_SIZE_A4 = 2;
+  PAGE_SIZE_A5 = 3;
+  PAGE_SIZE_LETTER = 4;
+  PAGE_SIZE_LEGAL = 5;
+}
+
+// Margins in millimetres.
+message Margins {
+  double top = 1;
+  double right = 2;
+  double bottom = 3;
+  double left = 4;
+}
+
+// Metadata written to the output (the information dictionary for PDF). Empty
+// fields are taken from the document where possible (for example the HTML
+// <title>).
+message Metadata {
+  string title = 1;
+  string author = 2;
+  string subject = 3;
+  string keywords = 4;
+  string language = 5;
+}
+
+// MediaType selects the CSS media used for @media rules.
+enum MediaType {
+  MEDIA_TYPE_UNSPECIFIED = 0; // print
+  MEDIA_TYPE_PRINT = 1;
+  MEDIA_TYPE_SCREEN = 2;
+}
+
+// Options tune the conversion. They apply to every output format, except
+// page, which applies to paged formats, and pdf, which applies only to PDF
+// output and is refused for other formats. Fonts and resource access are
+// decided by the server.
+message Options {
+  // Extra CSS applied after the document's own styles, up to 1 MiB.
+  string stylesheet = 1;
+  MediaType media_type = 2;
+  Metadata metadata = 3;
+  // Fetch http(s) stylesheets, images and fonts. Needs remote resources
+  // enabled on the server; internal addresses are always refused.
+  bool allow_remote = 4;
+  PageOptions page = 5;
+  PdfOptions pdf = 6;
+}
+
+// PageOptions set the page box of paged output formats.
+message PageOptions {
+  PageSize size = 1;
+  bool landscape = 2;
+  // Every margin in millimetres (0 to 100). Ignored when margins is set.
+  optional double margin_mm = 3;
+  Margins margins = 4;
+}
+
+// PdfOptions apply only to PDF output.
+message PdfOptions {
+  // Build bookmarks from headings; on by default.
+  optional bool outline = 1;
+  // Write a tagged (accessible) PDF.
+  bool tagged = 2;
+}
+
+message ConvertRequest {
+  Document document = 1;
+  // Defaults to PDF.
+  OutputFormat output_format = 2;
+  Options options = 3;
+}
+
+message ConvertResponse {
+  // The converted document.
+  bytes content = 1;
+  OutputFormat output_format = 2;
+  // Media type of content, such as "application/pdf".
+  string mime_type = 3;
+  // A suggested download name derived from the title, with the extension of
+  // the output format.
+  string file_name = 4;
+  // Non-fatal problems, such as an image that could not be loaded.
+  repeated string warnings = 5;
+  int64 duration_ms = 6;
+}
+
+message SubmitJobRequest {
+  Document document = 1;
+  // Defaults to PDF.
+  OutputFormat output_format = 2;
+  Options options = 3;
+  // Optional https URL that receives a POST of the finished job, signed with
+  // HMAC-SHA256 (see README). Needs webhooks enabled on the server.
+  string webhook_url = 4;
+}
+
+message SubmitJobResponse {
+  Job job = 1;
+}
+
+// JobStatus is where a job is in its life.
+enum JobStatus {
+  JOB_STATUS_UNSPECIFIED = 0;
+  JOB_STATUS_QUEUED = 1;
+  JOB_STATUS_RUNNING = 2;
+  JOB_STATUS_SUCCEEDED = 3;
+  JOB_STATUS_FAILED = 4;
+}
+
+// Job is an asynchronous conversion.
+message Job {
+  string id = 1;
+  JobStatus status = 2;
+  InputFormat input_format = 3;
+  google.protobuf.Timestamp create_time = 4;
+  google.protobuf.Timestamp start_time = 5;
+  google.protobuf.Timestamp finish_time = 6;
+  // When the job and its result are deleted.
+  google.protobuf.Timestamp expire_time = 7;
+  // Why the job failed.
+  string error = 8;
+  // Size of the result.
+  int64 result_bytes = 9;
+  repeated string warnings = 10;
+  OutputFormat output_format = 11;
+  // Media type of the result, such as "application/pdf".
+  string mime_type = 12;
+  // A suggested download name for the result.
+  string file_name = 13;
+}
+
+message GetJobRequest {
+  string id = 1;
+}
+
+message GetJobResponse {
+  Job job = 1;
+}
+
+message DownloadJobResultRequest {
+  string id = 1;
+}
+
+message DownloadJobResultResponse {
+  // The next chunk of the result, at most 1 MiB.
+  bytes chunk = 1;
+}
+
+message DeleteJobRequest {
+  string id = 1;
+}
+
+message DeleteJobResponse {}

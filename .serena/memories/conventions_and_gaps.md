@@ -1,22 +1,35 @@
 # Conventions, decisions and known gaps
 
 - Every engine call goes through convert.Service.Run with the server loader
-  (WithResourceLoader + WithLocalFiles(false)); never let a request reach the default engine
-  loader, which reads local disk.
+  (WithResourceLoader + WithLocalFiles(false)); never let a request reach the default engine loader.
+- Output formats: proto OutputFormat + InputFormat enums; Options split into common fields,
+  options.page (paged formats) and options.pdf (PDF only). Responses and jobs carry
+  output_format, mime_type and file_name. To add a format: proto enum, target in
+  convert/formats.go, register a Converter per input; ListFormats picks it up. Converters must
+  load resources only through Input.Loader.
 - Remote fetch needs both PROTEUS_ALLOW_REMOTE=true and per-request allow_remote (or url input).
-- Errors: convert.BadRequestError -> 422, ErrBusy/ErrQueueFull/rate limit -> 429 + Retry-After,
-  ErrTimeout -> 504, body limit -> 413. Internal errors are logged, clients get a generic message.
-- Jobs are scoped to the API key id that created them; others get 404 (no IDOR).
-- Metrics labels use the route pattern, never raw paths.
-- Sync and async share the slot pool; job workers default to half the slots so sync keeps capacity.
-- multipart: use the raw Content-Disposition filename (Part.FileName strips directories).
-- Tests: go test -race ./...; httpapi/api_test.go runs the real engine end to end, including an
-  SSRF test that asserts a loopback server is never hit.
+- Errors (internal/rpc/service.go toConnect): BadRequestError -> InvalidArgument, ErrBusy /
+  ErrQueueFull / rate limit -> ResourceExhausted, ErrTimeout -> DeadlineExceeded, ErrClosed ->
+  Unavailable, ErrNotFound -> NotFound, ErrNotFinished or failed job -> FailedPrecondition, else
+  Internal with the cause kept server-side only.
+- Jobs are scoped to the API key id that created them; others get NotFound (no IDOR).
+- Metric labels: procedure, protocol, code; conversions by input, output, outcome (never raw ids).
+- Sync and async share the slot pool; job workers default to half the slots. A worker takes a
+  slot before claiming so it never holds a lease while waiting.
+- Postgres job queue: lease = timeout + 1m, max 3 attempts, Release on shutdown requeues, results
+  stored as bytea until TTL, status reads use the Meta projection (no payload/result).
+- storm model gotcha: no Size() on columns with a CHECK, or automigrate drifts every run.
+- Codegen: `buf generate` after proto edits, `storm generate internal/storage/store` after model
+  edits; both outputs are committed and CI fails if stale.
+- Tests: go test -race ./...; internal/rpc/rpc_test.go runs the real engine over gRPC (h2c) and
+  Connect, incl. SSRF and job lifecycle; pgstore tests need PROTEUS_TEST_DATABASE_URL.
 
 Known gaps / next steps:
-- Engine checks ctx only between stages; no page-count or memory budget in the engine.
-- Engine rescans Config.FontDirs on every conversion (prefer system font dirs, cached once).
-- Jobs are in-memory per instance; plan is Postgres queue (FOR UPDATE SKIP LOCKED) + object
-  storage with presigned URLs.
-- Not yet: header/footer, PDF/A, templates, batch merge, DOCX, stage timing metrics/tracing.
+- No CORS yet for browser clients (frontend rules from the user: TypeScript 7, Mantine 9.7.4,
+  React 19, TanStack Query/Router, zustand, PWA, web + service worker, connect-es v2, buf, bun,
+  Vite 8 apply when a web UI is built).
+- Results in bytea; plan object storage with presigned URLs.
+- Engine checks ctx only between stages; no page-count or memory budget.
+- Engine rescans Config.FontDirs on every conversion (prefer system font dirs).
+- Not yet: header/footer, PDF/A, templates, batch merge, DOCX, tracing.
 - Docker image build is verified in CI only (no Docker daemon in the dev container).

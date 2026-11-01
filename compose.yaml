@@ -1,0 +1,28 @@
+# Local stack: the server plus Postgres for the shared job queue.
+#   docker compose up --build
+# Then call it with gRPC, for example:
+#   buf curl --protocol grpc --http2-prior-knowledge \
+#     --data '{"document":{"format":"INPUT_FORMAT_MARKDOWN","content":"IyBIaQ=="}}' \
+#     http://localhost:8080/proteus.v1.ConversionService/Convert
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: proteus
+      POSTGRES_PASSWORD: proteus
+      POSTGRES_DB: proteus
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U proteus"]
+      interval: 2s
+      retries: 30
+  proteus:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PROTEUS_ALLOW_NO_AUTH: "true" # local only; set PROTEUS_API_KEYS anywhere else
+      PROTEUS_DATABASE_URL: postgres://proteus:proteus@postgres:5432/proteus?sslmode=disable
+    ports:
+      - "8080:8080"
+      - "9090:9090"

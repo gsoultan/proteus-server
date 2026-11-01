@@ -1,29 +1,40 @@
 # proteus-server overview
 
-HTTP server (module github.com/gsoultan/proteus-server, go 1.26) that converts HTML and Markdown
-to PDF by importing github.com/gsoultan/proteus-converter (the engine, which uses gpdf). The server
-holds transport, auth, limits, jobs and metrics only; no conversion logic. DOCX comes later via
-the engine.
+gRPC server (module github.com/gsoultan/proteus-server, go 1.27 because storm v1.11 needs it) for
+document conversion. User rule: the design must stay format-agnostic so more output (and input)
+formats can be added; today only HTML/Markdown -> PDF exists. Conversions run on github.com/gsoultan/proteus-converter (the engine,
+which uses gpdf). The server holds transport, auth, limits, jobs and metrics only; no conversion
+logic. DOCX comes later via the engine. User rule: gRPC only, no REST; storm for anything database.
+
+API: proto/proteus/v1/conversion.proto, service proteus.v1.ConversionService with ListFormats,
+Convert,
+SubmitJob, GetJob, DownloadJobResult (server stream, 1 MiB chunks), DeleteJob. Served by
+connect-go v2 (connectrpc.com/connect/v2) so one h2c listener answers gRPC, gRPC-Web and Connect.
+Also grpc.health.v1 (grpchealth/v2) and reflection (grpcreflect/v2). Metrics on a separate admin
+listener (PROTEUS_ADMIN_ADDR :9090, GET /metrics).
 
 Layout:
-- cmd/proteus-server: main (env config, wiring, warm-up, graceful shutdown) and subcommands
-  keygen, hash, healthcheck (for the distroless HEALTHCHECK).
+- proto/, buf.yaml, buf.gen.yaml -> gen/proteus/v1 (protoc-gen-go + protoc-gen-connect-go, committed).
+- cmd/proteus-server: main (env config, store choice, wiring, warm-up, graceful shutdown) and
+  subcommands keygen, hash, healthcheck (gRPC health over h2c, for the distroless HEALTHCHECK).
 - internal/config: PROTEUS_* env parsing (sizes accept K/M/G/KiB/MiB/GiB).
-- internal/safefetch: SSRF-safe HTTP client (scheme/creds/allowlist pre-check, dial-time IP
-  check via net.Dialer.Control, no proxy, redirect/time/size caps). IsPublic is the IP policy.
-- internal/loader: proteus.ResourceLoader per request: data: URLs, uploaded assets
-  (CleanAssetPath rejects ..), remote only through safefetch; count/total/each limits.
-- internal/convert: Request parsing (JSON, multipart, raw text/html|text/markdown), option
-  validation and mapping to engine options, Service = bounded slot pool (TryAcquire -> 429,
-  Acquire for jobs), per-conversion timeout, panic recovery, output checks.
-- internal/jobs: in-memory async Manager (bounded queue, workers, TTL sweeper, owner-scoped
-  Get/Result/Delete, HMAC-signed webhooks with retries, drain on Shutdown).
-- internal/auth: API keys as "id:sha256hex", constant-time compare, per-key x/time/rate limiter.
-- internal/metrics: Prometheus registry (RED per route pattern, conversions, slots, queue, webhooks).
-- internal/httpapi: Go 1.22 ServeMux routes, request id, recover, access log + metrics, error JSON.
+- internal/safefetch: SSRF-safe HTTP client (dial-time IP check, no proxy, caps).
+- internal/loader: per-request proteus.ResourceLoader: data: URLs, assets, remote via safefetch.
+- internal/convert: formats.go (InputFormat/OutputFormat, target table with MIME type, extension,
+  Paged flag and output check; Registry keyed by Route{From, To}; Converter interface getting an
+  Input with the fetched source and the per-request loader), engine.go (ProteusEngine registers
+  html/markdown -> pdf, engineOptions), request.go (FromProto(doc, output, opts) validation,
+  options for other formats refused), service.go (slot pool, timeout, URL fetch, loader, registry
+  lookup, Check(req) for unsupported routes, panic recovery, size + target check).
+- internal/rpc: connect server, interceptors (observe: request id/log/metrics; recoverer;
+  authenticate: Bearer or x-api-key, health/reflection exempt), conversionService, error mapping.
+- internal/jobs: Manager over a Store interface (store.go), MemoryStore (memstore.go),
+  storetest conformance suite; workers claim with leases, webhooks HMAC-signed.
+- internal/storage/model: storm model Job; internal/storage/store: storm-generated queries
+  (committed); internal/storage/pgstore: jobs.Store on Postgres (claim = Take with
+  ForUpdateSkipLocked, automigrate via migrate.AutoPool with Schema + DeclaredOnly).
+- internal/auth: API keys "id:sha256hex", per-key rate limiter. internal/metrics: Prometheus.
 
-Endpoints: POST /v1/convert, POST /v1/jobs, GET/DELETE /v1/jobs/{id}, GET /v1/jobs/{id}/result,
-GET /healthz, /readyz, /metrics. README documents bodies, statuses and every env variable.
-Docker: golang:1.26 build -> distroless static nonroot, fonts-liberation2 + dejavu in
-/usr/share/fonts (system font scan runs once per process). CI: vet, gofmt, test -race, docker
-build + smoke test.
+Docker: golang:1.27 build -> distroless static nonroot with fonts; compose.yaml adds postgres:17.
+CI: buf lint + generate, storm verify -stale, git diff on generated code, vet, gofmt,
+go test -race with a postgres service (PROTEUS_TEST_DATABASE_URL), docker build + buf curl smoke.

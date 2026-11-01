@@ -20,6 +20,13 @@ import (
 	"github.com/gsoultan/proteus-server/internal/safefetch"
 )
 
+// ErrDenied and ErrTooLarge wrap every refused resource, whichever converter
+// asked for it. They are the engine's sentinels so its errors match too.
+var (
+	ErrDenied   = proteus.ErrResourceDenied
+	ErrTooLarge = proteus.ErrResourceTooLarge
+)
+
 // Limits bound what a single document may load.
 type Limits struct {
 	MaxResources int   // number of distinct loads per document; default 256

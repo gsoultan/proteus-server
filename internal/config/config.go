@@ -12,34 +12,39 @@ import (
 
 // Config is every server setting. See README for the variable names.
 type Config struct {
-	Addr            string
+	Addr            string // RPC listener (gRPC, gRPC-Web, Connect)
+	AdminAddr       string // Prometheus /metrics listener; empty disables
 	ShutdownTimeout time.Duration
 	LogLevel        string
 	LogFormat       string // json or text
 
-	APIKeys       string // "<id>:<sha256-hex>" entries
-	AllowNoAuth   bool   // run without API keys (local development only)
-	RateLimit     float64
-	RateBurst     int
-	MaxBodyBytes  int64
-	MaxAssets     int
-	Workers       int
-	Timeout       time.Duration
-	MaxOutput     int64
-	FontDirs      []string
-	SystemFonts   bool
-	AllowRemote   bool
-	AllowedHosts  []string
-	FetchTimeout  time.Duration
-	MaxResource   int64
-	MaxResources  int
-	MaxTotalBytes int64
+	APIKeys         string // "<id>:<sha256-hex>" entries
+	AllowNoAuth     bool   // run without API keys (local development only)
+	RateLimit       float64
+	RateBurst       int
+	MaxRequestBytes int64
+	MaxAssets       int
+	Workers         int
+	Timeout         time.Duration
+	MaxOutput       int64
+	FontDirs        []string
+	SystemFonts     bool
+	AllowRemote     bool
+	AllowedHosts    []string
+	FetchTimeout    time.Duration
+	MaxResource     int64
+	MaxResources    int
+	MaxTotalBytes   int64
 
 	JobWorkers    int
 	JobQueue      int
 	JobTTL        time.Duration
 	MaxJobs       int
 	WebhookSecret string
+
+	DatabaseURL    string // Postgres for the shared job queue; empty keeps jobs in memory
+	DatabaseSchema string // schema holding the jobs table; default public
+	AutoMigrate    bool   // create/update the jobs table at startup
 }
 
 // FromEnv reads the configuration, using getenv (os.Getenv when nil).
@@ -50,6 +55,7 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	p := parser{get: getenv}
 	c := Config{
 		Addr:            p.str("PROTEUS_ADDR", ":8080"),
+		AdminAddr:       p.str("PROTEUS_ADMIN_ADDR", ":9090"),
 		ShutdownTimeout: p.dur("PROTEUS_SHUTDOWN_TIMEOUT", 30*time.Second),
 		LogLevel:        p.str("PROTEUS_LOG_LEVEL", "info"),
 		LogFormat:       p.str("PROTEUS_LOG_FORMAT", "json"),
@@ -57,7 +63,7 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		AllowNoAuth:     p.bool("PROTEUS_ALLOW_NO_AUTH", false),
 		RateLimit:       p.float("PROTEUS_RATE_LIMIT", 10),
 		RateBurst:       p.int("PROTEUS_RATE_BURST", 20),
-		MaxBodyBytes:    p.bytes("PROTEUS_MAX_BODY_BYTES", 20<<20),
+		MaxRequestBytes: p.bytes("PROTEUS_MAX_REQUEST_BYTES", 20<<20),
 		MaxAssets:       p.int("PROTEUS_MAX_ASSETS", 64),
 		Workers:         p.int("PROTEUS_WORKERS", 0),
 		Timeout:         p.dur("PROTEUS_TIMEOUT", 30*time.Second),
@@ -75,6 +81,9 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		JobTTL:          p.dur("PROTEUS_JOB_TTL", time.Hour),
 		MaxJobs:         p.int("PROTEUS_MAX_JOBS", 1000),
 		WebhookSecret:   p.str("PROTEUS_WEBHOOK_SECRET", ""),
+		DatabaseURL:     p.str("PROTEUS_DATABASE_URL", ""),
+		DatabaseSchema:  p.str("PROTEUS_DATABASE_SCHEMA", "public"),
+		AutoMigrate:     p.bool("PROTEUS_AUTO_MIGRATE", true),
 	}
 	if f := getenv("PROTEUS_API_KEYS_FILE"); f != "" {
 		b, err := os.ReadFile(f)
@@ -86,6 +95,9 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	}
 	if len(p.errs) > 0 {
 		return c, errors.Join(p.errs...)
+	}
+	if c.AdminAddr == "off" {
+		c.AdminAddr = ""
 	}
 	if c.WebhookSecret != "" && len(c.WebhookSecret) < 32 {
 		return c, errors.New("PROTEUS_WEBHOOK_SECRET must be at least 32 characters")
