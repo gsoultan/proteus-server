@@ -1,0 +1,194 @@
+syntax = "proto3";
+
+package proteus.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "proteus/v1/conversion.proto";
+
+option go_package = "github.com/gsoultan/proteus-server/gen/proteus/v1;proteusv1";
+
+// TemplateService stores reusable HTML and Markdown documents with
+// placeholders and converts them by filling in data. A filled-in template
+// is an ordinary document, so it converts to every output format that
+// ConversionService.ListFormats lists for the template's input format.
+//
+// Template content uses Go template syntax: {{.customer.name}} inserts a
+// value, {{range .items}}...{{end}} repeats, {{if .paid}}...{{end}} chooses.
+// Inserted values are HTML-escaped, so data can never add markup or
+// scripts. See the README for the helper functions.
+//
+// Like jobs, templates belong to the API key that created them; other keys
+// get NOT_FOUND.
+service TemplateService {
+  // CreateTemplate stores a new template. The name must be unique for the
+  // API key (ALREADY_EXISTS otherwise).
+  rpc CreateTemplate(CreateTemplateRequest) returns (CreateTemplateResponse) {}
+
+  // GetTemplate returns a template with its content and assets.
+  rpc GetTemplate(GetTemplateRequest) returns (GetTemplateResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // ListTemplates returns the caller's templates ordered by name, without
+  // content, assets or sample data.
+  rpc ListTemplates(ListTemplatesRequest) returns (ListTemplatesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // UpdateTemplate replaces a template. When revision is set it must match
+  // the stored one, otherwise the call fails with ABORTED so a client never
+  // overwrites an edit it has not seen.
+  rpc UpdateTemplate(UpdateTemplateRequest) returns (UpdateTemplateResponse) {}
+
+  // DeleteTemplate removes a template. Jobs already submitted from it are
+  // not affected.
+  rpc DeleteTemplate(DeleteTemplateRequest) returns (DeleteTemplateResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // RenderTemplate fills a stored or an unsaved template with data and
+  // returns the resulting document without converting it, for previews and
+  // for checking a template before saving it.
+  rpc RenderTemplate(RenderTemplateRequest) returns (RenderTemplateResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // ConvertTemplate fills a stored template with data and converts it
+  // synchronously, like ConversionService.Convert.
+  rpc ConvertTemplate(ConvertTemplateRequest) returns (ConvertTemplateResponse) {}
+
+  // SubmitTemplateJob fills a stored template with data and queues the
+  // conversion. Follow the job with the ConversionService job RPCs.
+  rpc SubmitTemplateJob(SubmitTemplateJobRequest) returns (SubmitTemplateJobResponse) {}
+}
+
+// Template is a stored document with placeholders.
+message Template {
+  // Assigned by the server.
+  string id = 1;
+  // Unique per API key, 1 to 200 characters.
+  string name = 2;
+  // Up to 2000 characters.
+  string description = 3;
+  // INPUT_FORMAT_HTML or INPUT_FORMAT_MARKDOWN.
+  InputFormat format = 4;
+  // The template text, UTF-8.
+  bytes content = 5;
+  // Files the template references, such as a logo.
+  repeated Asset assets = 6;
+  // Default conversion options. Options given when converting are merged
+  // over these: fields set in the request win. Page and PDF defaults are
+  // left out when converting to a format they do not apply to.
+  Options options = 7;
+  // Example data for previews and for the UI's data editor.
+  google.protobuf.Struct sample_data = 8;
+  // Increases by one on every update; send it back in UpdateTemplate for
+  // optimistic locking. Assigned by the server.
+  int64 revision = 9;
+  google.protobuf.Timestamp create_time = 10;
+  google.protobuf.Timestamp update_time = 11;
+  // Total size of content and assets in bytes. Assigned by the server.
+  int64 size_bytes = 12;
+}
+
+message CreateTemplateRequest {
+  // id, revision, times and size_bytes are ignored.
+  Template template = 1;
+}
+
+message CreateTemplateResponse {
+  Template template = 1;
+}
+
+message GetTemplateRequest {
+  string id = 1;
+}
+
+message GetTemplateResponse {
+  Template template = 1;
+}
+
+message ListTemplatesRequest {
+  // At most this many templates; default 50, maximum 200.
+  int32 page_size = 1;
+  // next_page_token from the previous response.
+  string page_token = 2;
+}
+
+message ListTemplatesResponse {
+  // Without content, assets or sample data.
+  repeated Template templates = 1;
+  // Empty on the last page.
+  string next_page_token = 2;
+}
+
+message UpdateTemplateRequest {
+  // The whole template; id names the one to replace. When revision is not
+  // zero it must equal the stored revision.
+  Template template = 1;
+}
+
+message UpdateTemplateResponse {
+  Template template = 1;
+}
+
+message DeleteTemplateRequest {
+  string id = 1;
+}
+
+message DeleteTemplateResponse {}
+
+message RenderTemplateRequest {
+  oneof source {
+    // A stored template.
+    string id = 1;
+    // An unsaved template, such as one being edited.
+    Template template = 2;
+  }
+  // Values for the placeholders. Empty uses the template's sample_data.
+  google.protobuf.Struct data = 3;
+}
+
+message RenderTemplateResponse {
+  InputFormat format = 1;
+  // The filled-in document.
+  bytes content = 2;
+}
+
+message ConvertTemplateRequest {
+  string id = 1;
+  // Values for the placeholders. Empty uses the template's sample_data.
+  google.protobuf.Struct data = 2;
+  // Defaults to PDF.
+  OutputFormat output_format = 3;
+  // Merged over the template's options.
+  Options options = 4;
+}
+
+// ConvertTemplateResponse has the fields of ConvertResponse.
+message ConvertTemplateResponse {
+  bytes content = 1;
+  OutputFormat output_format = 2;
+  string mime_type = 3;
+  // Derived from the metadata title, else the template name.
+  string file_name = 4;
+  repeated string warnings = 5;
+  int64 duration_ms = 6;
+}
+
+message SubmitTemplateJobRequest {
+  string id = 1;
+  // Values for the placeholders. Empty uses the template's sample_data.
+  google.protobuf.Struct data = 2;
+  // Defaults to PDF.
+  OutputFormat output_format = 3;
+  // Merged over the template's options.
+  Options options = 4;
+  // As in SubmitJobRequest.
+  string webhook_url = 5;
+}
+
+message SubmitTemplateJobResponse {
+  Job job = 1;
+}

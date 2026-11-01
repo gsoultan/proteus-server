@@ -27,8 +27,8 @@ type Store struct {
 	ex   runtime.Executor
 }
 
-// Open connects to dsn and uses the jobs table in schema (default
-// "public"). With autoMigrate set it creates or updates the table (storm's
+// Open connects to dsn and uses the jobs and templates tables in schema (default
+// "public"). With autoMigrate set it creates or updates the tables (storm's
 // automigrate: advisory lock, one transaction, destructive steps refused);
 // otherwise the schema must already match.
 func Open(ctx context.Context, dsn, schema string, autoMigrate bool, logf func(string, ...any)) (*Store, error) {
@@ -57,9 +57,9 @@ func Open(ctx context.Context, dsn, schema string, autoMigrate bool, logf func(s
 	return New(pool), nil
 }
 
-// Migrate brings the jobs table in schema up to date with the model.
+// Migrate brings the jobs and templates tables in schema up to date with the models.
 func Migrate(ctx context.Context, pool *pgxpool.Pool, schema string, logf func(string, ...any)) error {
-	s, err := storm.Build(&model.Job{})
+	s, err := storm.Build(&model.Job{}, &model.Template{})
 	if err != nil {
 		return fmt.Errorf("pgstore: build schema: %w", err)
 	}

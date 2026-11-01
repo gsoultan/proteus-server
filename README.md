@@ -13,13 +13,14 @@ proteus-converter  the engine: HTML / Markdown in, PDF out
 proteus-server     this repo: gRPC API, auth, limits, jobs, metrics
 ```
 
-The API is defined in Protocol Buffers ([`proto/proteus/v1/conversion.proto`](proto/proteus/v1/conversion.proto))
-and served with [ConnectRPC](https://connectrpc.com) (connect-go v2). One
+The API is defined in Protocol Buffers ([`proto/proteus/v1/conversion.proto`](proto/proteus/v1/conversion.proto),
+[`proto/proteus/v1/template.proto`](proto/proteus/v1/template.proto)) and served with [ConnectRPC](https://connectrpc.com) (connect-go v2). One
 listener answers native **gRPC** (HTTP/2, h2c), **gRPC-Web** and the
 **Connect** protocol, so the same service works from Go/Java/Python gRPC
 clients and from browsers through `@connectrpc/connect-web`. There is no REST
-API. Jobs are queued in **PostgreSQL** through [storm](https://github.com/gsoultan/storm)
-when `PROTEUS_DATABASE_URL` is set, and in memory otherwise.
+API. Jobs and document templates are kept in **PostgreSQL** through
+[storm](https://github.com/gsoultan/storm) when `PROTEUS_DATABASE_URL` is set,
+and in memory otherwise.
 
 ## Quick start
 
@@ -62,8 +63,22 @@ gRPC probes and `grpc-health-probe`) and `grpc.reflection.v1`/`v1alpha`.
 Neither needs a key. Prometheus metrics are on a separate admin listener
 (`PROTEUS_ADMIN_ADDR`, `GET /metrics`); keep it off the public network.
 
-Send the key as `authorization: Bearer <key>` or `x-api-key: <key>`. A job is
-visible only to the key that created it; any other key gets `NOT_FOUND`.
+`proteus.v1.TemplateService` (see [Templates](#templates)):
+
+| RPC | Use |
+| --- | --- |
+| `CreateTemplate` | Store a template: name, description, input format, content, assets, default options and sample data. |
+| `GetTemplate` | A template with its content and assets. |
+| `ListTemplates` | The caller's templates by name, without content; paged with `page_size` and `page_token`. |
+| `UpdateTemplate` | Replace a template; send `revision` back to refuse overwriting someone else's edit. |
+| `DeleteTemplate` | Remove a template; jobs made from it are kept. |
+| `RenderTemplate` | Fill a stored or an unsaved template with data and return the document, for previews. |
+| `ConvertTemplate` | Fill a template with data and convert it synchronously, like `Convert`. |
+| `SubmitTemplateJob` | Fill a template with data and queue the conversion; follow it with the job RPCs. |
+
+Send the key as `authorization: Bearer <key>` or `x-api-key: <key>`. Jobs and
+templates are visible only to the key that created them; any other key gets
+`NOT_FOUND`.
 
 ### Requests
 
@@ -91,15 +106,56 @@ resource loader, so the security limits below apply to it unchanged.
 `ListFormats` reports the new routes on its own; requests for routes nobody
 registered get `INVALID_ARGUMENT`.
 
+### Templates
+
+A template is a stored HTML or Markdown document with placeholders in
+[Go template](https://pkg.go.dev/text/template) syntax, filled from JSON
+`data` (a `google.protobuf.Struct`) when it is rendered:
+
+```html
+<h1>Invoice {{.number}}</h1>
+<p>{{.customer.name}}, {{date "2 January 2006" .issued}}</p>
+<table>
+  {{range $i, $item := .items}}
+  <tr><td>{{$i}}</td><td>{{$item.sku}}</td><td>{{number 2 $item.price}}</td></tr>
+  {{else}}<tr><td>No items</td></tr>{{end}}
+</table>
+{{if gt .total 1000.0}}<p>Large order</p>{{end}}
+```
+
+- Values are escaped for where they land (text, attribute, URL, CSS), so data
+  can never add markup or scripts. Markdown templates are escaped as HTML,
+  which is right everywhere except inside code blocks.
+- Missing keys render as nothing; a field of a missing object is an error.
+- Numbers are decimals: compare with `3.0`, not `3`.
+- Functions: `upper`, `lower`, `trim`, `default "n/a" .x`, `join ", " .list`,
+  `date "layout" .isoDate`, `number 2 .x` (fixed decimals, thousands
+  separators), plus the built-ins (`len`, `index`, `eq`, `lt`, `and`, `printf`…).
+- Not allowed, so one render's work stays bounded: `{{define}}`,
+  `{{template}}` and `{{block}}`, more than three nested `{{range}}`, and
+  `{{range}}` over a number. Loops over the data share a budget of a million
+  steps, objects may have up to 500 keys, and rendering stops after
+  `PROTEUS_TEMPLATE_RENDER_TIMEOUT`.
+
+A template's `options` are defaults: options in a convert or job request are
+merged over them, field by field. Page and PDF defaults are dropped when the
+output format does not use them. Templates are checked when saved (syntax,
+assets, options, and a trial render with `sample_data`), and names are unique
+per key. A filled-in template is an ordinary document, so it converts to every
+output format `ListFormats` lists for its input format, and a queued job keeps
+the document it was given even if the template changes later.
+
 ### Errors
 
 | Code | When |
 | --- | --- |
 | `UNAUTHENTICATED` | Missing or unknown API key. |
-| `INVALID_ARGUMENT` | Invalid input, a blocked resource, or output over the size limit. |
-| `RESOURCE_EXHAUSTED` | Rate limit hit, every conversion slot busy, the job queue full, or a message over the size limit. Retry with backoff. |
+| `INVALID_ARGUMENT` | Invalid input, a blocked resource, output over the size limit, or a template that does not parse or render with the data. |
+| `RESOURCE_EXHAUSTED` | Rate limit hit, every conversion slot busy, the job queue full, the key's template limit reached, or a message over the size limit. Retry with backoff. |
 | `DEADLINE_EXCEEDED` | Conversion exceeded `PROTEUS_TIMEOUT`. |
-| `NOT_FOUND` | Unknown, expired or someone else's job. |
+| `NOT_FOUND` | Unknown, expired or someone else's job or template. |
+| `ALREADY_EXISTS` | The key already has a template with that name. |
+| `ABORTED` | `UpdateTemplate` with a stale `revision`; reload and retry. |
 | `FAILED_PRECONDITION` | Result or delete asked for before the job finished, or the job failed. |
 | `UNAVAILABLE` | The server is shutting down. |
 
@@ -123,12 +179,14 @@ Reject stale timestamps on your side. Delivery makes up to three attempts,
 retrying on network errors, `429` and `5xx`. Webhook URLs pass the same SSRF
 checks as resources.
 
-## Jobs and Postgres
+## Jobs, templates and Postgres
 
-Without a database, jobs live in memory on the instance that accepted them and
-are lost on restart. With `PROTEUS_DATABASE_URL`, every instance shares one
-`jobs` table (in `PROTEUS_DATABASE_SCHEMA`, default `public`), so any instance
-can answer any job:
+Without a database, jobs and templates live in memory on the instance that
+accepted them and are lost on restart. With `PROTEUS_DATABASE_URL`, every
+instance shares a `jobs` and a `templates` table (in `PROTEUS_DATABASE_SCHEMA`,
+default `public`). Templates are unique on key and name, listing reads a
+projection without the template body, and an update only applies if the
+revision it read is still current. Any instance can answer any job:
 
 - A worker takes a conversion slot, then claims the oldest queued job with one
   `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)`. Two workers never
@@ -204,14 +262,17 @@ has no page-count or memory budget yet.
 | `PROTEUS_MAX_TOTAL_RESOURCE_BYTES` | `50MiB` | All resources of one document. |
 | `PROTEUS_SYSTEM_FONTS` | `true` | Use the OS font directories (scanned once per process). |
 | `PROTEUS_FONT_DIRS` | | Extra font directories. The engine rescans these on every conversion, so prefer a system directory. |
-| `PROTEUS_DATABASE_URL` | | Postgres URL for the shared job queue; empty keeps jobs in memory. |
-| `PROTEUS_DATABASE_SCHEMA` | `public` | Schema holding the `jobs` table. |
-| `PROTEUS_AUTO_MIGRATE` | `true` | Create or update the `jobs` table at startup. |
+| `PROTEUS_DATABASE_URL` | | Postgres URL for jobs and templates; empty keeps both in memory. |
+| `PROTEUS_DATABASE_SCHEMA` | `public` | Schema holding the `jobs` and `templates` tables. |
+| `PROTEUS_AUTO_MIGRATE` | `true` | Create or update the tables at startup. |
 | `PROTEUS_JOB_WORKERS` | half of workers | Async workers per instance. |
 | `PROTEUS_JOB_QUEUE` | `100` | Queued jobs before `SubmitJob` answers `RESOURCE_EXHAUSTED`. |
 | `PROTEUS_JOB_TTL` | `1h` | How long finished jobs and results are kept. |
 | `PROTEUS_MAX_JOBS` | `1000` | Jobs held by the memory store. |
 | `PROTEUS_WEBHOOK_SECRET` | | HMAC key (32+ characters); enables webhooks. |
+| `PROTEUS_MAX_TEMPLATES` | `500` | Templates per API key. |
+| `PROTEUS_MAX_TEMPLATE_BYTES` | `10MiB` | Content plus assets of one template. |
+| `PROTEUS_TEMPLATE_RENDER_TIMEOUT` | `5s` | Filling one template with data. |
 | `PROTEUS_SHUTDOWN_TIMEOUT` | `30s` | Drain time on `SIGTERM`. |
 | `PROTEUS_LOG_LEVEL` / `PROTEUS_LOG_FORMAT` | `info` / `json` | `debug`…`error`; `json` or `text`. |
 
@@ -258,11 +319,11 @@ it is stale.
 ## Roadmap
 
 1. Done: gRPC API (ConnectRPC v2), safe resource loader, limits, API keys
-   with rate limits, metrics, Docker, Postgres job queue on storm, and a
-   converter registry keyed by input and output format.
+   with rate limits, metrics, Docker, Postgres job queue on storm, a
+   converter registry keyed by input and output format, and stored document
+   templates filled from JSON data.
 2. Results in object storage behind presigned URLs instead of `bytea`, and
    CORS for browser clients.
-3. Header and footer templates, PDF/A, templates (HTML plus JSON data),
-   batch merging.
+3. Header and footer templates, PDF/A, batch merging.
 4. More formats through the registry: output such as DOCX, PNG and HTML,
    and DOCX input, as the engine (or another converter) supports them.
