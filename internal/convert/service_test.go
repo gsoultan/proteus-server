@@ -1,8 +1,10 @@
 package convert
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	proteusv1 "github.com/gsoultan/proteus-server/gen/proteus/v1"
 	"testing"
 	"time"
 )
@@ -86,9 +88,30 @@ func TestRealEngineMarkdown(t *testing.T) {
 	}
 }
 
+func TestRealEngineXLSX(t *testing.T) {
+	s := NewService(Settings{Workers: 1, SystemFonts: false})
+	res, err := s.Run(context.Background(), &Request{Format: Markdown, Output: XLSX, Source: []byte("# Hi\n\n| a | b |\n|---|---|\n| 1 | 2 |\n")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(res.Content, []byte("PK\x03\x04")) || !bytes.Contains(res.Content, []byte("xl/workbook.xml")) {
+		t.Fatalf("not an xlsx package (%d bytes)", len(res.Content))
+	}
+	off := false
+	res2, err := s.Run(context.Background(), &Request{Format: HTML, Output: XLSX, Source: []byte("<table><tr><td>1</td></tr></table>"),
+		Options: &proteusv1.Options{Spreadsheet: &proteusv1.SpreadsheetOptions{DetectNumbers: &off}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(res2.Content, []byte("PK\x03\x04")) {
+		t.Fatal("not an xlsx package")
+	}
+}
+
 func TestRegistry(t *testing.T) {
 	s := NewService(Settings{Workers: 1})
-	if got := s.Routes(); len(got) != 2 || got[0] != (Route{HTML, PDF}) || got[1] != (Route{Markdown, PDF}) {
+	if got := s.Routes(); len(got) != 4 || got[0] != (Route{HTML, PDF}) || got[1] != (Route{HTML, XLSX}) ||
+		got[2] != (Route{Markdown, PDF}) || got[3] != (Route{Markdown, XLSX}) {
 		t.Fatalf("default routes %v", got)
 	}
 	var bre *BadRequestError

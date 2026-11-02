@@ -197,7 +197,7 @@ func (s *Service) run(ctx context.Context, req *Request) (*Result, error) {
 		warnings []string
 	)
 	in := &Input{
-		Format: req.Format, Source: src, BaseURL: base, Loader: ld, AllowRemote: allowRemote, Options: req.Options,
+		Format: req.Format, Output: req.Output, Source: src, BaseURL: base, Loader: ld, AllowRemote: allowRemote, Options: req.Options,
 		Warn: func(msg string) {
 			mu.Lock()
 			defer mu.Unlock()

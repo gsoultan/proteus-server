@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/hmac"
@@ -321,18 +322,89 @@ func TestListFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := map[proteusv1.InputFormat]*proteusv1.Conversion{}
+	got := map[[2]int32]*proteusv1.Conversion{}
 	for _, c := range res.GetConversions() {
-		got[c.GetInputFormat()] = c
+		got[[2]int32{int32(c.GetInputFormat()), int32(c.GetOutputFormat())}] = c
 	}
 	for _, in := range []proteusv1.InputFormat{proteusv1.InputFormat_INPUT_FORMAT_HTML, proteusv1.InputFormat_INPUT_FORMAT_MARKDOWN} {
-		c := got[in]
+		c := got[[2]int32{int32(in), int32(proteusv1.OutputFormat_OUTPUT_FORMAT_PDF)}]
 		if c.GetOutputFormat() != proteusv1.OutputFormat_OUTPUT_FORMAT_PDF || c.GetMimeType() != "application/pdf" || c.GetFileExtension() != ".pdf" {
 			t.Errorf("%v: %v", in, c)
 		}
 	}
-	if len(res.GetConversions()) != 2 {
+	if len(res.GetConversions()) != 4 {
 		t.Errorf("conversions %v", res.GetConversions())
+	}
+	var xlsx int
+	for _, c := range res.GetConversions() {
+		if c.GetOutputFormat() == proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX {
+			xlsx++
+			if c.GetMimeType() != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || c.GetFileExtension() != ".xlsx" {
+				t.Errorf("xlsx conversion %v", c)
+			}
+		}
+	}
+	if xlsx != 2 {
+		t.Errorf("%d xlsx conversions", xlsx)
+	}
+}
+
+func TestConvertToXLSX(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	ctx := context.Background()
+	c := e.grpcClient(keyA)
+	res, err := c.Convert(ctx, &proteusv1.ConvertRequest{
+		Document:     html("<title>Sales 2026</title><table><tr><th>Item</th><th>Qty</th></tr><tr><td>Bolt</td><td>1,200</td></tr></table>"),
+		OutputFormat: proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX,
+		Options:      &proteusv1.Options{Metadata: &proteusv1.Metadata{Title: "Sales 2026", Author: "Gembit"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(res.GetContent(), []byte("PK\x03\x04")) {
+		t.Fatalf("content is not a zip package")
+	}
+	zr, err := zip.NewReader(bytes.NewReader(res.GetContent()), int64(len(res.GetContent())))
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]bool{}
+	for _, f := range zr.File {
+		names[f.Name] = true
+	}
+	for _, want := range []string{"[Content_Types].xml", "xl/workbook.xml", "xl/worksheets/sheet1.xml", "xl/sharedStrings.xml", "xl/styles.xml"} {
+		if !names[want] {
+			t.Errorf("missing %s in workbook", want)
+		}
+	}
+	if res.GetFileName() != "Sales-2026.xlsx" || res.GetMimeType() != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+		res.GetOutputFormat() != proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX {
+		t.Errorf("file name %q, mime type %q, format %v", res.GetFileName(), res.GetMimeType(), res.GetOutputFormat())
+	}
+	// Options of other formats are refused for XLSX, and spreadsheet options for PDF.
+	_, err = c.Convert(ctx, &proteusv1.ConvertRequest{Document: html("x"), OutputFormat: proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX,
+		Options: &proteusv1.Options{Page: &proteusv1.PageOptions{Landscape: true}}})
+	expectCode(t, err, connect.CodeInvalidArgument)
+	_, err = c.Convert(ctx, &proteusv1.ConvertRequest{Document: html("x"),
+		Options: &proteusv1.Options{Spreadsheet: &proteusv1.SpreadsheetOptions{}}})
+	expectCode(t, err, connect.CodeInvalidArgument)
+	// Async jobs carry the format too.
+	sub, err := c.SubmitJob(ctx, &proteusv1.SubmitJobRequest{Document: md("| a |\n|---|\n| 1 |\n"), OutputFormat: proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX})
+	if err != nil {
+		t.Fatal(err)
+	}
+	job := sub.GetJob()
+	for i := 0; i < 200 && job.GetStatus() != proteusv1.JobStatus_JOB_STATUS_SUCCEEDED && job.GetStatus() != proteusv1.JobStatus_JOB_STATUS_FAILED; i++ {
+		time.Sleep(20 * time.Millisecond)
+		got, err := c.GetJob(ctx, &proteusv1.GetJobRequest{Id: job.GetId()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		job = got.GetJob()
+	}
+	if job.GetStatus() != proteusv1.JobStatus_JOB_STATUS_SUCCEEDED || job.GetOutputFormat() != proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX ||
+		!strings.HasSuffix(job.GetFileName(), ".xlsx") {
+		t.Errorf("job = %v", job)
 	}
 }
 

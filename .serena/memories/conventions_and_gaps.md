@@ -2,8 +2,9 @@
 
 - Every engine call goes through convert.Service.Run with the server loader
   (WithResourceLoader + WithLocalFiles(false)); never let a request reach the default engine loader.
-- Output formats: proto OutputFormat + InputFormat enums; Options split into common fields,
-  options.page (paged formats) and options.pdf (PDF only). Responses and jobs carry
+- Output formats: proto OutputFormat (PDF, XLSX) + InputFormat enums; Options split into common
+  fields, options.page (paged formats), options.pdf (PDF only) and options.spreadsheet (XLSX
+  only); validateOptions refuses options that do not fit the target. Responses and jobs carry
   output_format, mime_type and file_name. To add a format: proto enum, target in
   convert/formats.go, register a Converter per input; ListFormats picks it up. Converters must
   load resources only through Input.Loader.
@@ -31,5 +32,6 @@ Known gaps / next steps:
 - Results in bytea; plan object storage with presigned URLs.
 - Engine checks ctx only between stages; no page-count or memory budget.
 - Engine rescans Config.FontDirs on every conversion (prefer system font dirs).
-- Not yet: header/footer, PDF/A, templates, batch merge, DOCX, tracing.
+- Not yet: header/footer, PDF/A, templates, batch merge, DOCX, tracing. XLSX file names still
+  come only from options.metadata.title (FileName), not from the document <title>.
 - Docker image build is verified in CI only (no Docker daemon in the dev container).

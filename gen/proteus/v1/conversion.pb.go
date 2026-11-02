@@ -79,6 +79,9 @@ type OutputFormat int32
 const (
 	OutputFormat_OUTPUT_FORMAT_UNSPECIFIED OutputFormat = 0 // PDF
 	OutputFormat_OUTPUT_FORMAT_PDF         OutputFormat = 1
+	// Excel workbook: every table of the document becomes a worksheet with
+	// its styles, merged cells, typed numbers, links and images.
+	OutputFormat_OUTPUT_FORMAT_XLSX OutputFormat = 2
 )
 
 // Enum value maps for OutputFormat.
@@ -86,10 +89,12 @@ var (
 	OutputFormat_name = map[int32]string{
 		0: "OUTPUT_FORMAT_UNSPECIFIED",
 		1: "OUTPUT_FORMAT_PDF",
+		2: "OUTPUT_FORMAT_XLSX",
 	}
 	OutputFormat_value = map[string]int32{
 		"OUTPUT_FORMAT_UNSPECIFIED": 0,
 		"OUTPUT_FORMAT_PDF":         1,
+		"OUTPUT_FORMAT_XLSX":        2,
 	}
 )
 
@@ -743,8 +748,9 @@ func (x *Metadata) GetLanguage() string {
 }
 
 // Options tune the conversion. They apply to every output format, except
-// page, which applies to paged formats, and pdf, which applies only to PDF
-// output and is refused for other formats. Fonts and resource access are
+// page, which applies to paged formats, pdf, which applies only to PDF
+// output, and spreadsheet, which applies only to XLSX output; options that
+// do not fit the output format are refused. Fonts and resource access are
 // decided by the server.
 type Options struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -754,9 +760,10 @@ type Options struct {
 	Metadata   *Metadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	// Fetch http(s) stylesheets, images and fonts. Needs remote resources
 	// enabled on the server; internal addresses are always refused.
-	AllowRemote   bool         `protobuf:"varint,4,opt,name=allow_remote,json=allowRemote,proto3" json:"allow_remote,omitempty"`
-	Page          *PageOptions `protobuf:"bytes,5,opt,name=page,proto3" json:"page,omitempty"`
-	Pdf           *PdfOptions  `protobuf:"bytes,6,opt,name=pdf,proto3" json:"pdf,omitempty"`
+	AllowRemote   bool                `protobuf:"varint,4,opt,name=allow_remote,json=allowRemote,proto3" json:"allow_remote,omitempty"`
+	Page          *PageOptions        `protobuf:"bytes,5,opt,name=page,proto3" json:"page,omitempty"`
+	Pdf           *PdfOptions         `protobuf:"bytes,6,opt,name=pdf,proto3" json:"pdf,omitempty"`
+	Spreadsheet   *SpreadsheetOptions `protobuf:"bytes,7,opt,name=spreadsheet,proto3" json:"spreadsheet,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -829,6 +836,13 @@ func (x *Options) GetPage() *PageOptions {
 func (x *Options) GetPdf() *PdfOptions {
 	if x != nil {
 		return x.Pdf
+	}
+	return nil
+}
+
+func (x *Options) GetSpreadsheet() *SpreadsheetOptions {
+	if x != nil {
+		return x.Spreadsheet
 	}
 	return nil
 }
@@ -958,6 +972,54 @@ func (x *PdfOptions) GetTagged() bool {
 	return false
 }
 
+// SpreadsheetOptions apply only to XLSX output.
+type SpreadsheetOptions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Store numeric-looking cell text (numbers, percentages, currency amounts,
+	// ISO dates) as typed cells with a matching number format; on by default.
+	// Off, every cell is text unless a data-type attribute says otherwise.
+	DetectNumbers *bool `protobuf:"varint,1,opt,name=detect_numbers,json=detectNumbers,proto3,oneof" json:"detect_numbers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SpreadsheetOptions) Reset() {
+	*x = SpreadsheetOptions{}
+	mi := &file_proteus_v1_conversion_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SpreadsheetOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SpreadsheetOptions) ProtoMessage() {}
+
+func (x *SpreadsheetOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_conversion_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SpreadsheetOptions.ProtoReflect.Descriptor instead.
+func (*SpreadsheetOptions) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SpreadsheetOptions) GetDetectNumbers() bool {
+	if x != nil && x.DetectNumbers != nil {
+		return *x.DetectNumbers
+	}
+	return false
+}
+
 type ConvertRequest struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Document *Document              `protobuf:"bytes,1,opt,name=document,proto3" json:"document,omitempty"`
@@ -970,7 +1032,7 @@ type ConvertRequest struct {
 
 func (x *ConvertRequest) Reset() {
 	*x = ConvertRequest{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[10]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -982,7 +1044,7 @@ func (x *ConvertRequest) String() string {
 func (*ConvertRequest) ProtoMessage() {}
 
 func (x *ConvertRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[10]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -995,7 +1057,7 @@ func (x *ConvertRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertRequest.ProtoReflect.Descriptor instead.
 func (*ConvertRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{10}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ConvertRequest) GetDocument() *Document {
@@ -1038,7 +1100,7 @@ type ConvertResponse struct {
 
 func (x *ConvertResponse) Reset() {
 	*x = ConvertResponse{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[11]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1050,7 +1112,7 @@ func (x *ConvertResponse) String() string {
 func (*ConvertResponse) ProtoMessage() {}
 
 func (x *ConvertResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[11]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1063,7 +1125,7 @@ func (x *ConvertResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertResponse.ProtoReflect.Descriptor instead.
 func (*ConvertResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{11}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ConvertResponse) GetContent() []byte {
@@ -1123,7 +1185,7 @@ type SubmitJobRequest struct {
 
 func (x *SubmitJobRequest) Reset() {
 	*x = SubmitJobRequest{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[12]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1135,7 +1197,7 @@ func (x *SubmitJobRequest) String() string {
 func (*SubmitJobRequest) ProtoMessage() {}
 
 func (x *SubmitJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[12]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1148,7 +1210,7 @@ func (x *SubmitJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitJobRequest.ProtoReflect.Descriptor instead.
 func (*SubmitJobRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{12}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SubmitJobRequest) GetDocument() *Document {
@@ -1188,7 +1250,7 @@ type SubmitJobResponse struct {
 
 func (x *SubmitJobResponse) Reset() {
 	*x = SubmitJobResponse{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[13]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1200,7 +1262,7 @@ func (x *SubmitJobResponse) String() string {
 func (*SubmitJobResponse) ProtoMessage() {}
 
 func (x *SubmitJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[13]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1213,7 +1275,7 @@ func (x *SubmitJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitJobResponse.ProtoReflect.Descriptor instead.
 func (*SubmitJobResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{13}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SubmitJobResponse) GetJob() *Job {
@@ -1250,7 +1312,7 @@ type Job struct {
 
 func (x *Job) Reset() {
 	*x = Job{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[14]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1262,7 +1324,7 @@ func (x *Job) String() string {
 func (*Job) ProtoMessage() {}
 
 func (x *Job) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[14]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1275,7 +1337,7 @@ func (x *Job) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Job.ProtoReflect.Descriptor instead.
 func (*Job) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{14}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Job) GetId() string {
@@ -1378,7 +1440,7 @@ type GetJobRequest struct {
 
 func (x *GetJobRequest) Reset() {
 	*x = GetJobRequest{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[15]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1390,7 +1452,7 @@ func (x *GetJobRequest) String() string {
 func (*GetJobRequest) ProtoMessage() {}
 
 func (x *GetJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[15]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1403,7 +1465,7 @@ func (x *GetJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobRequest.ProtoReflect.Descriptor instead.
 func (*GetJobRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{15}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetJobRequest) GetId() string {
@@ -1422,7 +1484,7 @@ type GetJobResponse struct {
 
 func (x *GetJobResponse) Reset() {
 	*x = GetJobResponse{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[16]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1434,7 +1496,7 @@ func (x *GetJobResponse) String() string {
 func (*GetJobResponse) ProtoMessage() {}
 
 func (x *GetJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[16]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1447,7 +1509,7 @@ func (x *GetJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobResponse.ProtoReflect.Descriptor instead.
 func (*GetJobResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{16}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetJobResponse) GetJob() *Job {
@@ -1466,7 +1528,7 @@ type DownloadJobResultRequest struct {
 
 func (x *DownloadJobResultRequest) Reset() {
 	*x = DownloadJobResultRequest{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[17]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1478,7 +1540,7 @@ func (x *DownloadJobResultRequest) String() string {
 func (*DownloadJobResultRequest) ProtoMessage() {}
 
 func (x *DownloadJobResultRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[17]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1491,7 +1553,7 @@ func (x *DownloadJobResultRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadJobResultRequest.ProtoReflect.Descriptor instead.
 func (*DownloadJobResultRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{17}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *DownloadJobResultRequest) GetId() string {
@@ -1511,7 +1573,7 @@ type DownloadJobResultResponse struct {
 
 func (x *DownloadJobResultResponse) Reset() {
 	*x = DownloadJobResultResponse{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[18]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1523,7 +1585,7 @@ func (x *DownloadJobResultResponse) String() string {
 func (*DownloadJobResultResponse) ProtoMessage() {}
 
 func (x *DownloadJobResultResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[18]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1536,7 +1598,7 @@ func (x *DownloadJobResultResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadJobResultResponse.ProtoReflect.Descriptor instead.
 func (*DownloadJobResultResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{18}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *DownloadJobResultResponse) GetChunk() []byte {
@@ -1555,7 +1617,7 @@ type DeleteJobRequest struct {
 
 func (x *DeleteJobRequest) Reset() {
 	*x = DeleteJobRequest{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[19]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1567,7 +1629,7 @@ func (x *DeleteJobRequest) String() string {
 func (*DeleteJobRequest) ProtoMessage() {}
 
 func (x *DeleteJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[19]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1580,7 +1642,7 @@ func (x *DeleteJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteJobRequest.ProtoReflect.Descriptor instead.
 func (*DeleteJobRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{19}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DeleteJobRequest) GetId() string {
@@ -1598,7 +1660,7 @@ type DeleteJobResponse struct {
 
 func (x *DeleteJobResponse) Reset() {
 	*x = DeleteJobResponse{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[20]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1610,7 +1672,7 @@ func (x *DeleteJobResponse) String() string {
 func (*DeleteJobResponse) ProtoMessage() {}
 
 func (x *DeleteJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[20]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1623,7 +1685,7 @@ func (x *DeleteJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteJobResponse.ProtoReflect.Descriptor instead.
 func (*DeleteJobResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{20}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{21}
 }
 
 var File_proteus_v1_conversion_proto protoreflect.FileDescriptor
@@ -1660,7 +1722,7 @@ const file_proteus_v1_conversion_proto_rawDesc = "" +
 	"\x06author\x18\x02 \x01(\tR\x06author\x12\x18\n" +
 	"\asubject\x18\x03 \x01(\tR\asubject\x12\x1a\n" +
 	"\bkeywords\x18\x04 \x01(\tR\bkeywords\x12\x1a\n" +
-	"\blanguage\x18\x05 \x01(\tR\blanguage\"\x8b\x02\n" +
+	"\blanguage\x18\x05 \x01(\tR\blanguage\"\xcd\x02\n" +
 	"\aOptions\x12\x1e\n" +
 	"\n" +
 	"stylesheet\x18\x01 \x01(\tR\n" +
@@ -1670,7 +1732,8 @@ const file_proteus_v1_conversion_proto_rawDesc = "" +
 	"\bmetadata\x18\x03 \x01(\v2\x14.proteus.v1.MetadataR\bmetadata\x12!\n" +
 	"\fallow_remote\x18\x04 \x01(\bR\vallowRemote\x12+\n" +
 	"\x04page\x18\x05 \x01(\v2\x17.proteus.v1.PageOptionsR\x04page\x12(\n" +
-	"\x03pdf\x18\x06 \x01(\v2\x16.proteus.v1.PdfOptionsR\x03pdf\"\xb4\x01\n" +
+	"\x03pdf\x18\x06 \x01(\v2\x16.proteus.v1.PdfOptionsR\x03pdf\x12@\n" +
+	"\vspreadsheet\x18\a \x01(\v2\x1e.proteus.v1.SpreadsheetOptionsR\vspreadsheet\"\xb4\x01\n" +
 	"\vPageOptions\x12(\n" +
 	"\x04size\x18\x01 \x01(\x0e2\x14.proteus.v1.PageSizeR\x04size\x12\x1c\n" +
 	"\tlandscape\x18\x02 \x01(\bR\tlandscape\x12 \n" +
@@ -1683,7 +1746,10 @@ const file_proteus_v1_conversion_proto_rawDesc = "" +
 	"\aoutline\x18\x01 \x01(\bH\x00R\aoutline\x88\x01\x01\x12\x16\n" +
 	"\x06tagged\x18\x02 \x01(\bR\x06taggedB\n" +
 	"\n" +
-	"\b_outline\"\xb0\x01\n" +
+	"\b_outline\"S\n" +
+	"\x12SpreadsheetOptions\x12*\n" +
+	"\x0edetect_numbers\x18\x01 \x01(\bH\x00R\rdetectNumbers\x88\x01\x01B\x11\n" +
+	"\x0f_detect_numbers\"\xb0\x01\n" +
 	"\x0eConvertRequest\x120\n" +
 	"\bdocument\x18\x01 \x01(\v2\x14.proteus.v1.DocumentR\bdocument\x12=\n" +
 	"\routput_format\x18\x02 \x01(\x0e2\x18.proteus.v1.OutputFormatR\foutputFormat\x12-\n" +
@@ -1737,10 +1803,11 @@ const file_proteus_v1_conversion_proto_rawDesc = "" +
 	"\vInputFormat\x12\x1c\n" +
 	"\x18INPUT_FORMAT_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11INPUT_FORMAT_HTML\x10\x01\x12\x19\n" +
-	"\x15INPUT_FORMAT_MARKDOWN\x10\x02*D\n" +
+	"\x15INPUT_FORMAT_MARKDOWN\x10\x02*\\\n" +
 	"\fOutputFormat\x12\x1d\n" +
 	"\x19OUTPUT_FORMAT_UNSPECIFIED\x10\x00\x12\x15\n" +
-	"\x11OUTPUT_FORMAT_PDF\x10\x01*\x86\x01\n" +
+	"\x11OUTPUT_FORMAT_PDF\x10\x01\x12\x16\n" +
+	"\x12OUTPUT_FORMAT_XLSX\x10\x02*\x86\x01\n" +
 	"\bPageSize\x12\x19\n" +
 	"\x15PAGE_SIZE_UNSPECIFIED\x10\x00\x12\x10\n" +
 	"\fPAGE_SIZE_A3\x10\x01\x12\x10\n" +
@@ -1779,7 +1846,7 @@ func file_proteus_v1_conversion_proto_rawDescGZIP() []byte {
 }
 
 var file_proteus_v1_conversion_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_proteus_v1_conversion_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_proteus_v1_conversion_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_proteus_v1_conversion_proto_goTypes = []any{
 	(InputFormat)(0),                  // 0: proteus.v1.InputFormat
 	(OutputFormat)(0),                 // 1: proteus.v1.OutputFormat
@@ -1796,18 +1863,19 @@ var file_proteus_v1_conversion_proto_goTypes = []any{
 	(*Options)(nil),                   // 12: proteus.v1.Options
 	(*PageOptions)(nil),               // 13: proteus.v1.PageOptions
 	(*PdfOptions)(nil),                // 14: proteus.v1.PdfOptions
-	(*ConvertRequest)(nil),            // 15: proteus.v1.ConvertRequest
-	(*ConvertResponse)(nil),           // 16: proteus.v1.ConvertResponse
-	(*SubmitJobRequest)(nil),          // 17: proteus.v1.SubmitJobRequest
-	(*SubmitJobResponse)(nil),         // 18: proteus.v1.SubmitJobResponse
-	(*Job)(nil),                       // 19: proteus.v1.Job
-	(*GetJobRequest)(nil),             // 20: proteus.v1.GetJobRequest
-	(*GetJobResponse)(nil),            // 21: proteus.v1.GetJobResponse
-	(*DownloadJobResultRequest)(nil),  // 22: proteus.v1.DownloadJobResultRequest
-	(*DownloadJobResultResponse)(nil), // 23: proteus.v1.DownloadJobResultResponse
-	(*DeleteJobRequest)(nil),          // 24: proteus.v1.DeleteJobRequest
-	(*DeleteJobResponse)(nil),         // 25: proteus.v1.DeleteJobResponse
-	(*timestamppb.Timestamp)(nil),     // 26: google.protobuf.Timestamp
+	(*SpreadsheetOptions)(nil),        // 15: proteus.v1.SpreadsheetOptions
+	(*ConvertRequest)(nil),            // 16: proteus.v1.ConvertRequest
+	(*ConvertResponse)(nil),           // 17: proteus.v1.ConvertResponse
+	(*SubmitJobRequest)(nil),          // 18: proteus.v1.SubmitJobRequest
+	(*SubmitJobResponse)(nil),         // 19: proteus.v1.SubmitJobResponse
+	(*Job)(nil),                       // 20: proteus.v1.Job
+	(*GetJobRequest)(nil),             // 21: proteus.v1.GetJobRequest
+	(*GetJobResponse)(nil),            // 22: proteus.v1.GetJobResponse
+	(*DownloadJobResultRequest)(nil),  // 23: proteus.v1.DownloadJobResultRequest
+	(*DownloadJobResultResponse)(nil), // 24: proteus.v1.DownloadJobResultResponse
+	(*DeleteJobRequest)(nil),          // 25: proteus.v1.DeleteJobRequest
+	(*DeleteJobResponse)(nil),         // 26: proteus.v1.DeleteJobResponse
+	(*timestamppb.Timestamp)(nil),     // 27: google.protobuf.Timestamp
 }
 var file_proteus_v1_conversion_proto_depIdxs = []int32{
 	0,  // 0: proteus.v1.Conversion.input_format:type_name -> proteus.v1.InputFormat
@@ -1819,41 +1887,42 @@ var file_proteus_v1_conversion_proto_depIdxs = []int32{
 	11, // 6: proteus.v1.Options.metadata:type_name -> proteus.v1.Metadata
 	13, // 7: proteus.v1.Options.page:type_name -> proteus.v1.PageOptions
 	14, // 8: proteus.v1.Options.pdf:type_name -> proteus.v1.PdfOptions
-	2,  // 9: proteus.v1.PageOptions.size:type_name -> proteus.v1.PageSize
-	10, // 10: proteus.v1.PageOptions.margins:type_name -> proteus.v1.Margins
-	9,  // 11: proteus.v1.ConvertRequest.document:type_name -> proteus.v1.Document
-	1,  // 12: proteus.v1.ConvertRequest.output_format:type_name -> proteus.v1.OutputFormat
-	12, // 13: proteus.v1.ConvertRequest.options:type_name -> proteus.v1.Options
-	1,  // 14: proteus.v1.ConvertResponse.output_format:type_name -> proteus.v1.OutputFormat
-	9,  // 15: proteus.v1.SubmitJobRequest.document:type_name -> proteus.v1.Document
-	1,  // 16: proteus.v1.SubmitJobRequest.output_format:type_name -> proteus.v1.OutputFormat
-	12, // 17: proteus.v1.SubmitJobRequest.options:type_name -> proteus.v1.Options
-	19, // 18: proteus.v1.SubmitJobResponse.job:type_name -> proteus.v1.Job
-	4,  // 19: proteus.v1.Job.status:type_name -> proteus.v1.JobStatus
-	0,  // 20: proteus.v1.Job.input_format:type_name -> proteus.v1.InputFormat
-	26, // 21: proteus.v1.Job.create_time:type_name -> google.protobuf.Timestamp
-	26, // 22: proteus.v1.Job.start_time:type_name -> google.protobuf.Timestamp
-	26, // 23: proteus.v1.Job.finish_time:type_name -> google.protobuf.Timestamp
-	26, // 24: proteus.v1.Job.expire_time:type_name -> google.protobuf.Timestamp
-	1,  // 25: proteus.v1.Job.output_format:type_name -> proteus.v1.OutputFormat
-	19, // 26: proteus.v1.GetJobResponse.job:type_name -> proteus.v1.Job
-	6,  // 27: proteus.v1.ConversionService.ListFormats:input_type -> proteus.v1.ListFormatsRequest
-	15, // 28: proteus.v1.ConversionService.Convert:input_type -> proteus.v1.ConvertRequest
-	17, // 29: proteus.v1.ConversionService.SubmitJob:input_type -> proteus.v1.SubmitJobRequest
-	20, // 30: proteus.v1.ConversionService.GetJob:input_type -> proteus.v1.GetJobRequest
-	22, // 31: proteus.v1.ConversionService.DownloadJobResult:input_type -> proteus.v1.DownloadJobResultRequest
-	24, // 32: proteus.v1.ConversionService.DeleteJob:input_type -> proteus.v1.DeleteJobRequest
-	7,  // 33: proteus.v1.ConversionService.ListFormats:output_type -> proteus.v1.ListFormatsResponse
-	16, // 34: proteus.v1.ConversionService.Convert:output_type -> proteus.v1.ConvertResponse
-	18, // 35: proteus.v1.ConversionService.SubmitJob:output_type -> proteus.v1.SubmitJobResponse
-	21, // 36: proteus.v1.ConversionService.GetJob:output_type -> proteus.v1.GetJobResponse
-	23, // 37: proteus.v1.ConversionService.DownloadJobResult:output_type -> proteus.v1.DownloadJobResultResponse
-	25, // 38: proteus.v1.ConversionService.DeleteJob:output_type -> proteus.v1.DeleteJobResponse
-	33, // [33:39] is the sub-list for method output_type
-	27, // [27:33] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	15, // 9: proteus.v1.Options.spreadsheet:type_name -> proteus.v1.SpreadsheetOptions
+	2,  // 10: proteus.v1.PageOptions.size:type_name -> proteus.v1.PageSize
+	10, // 11: proteus.v1.PageOptions.margins:type_name -> proteus.v1.Margins
+	9,  // 12: proteus.v1.ConvertRequest.document:type_name -> proteus.v1.Document
+	1,  // 13: proteus.v1.ConvertRequest.output_format:type_name -> proteus.v1.OutputFormat
+	12, // 14: proteus.v1.ConvertRequest.options:type_name -> proteus.v1.Options
+	1,  // 15: proteus.v1.ConvertResponse.output_format:type_name -> proteus.v1.OutputFormat
+	9,  // 16: proteus.v1.SubmitJobRequest.document:type_name -> proteus.v1.Document
+	1,  // 17: proteus.v1.SubmitJobRequest.output_format:type_name -> proteus.v1.OutputFormat
+	12, // 18: proteus.v1.SubmitJobRequest.options:type_name -> proteus.v1.Options
+	20, // 19: proteus.v1.SubmitJobResponse.job:type_name -> proteus.v1.Job
+	4,  // 20: proteus.v1.Job.status:type_name -> proteus.v1.JobStatus
+	0,  // 21: proteus.v1.Job.input_format:type_name -> proteus.v1.InputFormat
+	27, // 22: proteus.v1.Job.create_time:type_name -> google.protobuf.Timestamp
+	27, // 23: proteus.v1.Job.start_time:type_name -> google.protobuf.Timestamp
+	27, // 24: proteus.v1.Job.finish_time:type_name -> google.protobuf.Timestamp
+	27, // 25: proteus.v1.Job.expire_time:type_name -> google.protobuf.Timestamp
+	1,  // 26: proteus.v1.Job.output_format:type_name -> proteus.v1.OutputFormat
+	20, // 27: proteus.v1.GetJobResponse.job:type_name -> proteus.v1.Job
+	6,  // 28: proteus.v1.ConversionService.ListFormats:input_type -> proteus.v1.ListFormatsRequest
+	16, // 29: proteus.v1.ConversionService.Convert:input_type -> proteus.v1.ConvertRequest
+	18, // 30: proteus.v1.ConversionService.SubmitJob:input_type -> proteus.v1.SubmitJobRequest
+	21, // 31: proteus.v1.ConversionService.GetJob:input_type -> proteus.v1.GetJobRequest
+	23, // 32: proteus.v1.ConversionService.DownloadJobResult:input_type -> proteus.v1.DownloadJobResultRequest
+	25, // 33: proteus.v1.ConversionService.DeleteJob:input_type -> proteus.v1.DeleteJobRequest
+	7,  // 34: proteus.v1.ConversionService.ListFormats:output_type -> proteus.v1.ListFormatsResponse
+	17, // 35: proteus.v1.ConversionService.Convert:output_type -> proteus.v1.ConvertResponse
+	19, // 36: proteus.v1.ConversionService.SubmitJob:output_type -> proteus.v1.SubmitJobResponse
+	22, // 37: proteus.v1.ConversionService.GetJob:output_type -> proteus.v1.GetJobResponse
+	24, // 38: proteus.v1.ConversionService.DownloadJobResult:output_type -> proteus.v1.DownloadJobResultResponse
+	26, // 39: proteus.v1.ConversionService.DeleteJob:output_type -> proteus.v1.DeleteJobResponse
+	34, // [34:40] is the sub-list for method output_type
+	28, // [28:34] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_proteus_v1_conversion_proto_init() }
@@ -1867,13 +1936,14 @@ func file_proteus_v1_conversion_proto_init() {
 	}
 	file_proteus_v1_conversion_proto_msgTypes[8].OneofWrappers = []any{}
 	file_proteus_v1_conversion_proto_msgTypes[9].OneofWrappers = []any{}
+	file_proteus_v1_conversion_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proteus_v1_conversion_proto_rawDesc), len(file_proteus_v1_conversion_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

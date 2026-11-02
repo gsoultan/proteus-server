@@ -7,8 +7,9 @@ import "google/protobuf/timestamp.proto";
 option go_package = "github.com/gsoultan/proteus-server/gen/proteus/v1;proteusv1";
 
 // ConversionService converts documents from one format to another. Today it
-// converts HTML and Markdown to PDF; ListFormats tells which conversions a
-// server supports, so clients need no change when output formats are added.
+// converts HTML and Markdown to PDF and to Excel (XLSX); ListFormats tells
+// which conversions a server supports, so clients need no change when output
+// formats are added.
 //
 // Every RPC needs an API key in the "authorization: Bearer <key>" or
 // "x-api-key" request header. Jobs are visible only to the key that
@@ -55,6 +56,9 @@ enum InputFormat {
 enum OutputFormat {
   OUTPUT_FORMAT_UNSPECIFIED = 0; // PDF
   OUTPUT_FORMAT_PDF = 1;
+  // Excel workbook: every table of the document becomes a worksheet with
+  // its styles, merged cells, typed numbers, links and images.
+  OUTPUT_FORMAT_XLSX = 2;
 }
 
 // Conversion is one supported input to output pair.
@@ -132,8 +136,9 @@ enum MediaType {
 }
 
 // Options tune the conversion. They apply to every output format, except
-// page, which applies to paged formats, and pdf, which applies only to PDF
-// output and is refused for other formats. Fonts and resource access are
+// page, which applies to paged formats, pdf, which applies only to PDF
+// output, and spreadsheet, which applies only to XLSX output; options that
+// do not fit the output format are refused. Fonts and resource access are
 // decided by the server.
 message Options {
   // Extra CSS applied after the document's own styles, up to 1 MiB.
@@ -145,6 +150,7 @@ message Options {
   bool allow_remote = 4;
   PageOptions page = 5;
   PdfOptions pdf = 6;
+  SpreadsheetOptions spreadsheet = 7;
 }
 
 // PageOptions set the page box of paged output formats.
@@ -162,6 +168,14 @@ message PdfOptions {
   optional bool outline = 1;
   // Write a tagged (accessible) PDF.
   bool tagged = 2;
+}
+
+// SpreadsheetOptions apply only to XLSX output.
+message SpreadsheetOptions {
+  // Store numeric-looking cell text (numbers, percentages, currency amounts,
+  // ISO dates) as typed cells with a matching number format; on by default.
+  // Off, every cell is text unless a data-type attribute says otherwise.
+  optional bool detect_numbers = 1;
 }
 
 message ConvertRequest {

@@ -1,15 +1,15 @@
 # proteus-server
 
 A gRPC server that converts documents between formats. Today it converts HTML
-and Markdown to PDF; the API and the server are built so that more output (and
-input) formats plug in without breaking clients. Conversions run on
+and Markdown to PDF and to Excel (XLSX); the API and the server are built so
+that more output (and input) formats plug in without breaking clients. Conversions run on
 [proteus-converter](https://github.com/gsoultan/proteus-converter), the pure-Go
 conversion engine: this repo holds transport, authentication, limits, jobs and
 metrics, and no conversion logic. There is no browser or LibreOffice at runtime.
 
 ```
 gpdf               PDF object model and writer
-proteus-converter  the engine: HTML / Markdown in, PDF out
+proteus-converter  the engine: HTML / Markdown in, PDF or XLSX out
 proteus-server     this repo: gRPC API, auth, limits, jobs, metrics
 ```
 
@@ -73,12 +73,16 @@ needs remote resources enabled). `assets` carries files the document references
 by relative path: an asset with path `img/logo.png` serves
 `<img src="img/logo.png">`.
 
-`output_format` picks the target and defaults to `OUTPUT_FORMAT_PDF`, the
-only one today. `Options` holds settings for every format (extra CSS, media
-type, metadata, `allow_remote`), `options.page` for paged formats (size,
-orientation, margins in millimetres) and `options.pdf` for PDF only
-(bookmarks, tagging); options that do not fit the output format are refused
-with `INVALID_ARGUMENT`. Every field is documented in the proto file.
+`output_format` picks the target and defaults to `OUTPUT_FORMAT_PDF`;
+`OUTPUT_FORMAT_XLSX` writes an Excel workbook in which every table of the
+document is a worksheet (styles, merged cells, typed numbers and dates,
+links and images; see the engine's README for the mapping). `Options` holds
+settings for every format (extra CSS, media type, metadata, `allow_remote`),
+`options.page` for paged formats (size, orientation, margins in
+millimetres), `options.pdf` for PDF only (bookmarks, tagging) and
+`options.spreadsheet` for XLSX only (`detect_numbers`); options that do not
+fit the output format are refused with `INVALID_ARGUMENT`. Every field is
+documented in the proto file.
 
 ### Adding a format
 

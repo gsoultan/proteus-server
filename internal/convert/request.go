@@ -107,6 +107,9 @@ func validateOptions(o *proteusv1.Options, t Target) error {
 	if o.GetPdf() != nil && t.Format != PDF {
 		return badf("pdf options need output_format PDF")
 	}
+	if o.GetSpreadsheet() != nil && t.Format != XLSX {
+		return badf("spreadsheet options need output_format XLSX")
+	}
 	if p := o.GetPage(); p != nil {
 		if !t.Paged {
 			return badf("page options do not apply to %s output", t.Format)
