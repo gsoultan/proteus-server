@@ -4,7 +4,7 @@
 // values are sent as data to ConvertTemplate and the PDF is downloaded;
 // problems the server reports are shown next to the fields.
 
-import { ActionIcon, Alert, Button, Checkbox, Group, Modal, NumberInput, Select, Stack, Text, TextInput, Textarea, Title } from "@mantine/core";
+import { ActionIcon, Alert, Button, Checkbox, Group, Modal, NumberInput, Select, SimpleGrid, Stack, Text, TextInput, Textarea, Title } from "@mantine/core";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -38,7 +38,7 @@ export function FillForm({ template, opened, onClose }: { template: Template; op
   });
   const generalError = generate.error && problems.size === 0 ? errorMessage(generate.error) : undefined;
   return (
-    <Modal opened={opened} onClose={onClose} title={`Fill in: ${template.name || "template"}`} size="lg" centered>
+    <Modal opened={opened} onClose={onClose} title={`Fill in: ${template.name || "template"}`} size="xl" centered>
       <Stack gap="sm">
         {template.fields.length === 0 && (
           <Text fz={13} c="dimmed">
@@ -75,8 +75,10 @@ function Fields({ specs, value, onChange, problems, prefix }: { specs: FieldSpec
     }
     onChange(next);
   };
+  // Two columns: one scalar field per cell; long text, objects and lists
+  // take the whole row so nested forms keep their own two columns.
   return (
-    <Stack gap="xs">
+    <SimpleGrid cols={{ base: 1, xs: 2 }} spacing="sm" verticalSpacing="xs">
       {specs.map((f) => {
         const path = prefix + f.path;
         const err = problems.get(path)?.join("; ");
@@ -95,7 +97,7 @@ function Fields({ specs, value, onChange, problems, prefix }: { specs: FieldSpec
             return <Select key={f.path} {...common} data={f.choices} value={typeof v === "string" ? v : null} onChange={(s) => set(f.path, s ?? undefined)} clearable={!f.required} />;
           case FieldType.OBJECT:
             return (
-              <Stack key={f.path} gap={6} pl="sm" style={{ borderLeft: "2px solid var(--mantine-color-gray-3)" }}>
+              <Stack key={f.path} gap={6} pl="sm" style={{ ...FULL, borderLeft: "2px solid var(--mantine-color-gray-3)" }}>
                 <Title order={4} fz={13}>
                   {label}
                 </Title>
@@ -105,7 +107,7 @@ function Fields({ specs, value, onChange, problems, prefix }: { specs: FieldSpec
           case FieldType.LIST: {
             const items = Array.isArray(v) ? v : [];
             return (
-              <Stack key={f.path} gap={6} pl="sm" style={{ borderLeft: "2px solid var(--mantine-color-gray-3)" }}>
+              <Stack key={f.path} gap={6} pl="sm" style={{ ...FULL, borderLeft: "2px solid var(--mantine-color-gray-3)" }}>
                 <Group justify="space-between">
                   <Title order={4} fz={13}>
                     {label} {f.required && <span style={{ color: "var(--mantine-color-red-6)" }}>*</span>}
@@ -116,7 +118,7 @@ function Fields({ specs, value, onChange, problems, prefix }: { specs: FieldSpec
                 </Group>
                 {err && !problems.has(path) ? null : problems.get(path) && <Text fz={12} c="red">{problems.get(path)!.join("; ")}</Text>}
                 {items.map((it, i) => (
-                  <Group key={i} align="flex-start" wrap="nowrap" gap={6}>
+                  <Group key={i} align="flex-start" wrap="nowrap" gap={6} style={FULL}>
                     <div style={{ flex: 1 }}>
                       {f.itemFields.length > 0 ? (
                         <Fields specs={f.itemFields} value={asObject(it)} onChange={(o) => set(f.path, items.map((x, j) => (j === i ? o : x)))} problems={problems} prefix={`${path}[${i}].`} />
@@ -135,16 +137,18 @@ function Fields({ specs, value, onChange, problems, prefix }: { specs: FieldSpec
           default: {
             const long = typeof v === "string" && (v.length > 80 || v.includes("\n"));
             return long || /body|notes|terms|summary|address|description/i.test(f.path) ? (
-              <Textarea key={f.path} {...common} autosize minRows={2} value={typeof v === "string" ? v : v === undefined ? "" : String(v)} onChange={(e) => set(f.path, e.currentTarget.value)} />
+              <Textarea key={f.path} {...common} style={FULL} autosize minRows={2} value={typeof v === "string" ? v : v === undefined ? "" : String(v)} onChange={(e) => set(f.path, e.currentTarget.value)} />
             ) : (
               <TextInput key={f.path} {...common} value={typeof v === "string" ? v : v === undefined ? "" : String(v)} onChange={(e) => set(f.path, e.currentTarget.value)} />
             );
           }
         }
       })}
-    </Stack>
+    </SimpleGrid>
   );
 }
+
+const FULL = { gridColumn: "1 / -1" } as const;
 
 function asObject(v: JsonValue | undefined): JsonObject {
   return v && typeof v === "object" && !Array.isArray(v) ? v : {};
