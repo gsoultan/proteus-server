@@ -2,7 +2,8 @@
 
 gRPC server (module github.com/gsoultan/proteus-server, go 1.27 because storm v1.11 needs it) for
 document conversion. User rule: the design must stay format-agnostic so more output (and input)
-formats can be added; today only HTML/Markdown -> PDF exists. Conversions run on github.com/gsoultan/proteus-converter (the engine,
+formats can be added; today HTML/Markdown -> PDF and HTML/Markdown -> XLSX (OUTPUT_FORMAT_XLSX,
+options.spreadsheet.detect_numbers; the engine's formats/xlsx writer via proteus.ConvertBytesTo). Conversions run on github.com/gsoultan/proteus-converter (the engine,
 which uses gpdf). The server holds transport, auth, limits, jobs and metrics only; no conversion
 logic. DOCX comes later via the engine. User rule: gRPC only, no REST; storm for anything database.
 
@@ -20,10 +21,11 @@ Layout:
 - internal/config: PROTEUS_* env parsing (sizes accept K/M/G/KiB/MiB/GiB).
 - internal/safefetch: SSRF-safe HTTP client (dial-time IP check, no proxy, caps).
 - internal/loader: per-request proteus.ResourceLoader: data: URLs, assets, remote via safefetch.
-- internal/convert: formats.go (InputFormat/OutputFormat, target table with MIME type, extension,
-  Paged flag and output check; Registry keyed by Route{From, To}; Converter interface getting an
-  Input with the fetched source and the per-request loader), engine.go (ProteusEngine registers
-  html/markdown -> pdf, engineOptions), request.go (FromProto(doc, output, opts) validation,
+- internal/convert: formats.go (InputFormat/OutputFormat pdf|xlsx, target table with MIME type,
+  extension, Paged flag and output check (%PDF- / PK zip); Registry keyed by Route{From, To};
+  Converter interface getting an Input with Output, the fetched source and the per-request
+  loader), engine.go (ProteusEngine registers html/markdown -> pdf and xlsx, calls
+  proteus.ConvertBytesTo with engineOutputs mapping, engineOptions incl. spreadsheet), request.go (FromProto(doc, output, opts) validation,
   options for other formats refused), service.go (slot pool, timeout, URL fetch, loader, registry
   lookup, Check(req) for unsupported routes, panic recovery, size + target check).
 - internal/rpc: connect server, interceptors (observe: request id/log/metrics; recoverer;

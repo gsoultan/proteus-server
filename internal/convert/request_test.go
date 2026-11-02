@@ -59,12 +59,30 @@ func TestFromProtoRejects(t *testing.T) {
 		"margins":         {doc: &proteusv1.Document{Format: 1, Source: content}, opts: &proteusv1.Options{Page: &proteusv1.PageOptions{Margins: &proteusv1.Margins{Top: -1}}}},
 		"page size":       {doc: &proteusv1.Document{Format: 1, Source: content}, opts: &proteusv1.Options{Page: &proteusv1.PageOptions{Size: 42}}},
 		"media type":      {doc: &proteusv1.Document{Format: 1, Source: content}, opts: &proteusv1.Options{MediaType: 9}},
+		"pdf opts xlsx":   {doc: &proteusv1.Document{Format: 1, Source: content}, out: proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX, opts: &proteusv1.Options{Pdf: &proteusv1.PdfOptions{Tagged: true}}},
+		"page opts xlsx":  {doc: &proteusv1.Document{Format: 1, Source: content}, out: proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX, opts: &proteusv1.Options{Page: &proteusv1.PageOptions{Landscape: true}}},
+		"sheet opts pdf":  {doc: &proteusv1.Document{Format: 1, Source: content}, opts: &proteusv1.Options{Spreadsheet: &proteusv1.SpreadsheetOptions{}}},
 	}
 	for name, c := range cases {
 		var bre *BadRequestError
 		if _, err := FromProto(c.doc, c.out, c.opts, c.lim); !errors.As(err, &bre) {
 			t.Errorf("%s: %v, want BadRequestError", name, err)
 		}
+	}
+}
+
+func TestFromProtoXLSX(t *testing.T) {
+	req, err := FromProto(&proteusv1.Document{Format: proteusv1.InputFormat_INPUT_FORMAT_HTML, Source: &proteusv1.Document_Content{Content: []byte("x")}},
+		proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX, &proteusv1.Options{Spreadsheet: &proteusv1.SpreadsheetOptions{}}, Limits{})
+	if err != nil || req.Output != XLSX || req.Route() != (Route{HTML, XLSX}) {
+		t.Fatalf("xlsx request: %v %+v", err, req)
+	}
+	if got := FileName("Sales 2026", XLSX); got != "Sales-2026.xlsx" {
+		t.Errorf("FileName = %q", got)
+	}
+	tg, ok := TargetOf(XLSX)
+	if !ok || tg.Paged || tg.MIMEType != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || tg.Check([]byte("PK\x03\x04...")) != nil || tg.Check([]byte("%PDF-")) == nil {
+		t.Errorf("target = %+v", tg)
 	}
 }
 

@@ -7,7 +7,7 @@ require (
 	connectrpc.com/grpchealth/v2 v2.0.0
 	connectrpc.com/grpcreflect/v2 v2.0.0
 	github.com/google/uuid v1.6.0
-	github.com/gsoultan/proteus-converter v0.0.0-20261031123324-0e50754e10cc
+	github.com/gsoultan/proteus-converter v0.0.0-20261102055241-5af9f345f245
 	github.com/gsoultan/storm v1.11.0
 	github.com/jackc/pgx/v5 v5.12.0
 	github.com/prometheus/client_golang v1.25.0

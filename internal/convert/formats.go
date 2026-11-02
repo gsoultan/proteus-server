@@ -22,7 +22,8 @@ const (
 	HTML     InputFormat = "html"
 	Markdown InputFormat = "markdown"
 
-	PDF OutputFormat = "pdf"
+	PDF  OutputFormat = "pdf"
+	XLSX OutputFormat = "xlsx"
 )
 
 // Target describes an output format: how it is served and how its bytes are
@@ -44,6 +45,12 @@ var targets = map[OutputFormat]Target{
 		}
 		return nil
 	}},
+	XLSX: {Format: XLSX, MIMEType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Extension: ".xlsx", Check: func(b []byte) error {
+		if !bytes.HasPrefix(b, []byte("PK\x03\x04")) {
+			return errors.New("engine returned invalid XLSX output")
+		}
+		return nil
+	}},
 }
 
 // TargetOf returns the description of an output format.
@@ -60,9 +67,10 @@ var (
 	outputFromProto = map[proteusv1.OutputFormat]OutputFormat{
 		proteusv1.OutputFormat_OUTPUT_FORMAT_UNSPECIFIED: PDF,
 		proteusv1.OutputFormat_OUTPUT_FORMAT_PDF:         PDF,
+		proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX:        XLSX,
 	}
 	inputToProto  = map[InputFormat]proteusv1.InputFormat{HTML: proteusv1.InputFormat_INPUT_FORMAT_HTML, Markdown: proteusv1.InputFormat_INPUT_FORMAT_MARKDOWN}
-	outputToProto = map[OutputFormat]proteusv1.OutputFormat{PDF: proteusv1.OutputFormat_OUTPUT_FORMAT_PDF}
+	outputToProto = map[OutputFormat]proteusv1.OutputFormat{PDF: proteusv1.OutputFormat_OUTPUT_FORMAT_PDF, XLSX: proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX}
 )
 
 // InputToProto maps an input format to its API enum.
@@ -77,6 +85,7 @@ func OutputToProto(f OutputFormat) proteusv1.OutputFormat { return outputToProto
 // touch the local disk or network itself.
 type Input struct {
 	Format      InputFormat
+	Output      OutputFormat
 	Source      []byte
 	BaseURL     string // set when the document came from a URL
 	Loader      *loader.Loader
