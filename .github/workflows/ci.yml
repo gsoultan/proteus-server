@@ -23,19 +23,29 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
       - name: Install buf and plugins
         run: |
           go install github.com/bufbuild/buf/cmd/buf@v1.75.0
           go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.12
           go install connectrpc.com/connect/v2/cmd/protoc-gen-connect-go@v2.0.2
           go install github.com/gsoultan/storm/cmd/storm@v1.11.0
+          (cd web && bun install --frozen-lockfile)
       - name: Buf lint
         run: buf lint
       - name: Generated code is current
         run: |
           buf generate
           storm verify -stale internal/storage/store
-          git diff --exit-code -- gen internal/storage/store
+          git diff --exit-code -- gen internal/storage/store web/src/gen
+      - name: Web builder
+        working-directory: web
+        run: |
+          bun run check
+          bun test
+          bun run build
       - name: Vet
         run: go vet ./...
       - name: Format

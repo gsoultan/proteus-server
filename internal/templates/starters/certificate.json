@@ -1,0 +1,221 @@
+{
+  "name": "Certificate",
+  "description": "Landscape certificate with name, course and verification QR.",
+  "format": "INPUT_FORMAT_HTML",
+  "category": "certificate",
+  "starterId": "certificate",
+  "options": {
+    "page": {
+      "size": "PAGE_SIZE_A4",
+      "landscape": true,
+      "marginMm": 20
+    }
+  },
+  "layout": {
+    "theme": {
+      "locale": "en-US",
+      "currency": "USD",
+      "fontFamily": "Georgia, 'Times New Roman', serif",
+      "accentColor": "#b08968"
+    },
+    "body": {
+      "blocks": [
+        {
+          "id": "issuer",
+          "field": {
+            "path": "issuer.name"
+          },
+          "style": {
+            "align": "ALIGN_CENTER",
+            "fontSizePt": 14,
+            "bold": true,
+            "spaceBelow": "SPACING_LARGE"
+          }
+        },
+        {
+          "id": "title",
+          "heading": {
+            "text": "{{default \"Certificate of Completion\" .title}}",
+            "level": 1
+          },
+          "style": {
+            "align": "ALIGN_CENTER",
+            "fontSizePt": 34
+          }
+        },
+        {
+          "id": "presented",
+          "text": {
+            "text": "This certificate is proudly presented to"
+          },
+          "style": {
+            "align": "ALIGN_CENTER",
+            "spaceBelow": "SPACING_SMALL"
+          }
+        },
+        {
+          "id": "name",
+          "field": {
+            "path": "name"
+          },
+          "style": {
+            "align": "ALIGN_CENTER",
+            "fontSizePt": 28,
+            "bold": true
+          }
+        },
+        {
+          "id": "for",
+          "text": {
+            "text": "for successfully completing {{.course}}{{if .hours}} ({{fnumber .hours 0}} hours){{end}} on {{fdate .date}}."
+          },
+          "style": {
+            "align": "ALIGN_CENTER",
+            "spaceBelow": "SPACING_LARGE"
+          }
+        },
+        {
+          "id": "bottom",
+          "columns": {
+            "columns": [
+              {
+                "blocks": [
+                  {
+                    "id": "qr",
+                    "qr": {
+                      "value": "verify_url",
+                      "sizeMm": 22
+                    },
+                    "showIf": {
+                      "path": "verify_url",
+                      "op": "CONDITION_OP_IS_SET"
+                    }
+                  }
+                ]
+              },
+              {
+                "blocks": [
+                  {
+                    "id": "sig",
+                    "signature": {
+                      "lines": [
+                        {
+                          "label": "{{.signer.name}}, {{.signer.title}}"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "blocks": [
+                  {
+                    "id": "cert_id",
+                    "field": {
+                      "path": "certificate_id",
+                      "label": "Certificate ID"
+                    },
+                    "style": {
+                      "align": "ALIGN_RIGHT"
+                    }
+                  }
+                ]
+              }
+            ],
+            "widths": [
+              1,
+              2,
+              1
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "fields": [
+    {
+      "path": "name",
+      "type": "FIELD_TYPE_TEXT",
+      "required": true,
+      "label": "Recipient"
+    },
+    {
+      "path": "course",
+      "type": "FIELD_TYPE_TEXT",
+      "required": true
+    },
+    {
+      "path": "date",
+      "type": "FIELD_TYPE_DATE",
+      "required": true
+    },
+    {
+      "path": "hours",
+      "type": "FIELD_TYPE_NUMBER",
+      "required": false
+    },
+    {
+      "path": "title",
+      "type": "FIELD_TYPE_TEXT",
+      "required": false
+    },
+    {
+      "path": "certificate_id",
+      "type": "FIELD_TYPE_TEXT",
+      "required": false,
+      "label": "Certificate ID"
+    },
+    {
+      "path": "verify_url",
+      "type": "FIELD_TYPE_TEXT",
+      "required": false,
+      "label": "Verification URL"
+    },
+    {
+      "path": "issuer",
+      "type": "FIELD_TYPE_OBJECT",
+      "required": true,
+      "label": "Issuer",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true
+        }
+      ]
+    },
+    {
+      "path": "signer",
+      "type": "FIELD_TYPE_OBJECT",
+      "required": true,
+      "label": "Signer",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true
+        },
+        {
+          "path": "title",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "sampleData": {
+    "name": "Budi Santoso",
+    "course": "Advanced Typography",
+    "date": "2026-10-30",
+    "hours": 24,
+    "certificate_id": "CERT-2026-0193",
+    "verify_url": "https://arunika.example/verify/CERT-2026-0193",
+    "issuer": {
+      "name": "Arunika Academy"
+    },
+    "signer": {
+      "name": "Dewi Kartika",
+      "title": "Programme Director"
+    }
+  }
+}

@@ -27,6 +27,7 @@ import (
 	"github.com/gsoultan/proteus-server/internal/jobs"
 	"github.com/gsoultan/proteus-server/internal/metrics"
 	"github.com/gsoultan/proteus-server/internal/templates"
+	"github.com/gsoultan/proteus-server/web"
 )
 
 // Version is reported in logs; set at build time with -ldflags.
@@ -86,6 +87,9 @@ func (a *API) Handler() http.Handler {
 		connecthttp.WithSendMaxBytes(int(a.cfg.MaxOutputBytes)+(1<<20)),
 		connecthttp.WithCompressMinBytes(1<<10),
 	)
+	// Everything that is not an RPC is the web builder (or a note that it
+	// was not built), so the UI and the API share one origin.
+	mux.Handle("/", web.Handler())
 	return mux
 }
 

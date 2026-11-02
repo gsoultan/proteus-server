@@ -1,0 +1,307 @@
+{
+  "name": "Report",
+  "description": "Cover, headings, repeating sections and a summary table.",
+  "format": "INPUT_FORMAT_HTML",
+  "category": "report",
+  "starterId": "report",
+  "options": {
+    "page": {
+      "size": "PAGE_SIZE_A4",
+      "marginMm": 15
+    }
+  },
+  "layout": {
+    "theme": {
+      "locale": "en-US",
+      "currency": "USD"
+    },
+    "header": {
+      "blocks": [
+        {
+          "id": "running",
+          "columns": {
+            "columns": [
+              {
+                "blocks": [
+                  {
+                    "id": "rt",
+                    "field": {
+                      "path": "title"
+                    },
+                    "style": {
+                      "fontSizePt": 8.5,
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  }
+                ]
+              },
+              {
+                "blocks": [
+                  {
+                    "id": "ra",
+                    "field": {
+                      "path": "author"
+                    },
+                    "style": {
+                      "fontSizePt": 8.5,
+                      "align": "ALIGN_RIGHT",
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "spaceBelow": "SPACING_NONE"
+          }
+        }
+      ],
+      "heightMm": 14
+    },
+    "footer": {
+      "blocks": [
+        {
+          "id": "footer_rule",
+          "divider": {},
+          "style": {
+            "spaceBelow": "SPACING_SMALL"
+          }
+        },
+        {
+          "id": "footer_text",
+          "text": {
+            "text": "{{.organization}} · {{fdate .date}}"
+          },
+          "style": {
+            "align": "ALIGN_CENTER",
+            "spaceBelow": "SPACING_NONE"
+          }
+        }
+      ],
+      "heightMm": 16
+    },
+    "body": {
+      "blocks": [
+        {
+          "id": "title",
+          "heading": {
+            "text": "{{.title}}",
+            "level": 1
+          }
+        },
+        {
+          "id": "subtitle",
+          "field": {
+            "path": "subtitle"
+          },
+          "showIf": {
+            "path": "subtitle",
+            "op": "CONDITION_OP_IS_SET"
+          },
+          "style": {
+            "fontSizePt": 13
+          }
+        },
+        {
+          "id": "meta",
+          "keyValue": {
+            "rows": [
+              {
+                "label": "Prepared by",
+                "value": "author"
+              },
+              {
+                "label": "Date",
+                "value": "date",
+                "format": "FIELD_FORMAT_DATE"
+              },
+              {
+                "label": "For",
+                "value": "organization"
+              }
+            ]
+          },
+          "style": {
+            "spaceBelow": "SPACING_LARGE"
+          }
+        },
+        {
+          "id": "summary_h",
+          "heading": {
+            "text": "Summary",
+            "level": 2
+          }
+        },
+        {
+          "id": "summary",
+          "text": {
+            "text": "{{.summary}}"
+          }
+        },
+        {
+          "id": "metrics",
+          "table": {
+            "list": "metrics",
+            "columns": [
+              {
+                "header": "Metric",
+                "path": "name",
+                "format": "FIELD_FORMAT_UNSPECIFIED",
+                "widthPct": 50
+              },
+              {
+                "header": "Value",
+                "path": "value",
+                "format": "FIELD_FORMAT_NUMBER",
+                "widthPct": 25
+              },
+              {
+                "header": "Change",
+                "path": "change",
+                "format": "FIELD_FORMAT_PERCENT",
+                "widthPct": 25
+              }
+            ],
+            "emptyText": "No metrics"
+          },
+          "showIf": {
+            "path": "metrics",
+            "op": "CONDITION_OP_IS_SET"
+          }
+        },
+        {
+          "id": "sections",
+          "section": {
+            "repeat": "sections",
+            "content": {
+              "blocks": [
+                {
+                  "id": "sec_h",
+                  "heading": {
+                    "text": "{{.heading}}",
+                    "level": 2
+                  }
+                },
+                {
+                  "id": "sec_body",
+                  "text": {
+                    "text": "{{.body}}"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "fields": [
+    {
+      "path": "title",
+      "type": "FIELD_TYPE_TEXT",
+      "required": true
+    },
+    {
+      "path": "subtitle",
+      "type": "FIELD_TYPE_TEXT",
+      "required": false
+    },
+    {
+      "path": "author",
+      "type": "FIELD_TYPE_TEXT",
+      "required": true
+    },
+    {
+      "path": "organization",
+      "type": "FIELD_TYPE_TEXT",
+      "required": false
+    },
+    {
+      "path": "date",
+      "type": "FIELD_TYPE_DATE",
+      "required": true
+    },
+    {
+      "path": "summary",
+      "type": "FIELD_TYPE_TEXT",
+      "required": true
+    },
+    {
+      "path": "metrics",
+      "type": "FIELD_TYPE_LIST",
+      "required": false,
+      "label": "Metrics",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true
+        },
+        {
+          "path": "value",
+          "type": "FIELD_TYPE_NUMBER",
+          "required": true
+        },
+        {
+          "path": "change",
+          "type": "FIELD_TYPE_NUMBER",
+          "required": false
+        }
+      ]
+    },
+    {
+      "path": "sections",
+      "type": "FIELD_TYPE_LIST",
+      "required": true,
+      "label": "Sections",
+      "itemFields": [
+        {
+          "path": "heading",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true
+        },
+        {
+          "path": "body",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "sampleData": {
+    "title": "Q3 2026 Performance Review",
+    "subtitle": "Design services",
+    "author": "Dewi Kartika",
+    "organization": "Arunika Studio",
+    "date": "2026-10-15",
+    "summary": "Revenue grew 18% quarter on quarter while delivery time fell to a median of 11 days. Two new retainers were signed.",
+    "metrics": [
+      {
+        "name": "Revenue (IDR millions)",
+        "value": 412.5,
+        "change": 0.18
+      },
+      {
+        "name": "Projects delivered",
+        "value": 27,
+        "change": 0.08
+      },
+      {
+        "name": "Median delivery days",
+        "value": 11,
+        "change": -0.15
+      }
+    ],
+    "sections": [
+      {
+        "heading": "Highlights",
+        "body": "The brand identity practice doubled its pipeline.\n\nWebsite work remained steady."
+      },
+      {
+        "heading": "Risks",
+        "body": "Two senior designers are on leave in Q4; hiring is in progress."
+      }
+    ]
+  }
+}

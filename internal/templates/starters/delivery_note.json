@@ -1,0 +1,409 @@
+{
+  "name": "Delivery note",
+  "description": "Packing list without prices, with receiver signature.",
+  "format": "INPUT_FORMAT_HTML",
+  "category": "delivery_note",
+  "starterId": "delivery_note",
+  "options": {
+    "page": {
+      "size": "PAGE_SIZE_A4",
+      "marginMm": 15,
+      "watermark": {
+        "text": "COPY",
+        "opacity": 0.1,
+        "placement": "WATERMARK_PLACEMENT_TILED",
+        "fontSizePt": 28
+      }
+    }
+  },
+  "layout": {
+    "theme": {
+      "locale": "id-ID",
+      "currency": "IDR",
+      "accentColor": "#3b5bdb"
+    },
+    "header": {
+      "blocks": [
+        {
+          "id": "letterhead",
+          "columns": {
+            "columns": [
+              {
+                "blocks": [
+                  {
+                    "id": "logo",
+                    "image": {
+                      "asset": "assets/logo.png",
+                      "widthMm": 30,
+                      "alt": "Logo"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_SMALL"
+                    }
+                  },
+                  {
+                    "id": "seller_name",
+                    "field": {
+                      "path": "seller.name"
+                    },
+                    "style": {
+                      "bold": true,
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  },
+                  {
+                    "id": "seller_addr",
+                    "field": {
+                      "path": "seller.address"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_NONE",
+                      "fontSizePt": 8.5
+                    }
+                  }
+                ]
+              },
+              {
+                "blocks": [
+                  {
+                    "id": "doc_title",
+                    "heading": {
+                      "text": "DELIVERY NOTE",
+                      "level": 1
+                    },
+                    "style": {
+                      "align": "ALIGN_RIGHT",
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  }
+                ]
+              }
+            ],
+            "widths": [
+              2,
+              1
+            ]
+          },
+          "style": {
+            "spaceBelow": "SPACING_NONE"
+          }
+        }
+      ],
+      "heightMm": 32
+    },
+    "footer": {
+      "blocks": [
+        {
+          "id": "footer_rule",
+          "divider": {},
+          "style": {
+            "spaceBelow": "SPACING_SMALL"
+          }
+        },
+        {
+          "id": "footer_text",
+          "text": {
+            "text": "{{.seller.name}} · {{.seller.phone}}"
+          },
+          "style": {
+            "align": "ALIGN_CENTER",
+            "spaceBelow": "SPACING_NONE"
+          }
+        }
+      ],
+      "heightMm": 16
+    },
+    "body": {
+      "blocks": [
+        {
+          "id": "parties",
+          "columns": {
+            "columns": [
+              {
+                "blocks": [
+                  {
+                    "id": "bill_to",
+                    "field": {
+                      "path": "ship_to.name",
+                      "label": "Deliver to"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  },
+                  {
+                    "id": "bill_addr",
+                    "field": {
+                      "path": "ship_to.address"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_NONE",
+                      "fontSizePt": 9
+                    }
+                  },
+                  {
+                    "id": "bill_email",
+                    "field": {
+                      "path": "ship_to.email"
+                    },
+                    "showIf": {
+                      "path": "ship_to.email",
+                      "op": "CONDITION_OP_IS_SET"
+                    },
+                    "style": {
+                      "fontSizePt": 9
+                    }
+                  }
+                ]
+              },
+              {
+                "blocks": [
+                  {
+                    "id": "meta",
+                    "keyValue": {
+                      "rows": [
+                        {
+                          "label": "Note no.",
+                          "value": "number",
+                          "format": "FIELD_FORMAT_TEXT"
+                        },
+                        {
+                          "label": "Date",
+                          "value": "issued",
+                          "format": "FIELD_FORMAT_DATE"
+                        },
+                        {
+                          "label": "Order ref.",
+                          "value": "order_ref",
+                          "format": "FIELD_FORMAT_TEXT"
+                        },
+                        {
+                          "label": "Carrier",
+                          "value": "carrier",
+                          "format": "FIELD_FORMAT_TEXT"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ],
+            "widths": [
+              3,
+              2
+            ]
+          }
+        },
+        {
+          "id": "items",
+          "table": {
+            "list": "items",
+            "numbered": true,
+            "columns": [
+              {
+                "header": "Description",
+                "path": "description",
+                "format": "FIELD_FORMAT_UNSPECIFIED",
+                "widthPct": 55
+              },
+              {
+                "header": "Qty",
+                "path": "qty",
+                "format": "FIELD_FORMAT_INTEGER",
+                "widthPct": 15
+              },
+              {
+                "header": "Unit",
+                "path": "unit",
+                "format": "FIELD_FORMAT_UNSPECIFIED",
+                "widthPct": 15
+              },
+              {
+                "header": "Remarks",
+                "path": "remarks",
+                "format": "FIELD_FORMAT_UNSPECIFIED",
+                "widthPct": 15
+              }
+            ]
+          }
+        },
+        {
+          "id": "count",
+          "totals": {
+            "rows": [
+              {
+                "label": "Packages",
+                "aggregate": {
+                  "func": "AGGREGATE_FUNC_COUNT",
+                  "list": "items"
+                },
+                "format": "FIELD_FORMAT_INTEGER",
+                "emphasized": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "signatures",
+          "signature": {
+            "lines": [
+              {
+                "label": "Delivered by"
+              },
+              {
+                "label": "Received by (name, date, signature)"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "fields": [
+    {
+      "path": "number",
+      "type": "FIELD_TYPE_TEXT",
+      "required": true
+    },
+    {
+      "path": "issued",
+      "type": "FIELD_TYPE_DATE",
+      "required": true
+    },
+    {
+      "path": "order_ref",
+      "type": "FIELD_TYPE_TEXT",
+      "required": false,
+      "label": "Order reference"
+    },
+    {
+      "path": "carrier",
+      "type": "FIELD_TYPE_TEXT",
+      "required": false
+    },
+    {
+      "path": "seller",
+      "type": "FIELD_TYPE_OBJECT",
+      "required": true,
+      "label": "Sender",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true,
+          "label": "Company name"
+        },
+        {
+          "path": "address",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Address"
+        },
+        {
+          "path": "email",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Email"
+        },
+        {
+          "path": "phone",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Phone"
+        },
+        {
+          "path": "tax_id",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Tax ID"
+        }
+      ]
+    },
+    {
+      "path": "ship_to",
+      "type": "FIELD_TYPE_OBJECT",
+      "required": true,
+      "label": "Receiver",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true,
+          "label": "Name"
+        },
+        {
+          "path": "address",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Address"
+        },
+        {
+          "path": "email",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Email"
+        }
+      ]
+    },
+    {
+      "path": "items",
+      "type": "FIELD_TYPE_LIST",
+      "required": true,
+      "label": "Items",
+      "itemFields": [
+        {
+          "path": "description",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true
+        },
+        {
+          "path": "qty",
+          "type": "FIELD_TYPE_NUMBER",
+          "required": true
+        },
+        {
+          "path": "unit",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false
+        },
+        {
+          "path": "remarks",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "sampleData": {
+    "number": "DN-2026-0512",
+    "issued": "2026-11-02",
+    "order_ref": "PO-2026-0310",
+    "carrier": "JNE",
+    "seller": {
+      "name": "Arunika Studio",
+      "address": "Jl. Braga 21, Bandung 40111",
+      "email": "hello@arunika.example",
+      "phone": "+62 22 555 0199",
+      "tax_id": "01.234.567.8-901.000"
+    },
+    "ship_to": {
+      "name": "PT Sinar Lestari",
+      "address": "Jl. Sudirman 5, Jakarta 10220",
+      "email": "finance@sinarlestari.example"
+    },
+    "items": [
+      {
+        "description": "Printed brochures",
+        "qty": 500,
+        "unit": "pc",
+        "remarks": "2 boxes"
+      },
+      {
+        "description": "Roll-up banner",
+        "qty": 2,
+        "unit": "pc",
+        "remarks": ""
+      }
+    ]
+  }
+}

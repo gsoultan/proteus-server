@@ -1,0 +1,483 @@
+{
+  "name": "Purchase order",
+  "description": "Order to a supplier with delivery address and terms.",
+  "format": "INPUT_FORMAT_HTML",
+  "category": "purchase_order",
+  "starterId": "purchase_order",
+  "options": {
+    "page": {
+      "size": "PAGE_SIZE_A4",
+      "marginMm": 15
+    }
+  },
+  "layout": {
+    "theme": {
+      "locale": "id-ID",
+      "currency": "IDR",
+      "accentColor": "#3b5bdb"
+    },
+    "header": {
+      "blocks": [
+        {
+          "id": "letterhead",
+          "columns": {
+            "columns": [
+              {
+                "blocks": [
+                  {
+                    "id": "logo",
+                    "image": {
+                      "asset": "assets/logo.png",
+                      "widthMm": 30,
+                      "alt": "Logo"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_SMALL"
+                    }
+                  },
+                  {
+                    "id": "seller_name",
+                    "field": {
+                      "path": "seller.name"
+                    },
+                    "style": {
+                      "bold": true,
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  },
+                  {
+                    "id": "seller_addr",
+                    "field": {
+                      "path": "seller.address"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_NONE",
+                      "fontSizePt": 8.5
+                    }
+                  }
+                ]
+              },
+              {
+                "blocks": [
+                  {
+                    "id": "doc_title",
+                    "heading": {
+                      "text": "PURCHASE ORDER",
+                      "level": 1
+                    },
+                    "style": {
+                      "align": "ALIGN_RIGHT",
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  }
+                ]
+              }
+            ],
+            "widths": [
+              2,
+              1
+            ]
+          },
+          "style": {
+            "spaceBelow": "SPACING_NONE"
+          }
+        }
+      ],
+      "heightMm": 32
+    },
+    "footer": {
+      "blocks": [
+        {
+          "id": "footer_rule",
+          "divider": {},
+          "style": {
+            "spaceBelow": "SPACING_SMALL"
+          }
+        },
+        {
+          "id": "footer_text",
+          "text": {
+            "text": "{{.seller.name}} · {{.seller.email}}"
+          },
+          "style": {
+            "align": "ALIGN_CENTER",
+            "spaceBelow": "SPACING_NONE"
+          }
+        }
+      ],
+      "heightMm": 16
+    },
+    "body": {
+      "blocks": [
+        {
+          "id": "parties",
+          "columns": {
+            "columns": [
+              {
+                "blocks": [
+                  {
+                    "id": "supplier",
+                    "field": {
+                      "path": "supplier.name",
+                      "label": "Supplier"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  },
+                  {
+                    "id": "supplier_addr",
+                    "field": {
+                      "path": "supplier.address"
+                    },
+                    "style": {
+                      "fontSizePt": 9
+                    }
+                  }
+                ]
+              },
+              {
+                "blocks": [
+                  {
+                    "id": "ship_to",
+                    "field": {
+                      "path": "ship_to.name",
+                      "label": "Ship to"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  },
+                  {
+                    "id": "ship_addr",
+                    "field": {
+                      "path": "ship_to.address"
+                    },
+                    "style": {
+                      "fontSizePt": 9
+                    }
+                  }
+                ]
+              },
+              {
+                "blocks": [
+                  {
+                    "id": "meta",
+                    "keyValue": {
+                      "rows": [
+                        {
+                          "label": "PO no.",
+                          "value": "number",
+                          "format": "FIELD_FORMAT_TEXT"
+                        },
+                        {
+                          "label": "Date",
+                          "value": "issued",
+                          "format": "FIELD_FORMAT_DATE"
+                        },
+                        {
+                          "label": "Deliver by",
+                          "value": "deliver_by",
+                          "format": "FIELD_FORMAT_DATE"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "items",
+          "table": {
+            "list": "items",
+            "numbered": true,
+            "striped": true,
+            "emptyText": "No items",
+            "columns": [
+              {
+                "header": "Description",
+                "path": "description",
+                "format": "FIELD_FORMAT_UNSPECIFIED",
+                "widthPct": 46
+              },
+              {
+                "header": "Qty",
+                "path": "qty",
+                "format": "FIELD_FORMAT_INTEGER",
+                "widthPct": 10
+              },
+              {
+                "header": "Unit",
+                "path": "unit",
+                "format": "FIELD_FORMAT_UNSPECIFIED",
+                "widthPct": 12
+              },
+              {
+                "header": "Unit price",
+                "path": "price",
+                "format": "FIELD_FORMAT_MONEY",
+                "widthPct": 16
+              },
+              {
+                "header": "Amount",
+                "path": "amount",
+                "format": "FIELD_FORMAT_MONEY",
+                "widthPct": 16
+              }
+            ]
+          }
+        },
+        {
+          "id": "totals",
+          "totals": {
+            "rows": [
+              {
+                "label": "Subtotal",
+                "aggregate": {
+                  "func": "AGGREGATE_FUNC_SUM",
+                  "list": "items",
+                  "column": "amount"
+                }
+              },
+              {
+                "label": "Tax",
+                "path": "tax"
+              },
+              {
+                "label": "Total",
+                "path": "total",
+                "emphasized": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "terms",
+          "field": {
+            "path": "terms",
+            "label": "Terms"
+          },
+          "showIf": {
+            "path": "terms",
+            "op": "CONDITION_OP_IS_SET"
+          }
+        },
+        {
+          "id": "signatures",
+          "signature": {
+            "lines": [
+              {
+                "label": "Authorized by {{.seller.signer}}"
+              },
+              {
+                "label": "Supplier acknowledgement"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "fields": [
+    {
+      "path": "number",
+      "type": "FIELD_TYPE_TEXT",
+      "required": true,
+      "label": "PO number"
+    },
+    {
+      "path": "issued",
+      "type": "FIELD_TYPE_DATE",
+      "required": true,
+      "label": "Date"
+    },
+    {
+      "path": "deliver_by",
+      "type": "FIELD_TYPE_DATE",
+      "required": false,
+      "label": "Deliver by"
+    },
+    {
+      "path": "seller",
+      "type": "FIELD_TYPE_OBJECT",
+      "required": true,
+      "label": "Buyer",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true,
+          "label": "Company name"
+        },
+        {
+          "path": "address",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Address"
+        },
+        {
+          "path": "email",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Email"
+        },
+        {
+          "path": "phone",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Phone"
+        },
+        {
+          "path": "tax_id",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Tax ID"
+        },
+        {
+          "path": "signer",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false
+        }
+      ]
+    },
+    {
+      "path": "supplier",
+      "type": "FIELD_TYPE_OBJECT",
+      "required": true,
+      "label": "Supplier",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true,
+          "label": "Name"
+        },
+        {
+          "path": "address",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Address"
+        },
+        {
+          "path": "email",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Email"
+        }
+      ]
+    },
+    {
+      "path": "ship_to",
+      "type": "FIELD_TYPE_OBJECT",
+      "required": true,
+      "label": "Ship to",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true
+        },
+        {
+          "path": "address",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false
+        }
+      ]
+    },
+    {
+      "path": "items",
+      "type": "FIELD_TYPE_LIST",
+      "required": true,
+      "label": "Items",
+      "itemFields": [
+        {
+          "path": "description",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true
+        },
+        {
+          "path": "qty",
+          "type": "FIELD_TYPE_NUMBER",
+          "required": true,
+          "label": "Quantity"
+        },
+        {
+          "path": "unit",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Unit"
+        },
+        {
+          "path": "price",
+          "type": "FIELD_TYPE_MONEY",
+          "required": true,
+          "label": "Unit price"
+        },
+        {
+          "path": "amount",
+          "type": "FIELD_TYPE_MONEY",
+          "required": false,
+          "label": "Amount"
+        }
+      ]
+    },
+    {
+      "path": "tax",
+      "type": "FIELD_TYPE_MONEY",
+      "required": false
+    },
+    {
+      "path": "total",
+      "type": "FIELD_TYPE_MONEY",
+      "required": true,
+      "label": "Total"
+    },
+    {
+      "path": "terms",
+      "type": "FIELD_TYPE_TEXT",
+      "required": false
+    }
+  ],
+  "sampleData": {
+    "number": "PO-2026-0310",
+    "issued": "2026-11-02",
+    "deliver_by": "2026-11-20",
+    "seller": {
+      "name": "Arunika Studio",
+      "address": "Jl. Braga 21, Bandung 40111",
+      "email": "hello@arunika.example",
+      "phone": "+62 22 555 0199",
+      "tax_id": "01.234.567.8-901.000",
+      "signer": "Purchasing"
+    },
+    "supplier": {
+      "name": "CV Kertas Nusantara",
+      "address": "Jl. Industri 8, Bekasi 17530"
+    },
+    "ship_to": {
+      "name": "Arunika Studio warehouse",
+      "address": "Jl. Braga 21, Bandung 40111"
+    },
+    "items": [
+      {
+        "description": "A4 paper, 80 gsm",
+        "qty": 40,
+        "unit": "ream",
+        "price": 52000,
+        "amount": 2080000
+      },
+      {
+        "description": "Toner cartridge",
+        "qty": 4,
+        "unit": "pc",
+        "price": 850000,
+        "amount": 3400000
+      }
+    ],
+    "tax": 602800,
+    "total": 6082800,
+    "terms": "Net 30. Deliveries accepted weekdays 9 to 16."
+  }
+}

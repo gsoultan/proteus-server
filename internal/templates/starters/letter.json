@@ -1,0 +1,300 @@
+{
+  "name": "Business letter",
+  "description": "Letterhead, recipient block, subject and body text.",
+  "format": "INPUT_FORMAT_HTML",
+  "category": "letter",
+  "starterId": "letter",
+  "options": {
+    "page": {
+      "size": "PAGE_SIZE_A4",
+      "marginMm": 15
+    }
+  },
+  "layout": {
+    "theme": {
+      "locale": "en-US",
+      "currency": "USD",
+      "fontFamily": "Georgia, 'Times New Roman', serif",
+      "accentColor": "#343a40"
+    },
+    "header": {
+      "blocks": [
+        {
+          "id": "letterhead",
+          "columns": {
+            "columns": [
+              {
+                "blocks": [
+                  {
+                    "id": "logo",
+                    "image": {
+                      "asset": "assets/logo.png",
+                      "widthMm": 30,
+                      "alt": "Logo"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_SMALL"
+                    }
+                  },
+                  {
+                    "id": "seller_name",
+                    "field": {
+                      "path": "seller.name"
+                    },
+                    "style": {
+                      "bold": true,
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  },
+                  {
+                    "id": "seller_addr",
+                    "field": {
+                      "path": "seller.address"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_NONE",
+                      "fontSizePt": 8.5
+                    }
+                  }
+                ]
+              },
+              {
+                "blocks": [
+                  {
+                    "id": "doc_title",
+                    "heading": {
+                      "text": "",
+                      "level": 1
+                    },
+                    "style": {
+                      "align": "ALIGN_RIGHT",
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  }
+                ]
+              }
+            ],
+            "widths": [
+              2,
+              1
+            ]
+          },
+          "style": {
+            "spaceBelow": "SPACING_NONE"
+          }
+        }
+      ],
+      "heightMm": 32
+    },
+    "footer": {
+      "blocks": [
+        {
+          "id": "footer_rule",
+          "divider": {},
+          "style": {
+            "spaceBelow": "SPACING_SMALL"
+          }
+        },
+        {
+          "id": "footer_text",
+          "text": {
+            "text": "{{.seller.name}} · {{.seller.address}}"
+          },
+          "style": {
+            "align": "ALIGN_CENTER",
+            "spaceBelow": "SPACING_NONE"
+          }
+        }
+      ],
+      "heightMm": 16
+    },
+    "body": {
+      "blocks": [
+        {
+          "id": "date",
+          "field": {
+            "path": "date",
+            "format": "FIELD_FORMAT_DATE"
+          },
+          "style": {
+            "align": "ALIGN_RIGHT"
+          }
+        },
+        {
+          "id": "recipient",
+          "text": {
+            "text": "{{.recipient.name}}\n{{.recipient.title}}\n{{.recipient.organization}}\n{{.recipient.address}}"
+          }
+        },
+        {
+          "id": "subject",
+          "field": {
+            "path": "subject",
+            "prefix": "Re: "
+          },
+          "style": {
+            "bold": true
+          }
+        },
+        {
+          "id": "salutation",
+          "text": {
+            "text": "Dear {{.recipient.name}},"
+          }
+        },
+        {
+          "id": "body",
+          "text": {
+            "text": "{{.body}}"
+          }
+        },
+        {
+          "id": "closing",
+          "text": {
+            "text": "{{default \"Sincerely,\" .closing}}"
+          }
+        },
+        {
+          "id": "signature",
+          "signature": {
+            "lines": [
+              {
+                "label": "{{.signer.name}}, {{.signer.title}}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "fields": [
+    {
+      "path": "date",
+      "type": "FIELD_TYPE_DATE",
+      "required": true
+    },
+    {
+      "path": "recipient",
+      "type": "FIELD_TYPE_OBJECT",
+      "required": true,
+      "label": "Recipient",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true
+        },
+        {
+          "path": "title",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false
+        },
+        {
+          "path": "organization",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false
+        },
+        {
+          "path": "address",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false
+        }
+      ]
+    },
+    {
+      "path": "subject",
+      "type": "FIELD_TYPE_TEXT",
+      "required": true
+    },
+    {
+      "path": "body",
+      "type": "FIELD_TYPE_TEXT",
+      "required": true,
+      "description": "Blank lines separate paragraphs"
+    },
+    {
+      "path": "closing",
+      "type": "FIELD_TYPE_TEXT",
+      "required": false
+    },
+    {
+      "path": "seller",
+      "type": "FIELD_TYPE_OBJECT",
+      "required": true,
+      "label": "Sender",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true,
+          "label": "Company name"
+        },
+        {
+          "path": "address",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Address"
+        },
+        {
+          "path": "email",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Email"
+        },
+        {
+          "path": "phone",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Phone"
+        },
+        {
+          "path": "tax_id",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Tax ID"
+        }
+      ]
+    },
+    {
+      "path": "signer",
+      "type": "FIELD_TYPE_OBJECT",
+      "required": true,
+      "label": "Signer",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true
+        },
+        {
+          "path": "title",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "sampleData": {
+    "date": "2026-11-02",
+    "recipient": {
+      "name": "Ms. Rina Hartono",
+      "title": "Procurement Lead",
+      "organization": "PT Sinar Lestari",
+      "address": "Jl. Sudirman 5, Jakarta 10220"
+    },
+    "subject": "Renewal of the design retainer",
+    "body": "Thank you for a productive first year together.\n\nWe would like to propose renewing the retainer for 2027 under the same terms, with two additional review rounds per month included.\n\nI am happy to walk through the details at your convenience.",
+    "closing": "Warm regards,",
+    "seller": {
+      "name": "Arunika Studio",
+      "address": "Jl. Braga 21, Bandung 40111",
+      "email": "hello@arunika.example",
+      "phone": "+62 22 555 0199",
+      "tax_id": "01.234.567.8-901.000"
+    },
+    "signer": {
+      "name": "Dewi Kartika",
+      "title": "Account Manager"
+    }
+  }
+}

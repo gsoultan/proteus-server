@@ -24,6 +24,15 @@
   ranges are rewritten to pipe through `pairs`, objects max 500 keys, output capped
   (PROTEUS_MAX_REQUEST_BYTES), render timeout PROTEUS_TEMPLATE_RENDER_TIMEOUT. Template is
   re-parsed per render (funcs are bound to the render; html/template can't Clone after Execute).
+- Template builder: a visual template is always compiled to HTML at save time (Compile), so the
+  rest of the server only ever sees content; the layout is kept in the body for editing. Field
+  checks run before every render and refuse with a TemplateDataError detail (never render with
+  bad data). Watermark text may be a template; render it with the same data (Service.finish).
+  Starters are fixtures too: TestStartersRender and TestStartersToPDF must keep passing when the
+  layout compiler changes. structpb gotcha: Value.GetNullValue() is 0 for every kind, test the
+  kind type (isEmptyValue), never compare to NullValue_NULL_VALUE.
+- Converter pin: the compiled layouts need proteus-converter >= 07dd116 (fixed boxes may reach
+  into the @page margins) and gpdf >= b6c41f5 (text opacity) for watermarks.
 - Metric labels: procedure, protocol, code; conversions by input, output, outcome (never raw ids).
 - Sync and async share the slot pool; job workers default to half the slots. A worker takes a
   slot before claiming so it never holds a lease while waiting.
@@ -43,6 +52,10 @@ Known gaps / next steps:
 - Engine checks ctx only between stages; no page-count or memory budget.
 - Engine rescans Config.FontDirs on every conversion (prefer system font dirs).
 - Not yet: header/footer, PDF/A, batch merge, DOCX, tracing.
-- Templates: no versions history (only a revision counter), no sharing between keys, no
-  per-template JSON schema for data; Markdown values inside code blocks show HTML entities.
+- Templates: no versions history (only a revision counter), no sharing between keys; Markdown
+  values inside code blocks show HTML entities. Starters reference assets/logo.png, which the
+  user uploads (a missing asset is a warning, not an error).
+- Web builder (proteus-server/web, React 19 + Mantine) and the proteus-server-sdk clients
+  (connect-es v2 + Go) are planned from the design artboards; not in this repo yet.
+- graphify and rtk are not installed in the dev container; graphify-out/ is refreshed when they are.
 - Docker image build is verified in CI only (no Docker daemon in the dev container).

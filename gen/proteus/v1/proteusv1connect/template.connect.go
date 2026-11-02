@@ -48,6 +48,12 @@ const (
 	// TemplateServiceSubmitTemplateJobProcedure is the procedure name of the TemplateService's
 	// SubmitTemplateJob RPC.
 	TemplateServiceSubmitTemplateJobProcedure = "/proteus.v1.TemplateService/SubmitTemplateJob"
+	// TemplateServiceListStarterTemplatesProcedure is the procedure name of the TemplateService's
+	// ListStarterTemplates RPC.
+	TemplateServiceListStarterTemplatesProcedure = "/proteus.v1.TemplateService/ListStarterTemplates"
+	// TemplateServiceConvertToCodeProcedure is the procedure name of the TemplateService's
+	// ConvertToCode RPC.
+	TemplateServiceConvertToCodeProcedure = "/proteus.v1.TemplateService/ConvertToCode"
 )
 
 var (
@@ -111,6 +117,21 @@ var (
 			Procedure:  TemplateServiceSubmitTemplateJobProcedure,
 		}
 	})
+	templateServiceListStarterTemplatesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_proteus_v1_template_proto.Services().ByName("TemplateService").Methods().ByName("ListStarterTemplates"),
+			Procedure:        TemplateServiceListStarterTemplatesProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
+	templateServiceConvertToCodeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_proteus_v1_template_proto.Services().ByName("TemplateService").Methods().ByName("ConvertToCode"),
+			Procedure:  TemplateServiceConvertToCodeProcedure,
+		}
+	})
 )
 
 // TemplateServiceClient is a client for the proteus.v1.TemplateService service.
@@ -140,6 +161,13 @@ type TemplateServiceClient interface {
 	// SubmitTemplateJob fills a stored template with data and queues the
 	// conversion. Follow the job with the ConversionService job RPCs.
 	SubmitTemplateJob(context.Context, *v1.SubmitTemplateJobRequest) (*v1.SubmitTemplateJobResponse, error)
+	// ListStarterTemplates returns the built-in starters: complete visual
+	// templates with sample data and fields to copy with CreateTemplate.
+	ListStarterTemplates(context.Context, *v1.ListStarterTemplatesRequest) (*v1.ListStarterTemplatesResponse, error)
+	// ConvertToCode turns a visual template into a code template: the
+	// compiled HTML becomes its content and the layout is dropped, so the
+	// HTML can be edited directly. This cannot be undone.
+	ConvertToCode(context.Context, *v1.ConvertToCodeRequest) (*v1.ConvertToCodeResponse, error)
 }
 
 // NewTemplateServiceClient constructs a client for the proteus.v1.TemplateService service. Multiple
@@ -175,6 +203,13 @@ type TemplateServiceHandler interface {
 	// SubmitTemplateJob fills a stored template with data and queues the
 	// conversion. Follow the job with the ConversionService job RPCs.
 	SubmitTemplateJob(context.Context, *v1.SubmitTemplateJobRequest) (*v1.SubmitTemplateJobResponse, error)
+	// ListStarterTemplates returns the built-in starters: complete visual
+	// templates with sample data and fields to copy with CreateTemplate.
+	ListStarterTemplates(context.Context, *v1.ListStarterTemplatesRequest) (*v1.ListStarterTemplatesResponse, error)
+	// ConvertToCode turns a visual template into a code template: the
+	// compiled HTML becomes its content and the layout is dropped, so the
+	// HTML can be edited directly. This cannot be undone.
+	ConvertToCode(context.Context, *v1.ConvertToCodeRequest) (*v1.ConvertToCodeResponse, error)
 }
 
 // RegisterTemplateServiceHandler registers svc as the proteus.v1.TemplateService implementation on
@@ -190,6 +225,8 @@ func RegisterTemplateServiceHandler(server *connect.Server, svc TemplateServiceH
 		connect.Method{Spec: templateServiceRenderTemplateSpec(), Handler: adapter.renderTemplate},
 		connect.Method{Spec: templateServiceConvertTemplateSpec(), Handler: adapter.convertTemplate},
 		connect.Method{Spec: templateServiceSubmitTemplateJobSpec(), Handler: adapter.submitTemplateJob},
+		connect.Method{Spec: templateServiceListStarterTemplatesSpec(), Handler: adapter.listStarterTemplates},
+		connect.Method{Spec: templateServiceConvertToCodeSpec(), Handler: adapter.convertToCode},
 	)
 }
 
@@ -226,6 +263,14 @@ func (UnimplementedTemplateServiceHandler) ConvertTemplate(context.Context, *v1.
 
 func (UnimplementedTemplateServiceHandler) SubmitTemplateJob(context.Context, *v1.SubmitTemplateJobRequest) (*v1.SubmitTemplateJobResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "proteus.v1.TemplateService.SubmitTemplateJob is not implemented")
+}
+
+func (UnimplementedTemplateServiceHandler) ListStarterTemplates(context.Context, *v1.ListStarterTemplatesRequest) (*v1.ListStarterTemplatesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "proteus.v1.TemplateService.ListStarterTemplates is not implemented")
+}
+
+func (UnimplementedTemplateServiceHandler) ConvertToCode(context.Context, *v1.ConvertToCodeRequest) (*v1.ConvertToCodeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "proteus.v1.TemplateService.ConvertToCode is not implemented")
 }
 
 type templateServiceClient struct {
@@ -291,6 +336,22 @@ func (c *templateServiceClient) ConvertTemplate(ctx context.Context, req *v1.Con
 func (c *templateServiceClient) SubmitTemplateJob(ctx context.Context, req *v1.SubmitTemplateJobRequest) (*v1.SubmitTemplateJobResponse, error) {
 	var res v1.SubmitTemplateJobResponse
 	if err := c.client.CallUnary(ctx, templateServiceSubmitTemplateJobSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *templateServiceClient) ListStarterTemplates(ctx context.Context, req *v1.ListStarterTemplatesRequest) (*v1.ListStarterTemplatesResponse, error) {
+	var res v1.ListStarterTemplatesResponse
+	if err := c.client.CallUnary(ctx, templateServiceListStarterTemplatesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *templateServiceClient) ConvertToCode(ctx context.Context, req *v1.ConvertToCodeRequest) (*v1.ConvertToCodeResponse, error) {
+	var res v1.ConvertToCodeResponse
+	if err := c.client.CallUnary(ctx, templateServiceConvertToCodeSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -388,6 +449,30 @@ func (h templateServiceHandler) submitTemplateJob(ctx context.Context, _ connect
 		return err
 	}
 	res, err := h.svc.SubmitTemplateJob(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h templateServiceHandler) listStarterTemplates(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListStarterTemplatesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListStarterTemplates(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h templateServiceHandler) convertToCode(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ConvertToCodeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ConvertToCode(ctx, &req)
 	if err != nil {
 		return err
 	}

@@ -23,6 +23,375 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// FieldType is the type of a data field.
+type FieldType int32
+
+const (
+	FieldType_FIELD_TYPE_UNSPECIFIED FieldType = 0 // text
+	FieldType_FIELD_TYPE_TEXT        FieldType = 1
+	FieldType_FIELD_TYPE_NUMBER      FieldType = 2
+	// A number formatted as an amount of money.
+	FieldType_FIELD_TYPE_MONEY FieldType = 3
+	// An RFC 3339 or YYYY-MM-DD string.
+	FieldType_FIELD_TYPE_DATE FieldType = 4
+	FieldType_FIELD_TYPE_BOOL FieldType = 5
+	// One of choices.
+	FieldType_FIELD_TYPE_CHOICE FieldType = 6
+	// An asset path or a data: URL of an image.
+	FieldType_FIELD_TYPE_IMAGE FieldType = 7
+	// A list of objects described by item_fields.
+	FieldType_FIELD_TYPE_LIST FieldType = 8
+	// An object described by item_fields.
+	FieldType_FIELD_TYPE_OBJECT FieldType = 9
+)
+
+// Enum value maps for FieldType.
+var (
+	FieldType_name = map[int32]string{
+		0: "FIELD_TYPE_UNSPECIFIED",
+		1: "FIELD_TYPE_TEXT",
+		2: "FIELD_TYPE_NUMBER",
+		3: "FIELD_TYPE_MONEY",
+		4: "FIELD_TYPE_DATE",
+		5: "FIELD_TYPE_BOOL",
+		6: "FIELD_TYPE_CHOICE",
+		7: "FIELD_TYPE_IMAGE",
+		8: "FIELD_TYPE_LIST",
+		9: "FIELD_TYPE_OBJECT",
+	}
+	FieldType_value = map[string]int32{
+		"FIELD_TYPE_UNSPECIFIED": 0,
+		"FIELD_TYPE_TEXT":        1,
+		"FIELD_TYPE_NUMBER":      2,
+		"FIELD_TYPE_MONEY":       3,
+		"FIELD_TYPE_DATE":        4,
+		"FIELD_TYPE_BOOL":        5,
+		"FIELD_TYPE_CHOICE":      6,
+		"FIELD_TYPE_IMAGE":       7,
+		"FIELD_TYPE_LIST":        8,
+		"FIELD_TYPE_OBJECT":      9,
+	}
+)
+
+func (x FieldType) Enum() *FieldType {
+	p := new(FieldType)
+	*p = x
+	return p
+}
+
+func (x FieldType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (FieldType) Descriptor() protoreflect.EnumDescriptor {
+	return file_proteus_v1_template_proto_enumTypes[0].Descriptor()
+}
+
+func (FieldType) Type() protoreflect.EnumType {
+	return &file_proteus_v1_template_proto_enumTypes[0]
+}
+
+func (x FieldType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use FieldType.Descriptor instead.
+func (FieldType) EnumDescriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{0}
+}
+
+// ConditionOp compares a field with a value.
+type ConditionOp int32
+
+const (
+	ConditionOp_CONDITION_OP_UNSPECIFIED ConditionOp = 0 // IS_SET
+	// The field has a non-empty value.
+	ConditionOp_CONDITION_OP_IS_SET     ConditionOp = 1
+	ConditionOp_CONDITION_OP_IS_EMPTY   ConditionOp = 2
+	ConditionOp_CONDITION_OP_EQUALS     ConditionOp = 3
+	ConditionOp_CONDITION_OP_NOT_EQUALS ConditionOp = 4
+	ConditionOp_CONDITION_OP_GREATER    ConditionOp = 5
+	ConditionOp_CONDITION_OP_LESS       ConditionOp = 6
+)
+
+// Enum value maps for ConditionOp.
+var (
+	ConditionOp_name = map[int32]string{
+		0: "CONDITION_OP_UNSPECIFIED",
+		1: "CONDITION_OP_IS_SET",
+		2: "CONDITION_OP_IS_EMPTY",
+		3: "CONDITION_OP_EQUALS",
+		4: "CONDITION_OP_NOT_EQUALS",
+		5: "CONDITION_OP_GREATER",
+		6: "CONDITION_OP_LESS",
+	}
+	ConditionOp_value = map[string]int32{
+		"CONDITION_OP_UNSPECIFIED": 0,
+		"CONDITION_OP_IS_SET":      1,
+		"CONDITION_OP_IS_EMPTY":    2,
+		"CONDITION_OP_EQUALS":      3,
+		"CONDITION_OP_NOT_EQUALS":  4,
+		"CONDITION_OP_GREATER":     5,
+		"CONDITION_OP_LESS":        6,
+	}
+)
+
+func (x ConditionOp) Enum() *ConditionOp {
+	p := new(ConditionOp)
+	*p = x
+	return p
+}
+
+func (x ConditionOp) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ConditionOp) Descriptor() protoreflect.EnumDescriptor {
+	return file_proteus_v1_template_proto_enumTypes[1].Descriptor()
+}
+
+func (ConditionOp) Type() protoreflect.EnumType {
+	return &file_proteus_v1_template_proto_enumTypes[1]
+}
+
+func (x ConditionOp) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ConditionOp.Descriptor instead.
+func (ConditionOp) EnumDescriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{1}
+}
+
+// Align is horizontal alignment.
+type Align int32
+
+const (
+	Align_ALIGN_UNSPECIFIED Align = 0 // left
+	Align_ALIGN_LEFT        Align = 1
+	Align_ALIGN_CENTER      Align = 2
+	Align_ALIGN_RIGHT       Align = 3
+)
+
+// Enum value maps for Align.
+var (
+	Align_name = map[int32]string{
+		0: "ALIGN_UNSPECIFIED",
+		1: "ALIGN_LEFT",
+		2: "ALIGN_CENTER",
+		3: "ALIGN_RIGHT",
+	}
+	Align_value = map[string]int32{
+		"ALIGN_UNSPECIFIED": 0,
+		"ALIGN_LEFT":        1,
+		"ALIGN_CENTER":      2,
+		"ALIGN_RIGHT":       3,
+	}
+)
+
+func (x Align) Enum() *Align {
+	p := new(Align)
+	*p = x
+	return p
+}
+
+func (x Align) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Align) Descriptor() protoreflect.EnumDescriptor {
+	return file_proteus_v1_template_proto_enumTypes[2].Descriptor()
+}
+
+func (Align) Type() protoreflect.EnumType {
+	return &file_proteus_v1_template_proto_enumTypes[2]
+}
+
+func (x Align) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Align.Descriptor instead.
+func (Align) EnumDescriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{2}
+}
+
+// Spacing is the gap below a block.
+type Spacing int32
+
+const (
+	Spacing_SPACING_UNSPECIFIED Spacing = 0 // medium
+	Spacing_SPACING_NONE        Spacing = 1
+	Spacing_SPACING_SMALL       Spacing = 2
+	Spacing_SPACING_MEDIUM      Spacing = 3
+	Spacing_SPACING_LARGE       Spacing = 4
+)
+
+// Enum value maps for Spacing.
+var (
+	Spacing_name = map[int32]string{
+		0: "SPACING_UNSPECIFIED",
+		1: "SPACING_NONE",
+		2: "SPACING_SMALL",
+		3: "SPACING_MEDIUM",
+		4: "SPACING_LARGE",
+	}
+	Spacing_value = map[string]int32{
+		"SPACING_UNSPECIFIED": 0,
+		"SPACING_NONE":        1,
+		"SPACING_SMALL":       2,
+		"SPACING_MEDIUM":      3,
+		"SPACING_LARGE":       4,
+	}
+)
+
+func (x Spacing) Enum() *Spacing {
+	p := new(Spacing)
+	*p = x
+	return p
+}
+
+func (x Spacing) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Spacing) Descriptor() protoreflect.EnumDescriptor {
+	return file_proteus_v1_template_proto_enumTypes[3].Descriptor()
+}
+
+func (Spacing) Type() protoreflect.EnumType {
+	return &file_proteus_v1_template_proto_enumTypes[3]
+}
+
+func (x Spacing) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Spacing.Descriptor instead.
+func (Spacing) EnumDescriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{3}
+}
+
+// FieldFormat says how a value is printed.
+type FieldFormat int32
+
+const (
+	FieldFormat_FIELD_FORMAT_UNSPECIFIED FieldFormat = 0 // as is
+	FieldFormat_FIELD_FORMAT_TEXT        FieldFormat = 1
+	// Thousands separators and two decimals in the theme's locale.
+	FieldFormat_FIELD_FORMAT_NUMBER FieldFormat = 2
+	// No decimals.
+	FieldFormat_FIELD_FORMAT_INTEGER FieldFormat = 3
+	// The theme's currency and locale.
+	FieldFormat_FIELD_FORMAT_MONEY FieldFormat = 4
+	// A date in the theme's locale.
+	FieldFormat_FIELD_FORMAT_DATE FieldFormat = 5
+	// A fraction (0.11) or a number (11) printed as 11%.
+	FieldFormat_FIELD_FORMAT_PERCENT FieldFormat = 6
+)
+
+// Enum value maps for FieldFormat.
+var (
+	FieldFormat_name = map[int32]string{
+		0: "FIELD_FORMAT_UNSPECIFIED",
+		1: "FIELD_FORMAT_TEXT",
+		2: "FIELD_FORMAT_NUMBER",
+		3: "FIELD_FORMAT_INTEGER",
+		4: "FIELD_FORMAT_MONEY",
+		5: "FIELD_FORMAT_DATE",
+		6: "FIELD_FORMAT_PERCENT",
+	}
+	FieldFormat_value = map[string]int32{
+		"FIELD_FORMAT_UNSPECIFIED": 0,
+		"FIELD_FORMAT_TEXT":        1,
+		"FIELD_FORMAT_NUMBER":      2,
+		"FIELD_FORMAT_INTEGER":     3,
+		"FIELD_FORMAT_MONEY":       4,
+		"FIELD_FORMAT_DATE":        5,
+		"FIELD_FORMAT_PERCENT":     6,
+	}
+)
+
+func (x FieldFormat) Enum() *FieldFormat {
+	p := new(FieldFormat)
+	*p = x
+	return p
+}
+
+func (x FieldFormat) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (FieldFormat) Descriptor() protoreflect.EnumDescriptor {
+	return file_proteus_v1_template_proto_enumTypes[4].Descriptor()
+}
+
+func (FieldFormat) Type() protoreflect.EnumType {
+	return &file_proteus_v1_template_proto_enumTypes[4]
+}
+
+func (x FieldFormat) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use FieldFormat.Descriptor instead.
+func (FieldFormat) EnumDescriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{4}
+}
+
+// AggregateFunc computes a value from a list column.
+type AggregateFunc int32
+
+const (
+	AggregateFunc_AGGREGATE_FUNC_UNSPECIFIED AggregateFunc = 0 // SUM
+	AggregateFunc_AGGREGATE_FUNC_SUM         AggregateFunc = 1
+	AggregateFunc_AGGREGATE_FUNC_COUNT       AggregateFunc = 2
+	AggregateFunc_AGGREGATE_FUNC_AVERAGE     AggregateFunc = 3
+)
+
+// Enum value maps for AggregateFunc.
+var (
+	AggregateFunc_name = map[int32]string{
+		0: "AGGREGATE_FUNC_UNSPECIFIED",
+		1: "AGGREGATE_FUNC_SUM",
+		2: "AGGREGATE_FUNC_COUNT",
+		3: "AGGREGATE_FUNC_AVERAGE",
+	}
+	AggregateFunc_value = map[string]int32{
+		"AGGREGATE_FUNC_UNSPECIFIED": 0,
+		"AGGREGATE_FUNC_SUM":         1,
+		"AGGREGATE_FUNC_COUNT":       2,
+		"AGGREGATE_FUNC_AVERAGE":     3,
+	}
+)
+
+func (x AggregateFunc) Enum() *AggregateFunc {
+	p := new(AggregateFunc)
+	*p = x
+	return p
+}
+
+func (x AggregateFunc) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AggregateFunc) Descriptor() protoreflect.EnumDescriptor {
+	return file_proteus_v1_template_proto_enumTypes[5].Descriptor()
+}
+
+func (AggregateFunc) Type() protoreflect.EnumType {
+	return &file_proteus_v1_template_proto_enumTypes[5]
+}
+
+func (x AggregateFunc) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AggregateFunc.Descriptor instead.
+func (AggregateFunc) EnumDescriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{5}
+}
+
 // Template is a stored document with placeholders.
 type Template struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -50,7 +419,21 @@ type Template struct {
 	CreateTime *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
 	UpdateTime *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
 	// Total size of content and assets in bytes. Assigned by the server.
-	SizeBytes     int64 `protobuf:"varint,12,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	SizeBytes int64 `protobuf:"varint,12,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	// Kind of document, such as invoice, quotation, receipt, purchase_order,
+	// delivery_note, letter, certificate or report; any label up to 50
+	// characters. Used to filter and group templates.
+	Category string `protobuf:"bytes,13,opt,name=category,proto3" json:"category,omitempty"`
+	// Set for a visual template. The server compiles it into content on every
+	// create and update; content sent with a layout is ignored.
+	Layout *Layout `protobuf:"bytes,14,opt,name=layout,proto3" json:"layout,omitempty"`
+	// The data the template expects. Requests are checked against it: a
+	// missing required field or a value of the wrong type is refused with
+	// INVALID_ARGUMENT and a TemplateDataError detail listing every problem.
+	// Empty means any data is accepted.
+	Fields []*FieldSpec `protobuf:"bytes,15,rep,name=fields,proto3" json:"fields,omitempty"`
+	// The starter the template was created from, if any.
+	StarterId     string `protobuf:"bytes,16,opt,name=starter_id,json=starterId,proto3" json:"starter_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -169,17 +552,2090 @@ func (x *Template) GetSizeBytes() int64 {
 	return 0
 }
 
+func (x *Template) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+func (x *Template) GetLayout() *Layout {
+	if x != nil {
+		return x.Layout
+	}
+	return nil
+}
+
+func (x *Template) GetFields() []*FieldSpec {
+	if x != nil {
+		return x.Fields
+	}
+	return nil
+}
+
+func (x *Template) GetStarterId() string {
+	if x != nil {
+		return x.StarterId
+	}
+	return ""
+}
+
+// FieldSpec describes one piece of data a template expects.
+type FieldSpec struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Dotted path in the data, such as "client.name" or "items"; inside a
+	// list or object, the key of the item field, such as "qty".
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// Shown in forms; defaults to the path.
+	Label    string    `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	Type     FieldType `protobuf:"varint,3,opt,name=type,proto3,enum=proteus.v1.FieldType" json:"type,omitempty"`
+	Required bool      `protobuf:"varint,4,opt,name=required,proto3" json:"required,omitempty"`
+	// Allowed values of a CHOICE field.
+	Choices []string `protobuf:"bytes,5,rep,name=choices,proto3" json:"choices,omitempty"`
+	// Fields of each item of a LIST, or of an OBJECT.
+	ItemFields []*FieldSpec `protobuf:"bytes,6,rep,name=item_fields,json=itemFields,proto3" json:"item_fields,omitempty"`
+	// Used when the data has no value.
+	DefaultValue *structpb.Value `protobuf:"bytes,7,opt,name=default_value,json=defaultValue,proto3" json:"default_value,omitempty"`
+	// Help text for forms.
+	Description   string `protobuf:"bytes,8,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FieldSpec) Reset() {
+	*x = FieldSpec{}
+	mi := &file_proteus_v1_template_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FieldSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FieldSpec) ProtoMessage() {}
+
+func (x *FieldSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FieldSpec.ProtoReflect.Descriptor instead.
+func (*FieldSpec) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *FieldSpec) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *FieldSpec) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *FieldSpec) GetType() FieldType {
+	if x != nil {
+		return x.Type
+	}
+	return FieldType_FIELD_TYPE_UNSPECIFIED
+}
+
+func (x *FieldSpec) GetRequired() bool {
+	if x != nil {
+		return x.Required
+	}
+	return false
+}
+
+func (x *FieldSpec) GetChoices() []string {
+	if x != nil {
+		return x.Choices
+	}
+	return nil
+}
+
+func (x *FieldSpec) GetItemFields() []*FieldSpec {
+	if x != nil {
+		return x.ItemFields
+	}
+	return nil
+}
+
+func (x *FieldSpec) GetDefaultValue() *structpb.Value {
+	if x != nil {
+		return x.DefaultValue
+	}
+	return nil
+}
+
+func (x *FieldSpec) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+// DataProblem is one thing wrong with the data sent for a template.
+type DataProblem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Path of the field, such as "items[2].qty".
+	Path          string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Message       string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DataProblem) Reset() {
+	*x = DataProblem{}
+	mi := &file_proteus_v1_template_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DataProblem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DataProblem) ProtoMessage() {}
+
+func (x *DataProblem) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DataProblem.ProtoReflect.Descriptor instead.
+func (*DataProblem) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *DataProblem) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *DataProblem) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+// TemplateDataError is attached as an error detail to INVALID_ARGUMENT when
+// the data does not match the template's fields.
+type TemplateDataError struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Problems      []*DataProblem         `protobuf:"bytes,1,rep,name=problems,proto3" json:"problems,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TemplateDataError) Reset() {
+	*x = TemplateDataError{}
+	mi := &file_proteus_v1_template_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TemplateDataError) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TemplateDataError) ProtoMessage() {}
+
+func (x *TemplateDataError) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TemplateDataError.ProtoReflect.Descriptor instead.
+func (*TemplateDataError) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *TemplateDataError) GetProblems() []*DataProblem {
+	if x != nil {
+		return x.Problems
+	}
+	return nil
+}
+
+// Layout is a visual template: a header and a footer that repeat on every
+// page and the body that flows between them. The server compiles it into
+// HTML with placeholders; blocks never contain raw HTML.
+type Layout struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Theme         *Theme                 `protobuf:"bytes,1,opt,name=theme,proto3" json:"theme,omitempty"`
+	Header        *Region                `protobuf:"bytes,2,opt,name=header,proto3" json:"header,omitempty"`
+	Body          *Region                `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	Footer        *Region                `protobuf:"bytes,4,opt,name=footer,proto3" json:"footer,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Layout) Reset() {
+	*x = Layout{}
+	mi := &file_proteus_v1_template_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Layout) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Layout) ProtoMessage() {}
+
+func (x *Layout) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Layout.ProtoReflect.Descriptor instead.
+func (*Layout) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *Layout) GetTheme() *Theme {
+	if x != nil {
+		return x.Theme
+	}
+	return nil
+}
+
+func (x *Layout) GetHeader() *Region {
+	if x != nil {
+		return x.Header
+	}
+	return nil
+}
+
+func (x *Layout) GetBody() *Region {
+	if x != nil {
+		return x.Body
+	}
+	return nil
+}
+
+func (x *Layout) GetFooter() *Region {
+	if x != nil {
+		return x.Footer
+	}
+	return nil
+}
+
+// Theme sets fonts, colours and formats for the whole document.
+type Theme struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// CSS font-family list; default "Inter, Helvetica, Arial, sans-serif".
+	FontFamily string `protobuf:"bytes,1,opt,name=font_family,json=fontFamily,proto3" json:"font_family,omitempty"`
+	// Body text size in points; default 10.
+	FontSizePt float64 `protobuf:"fixed64,2,opt,name=font_size_pt,json=fontSizePt,proto3" json:"font_size_pt,omitempty"`
+	// Accent colour for headings, table headers and rules; default #3b5bdb.
+	AccentColor string `protobuf:"bytes,3,opt,name=accent_color,json=accentColor,proto3" json:"accent_color,omitempty"`
+	// Body text colour; default #212529.
+	TextColor string `protobuf:"bytes,4,opt,name=text_color,json=textColor,proto3" json:"text_color,omitempty"`
+	// BCP 47 tag that decides number and date formats: en-US, id-ID, de-DE,
+	// en-GB or fr-FR; default en-US.
+	Locale string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
+	// ISO 4217 code used by money fields; default USD.
+	Currency      string `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Theme) Reset() {
+	*x = Theme{}
+	mi := &file_proteus_v1_template_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Theme) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Theme) ProtoMessage() {}
+
+func (x *Theme) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Theme.ProtoReflect.Descriptor instead.
+func (*Theme) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Theme) GetFontFamily() string {
+	if x != nil {
+		return x.FontFamily
+	}
+	return ""
+}
+
+func (x *Theme) GetFontSizePt() float64 {
+	if x != nil {
+		return x.FontSizePt
+	}
+	return 0
+}
+
+func (x *Theme) GetAccentColor() string {
+	if x != nil {
+		return x.AccentColor
+	}
+	return ""
+}
+
+func (x *Theme) GetTextColor() string {
+	if x != nil {
+		return x.TextColor
+	}
+	return ""
+}
+
+func (x *Theme) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *Theme) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+// Region is an ordered run of blocks.
+type Region struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Blocks []*Block               `protobuf:"bytes,1,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	// For header and footer: the height reserved on every page in
+	// millimetres; default 25 for a header and 15 for a footer.
+	HeightMm      float64 `protobuf:"fixed64,2,opt,name=height_mm,json=heightMm,proto3" json:"height_mm,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Region) Reset() {
+	*x = Region{}
+	mi := &file_proteus_v1_template_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Region) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Region) ProtoMessage() {}
+
+func (x *Region) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Region.ProtoReflect.Descriptor instead.
+func (*Region) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *Region) GetBlocks() []*Block {
+	if x != nil {
+		return x.Blocks
+	}
+	return nil
+}
+
+func (x *Region) GetHeightMm() float64 {
+	if x != nil {
+		return x.HeightMm
+	}
+	return 0
+}
+
+// Block is one element of a layout.
+type Block struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Unique within the layout; assigned by the client. Problems are
+	// reported by id.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Show the block only when the condition holds.
+	ShowIf *Condition  `protobuf:"bytes,2,opt,name=show_if,json=showIf,proto3" json:"show_if,omitempty"`
+	Style  *BlockStyle `protobuf:"bytes,3,opt,name=style,proto3" json:"style,omitempty"`
+	// Types that are valid to be assigned to Kind:
+	//
+	//	*Block_Heading
+	//	*Block_Text
+	//	*Block_Field
+	//	*Block_Image
+	//	*Block_Table
+	//	*Block_KeyValue
+	//	*Block_Totals
+	//	*Block_Columns
+	//	*Block_Signature
+	//	*Block_Qr
+	//	*Block_Divider
+	//	*Block_Spacer
+	//	*Block_Section
+	//	*Block_PageBreak
+	Kind          isBlock_Kind `protobuf_oneof:"kind"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Block) Reset() {
+	*x = Block{}
+	mi := &file_proteus_v1_template_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Block) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Block) ProtoMessage() {}
+
+func (x *Block) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Block.ProtoReflect.Descriptor instead.
+func (*Block) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *Block) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Block) GetShowIf() *Condition {
+	if x != nil {
+		return x.ShowIf
+	}
+	return nil
+}
+
+func (x *Block) GetStyle() *BlockStyle {
+	if x != nil {
+		return x.Style
+	}
+	return nil
+}
+
+func (x *Block) GetKind() isBlock_Kind {
+	if x != nil {
+		return x.Kind
+	}
+	return nil
+}
+
+func (x *Block) GetHeading() *Heading {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_Heading); ok {
+			return x.Heading
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetText() *Text {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_Text); ok {
+			return x.Text
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetField() *Field {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_Field); ok {
+			return x.Field
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetImage() *Image {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_Image); ok {
+			return x.Image
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetTable() *Table {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_Table); ok {
+			return x.Table
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetKeyValue() *KeyValue {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_KeyValue); ok {
+			return x.KeyValue
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetTotals() *Totals {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_Totals); ok {
+			return x.Totals
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetColumns() *Columns {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_Columns); ok {
+			return x.Columns
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetSignature() *Signature {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_Signature); ok {
+			return x.Signature
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetQr() *QrCode {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_Qr); ok {
+			return x.Qr
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetDivider() *Divider {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_Divider); ok {
+			return x.Divider
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetSpacer() *Spacer {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_Spacer); ok {
+			return x.Spacer
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetSection() *Section {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_Section); ok {
+			return x.Section
+		}
+	}
+	return nil
+}
+
+func (x *Block) GetPageBreak() *PageBreak {
+	if x != nil {
+		if x, ok := x.Kind.(*Block_PageBreak); ok {
+			return x.PageBreak
+		}
+	}
+	return nil
+}
+
+type isBlock_Kind interface {
+	isBlock_Kind()
+}
+
+type Block_Heading struct {
+	Heading *Heading `protobuf:"bytes,10,opt,name=heading,proto3,oneof"`
+}
+
+type Block_Text struct {
+	Text *Text `protobuf:"bytes,11,opt,name=text,proto3,oneof"`
+}
+
+type Block_Field struct {
+	Field *Field `protobuf:"bytes,12,opt,name=field,proto3,oneof"`
+}
+
+type Block_Image struct {
+	Image *Image `protobuf:"bytes,13,opt,name=image,proto3,oneof"`
+}
+
+type Block_Table struct {
+	Table *Table `protobuf:"bytes,14,opt,name=table,proto3,oneof"`
+}
+
+type Block_KeyValue struct {
+	KeyValue *KeyValue `protobuf:"bytes,15,opt,name=key_value,json=keyValue,proto3,oneof"`
+}
+
+type Block_Totals struct {
+	Totals *Totals `protobuf:"bytes,16,opt,name=totals,proto3,oneof"`
+}
+
+type Block_Columns struct {
+	Columns *Columns `protobuf:"bytes,17,opt,name=columns,proto3,oneof"`
+}
+
+type Block_Signature struct {
+	Signature *Signature `protobuf:"bytes,18,opt,name=signature,proto3,oneof"`
+}
+
+type Block_Qr struct {
+	Qr *QrCode `protobuf:"bytes,19,opt,name=qr,proto3,oneof"`
+}
+
+type Block_Divider struct {
+	Divider *Divider `protobuf:"bytes,20,opt,name=divider,proto3,oneof"`
+}
+
+type Block_Spacer struct {
+	Spacer *Spacer `protobuf:"bytes,21,opt,name=spacer,proto3,oneof"`
+}
+
+type Block_Section struct {
+	Section *Section `protobuf:"bytes,22,opt,name=section,proto3,oneof"`
+}
+
+type Block_PageBreak struct {
+	PageBreak *PageBreak `protobuf:"bytes,23,opt,name=page_break,json=pageBreak,proto3,oneof"`
+}
+
+func (*Block_Heading) isBlock_Kind() {}
+
+func (*Block_Text) isBlock_Kind() {}
+
+func (*Block_Field) isBlock_Kind() {}
+
+func (*Block_Image) isBlock_Kind() {}
+
+func (*Block_Table) isBlock_Kind() {}
+
+func (*Block_KeyValue) isBlock_Kind() {}
+
+func (*Block_Totals) isBlock_Kind() {}
+
+func (*Block_Columns) isBlock_Kind() {}
+
+func (*Block_Signature) isBlock_Kind() {}
+
+func (*Block_Qr) isBlock_Kind() {}
+
+func (*Block_Divider) isBlock_Kind() {}
+
+func (*Block_Spacer) isBlock_Kind() {}
+
+func (*Block_Section) isBlock_Kind() {}
+
+func (*Block_PageBreak) isBlock_Kind() {}
+
+// Condition is a test on one field, such as status equals "draft".
+type Condition struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Path  string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Op    ConditionOp            `protobuf:"varint,2,opt,name=op,proto3,enum=proteus.v1.ConditionOp" json:"op,omitempty"`
+	// Compared as a number when both sides parse as one, else as text.
+	Value         string `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Condition) Reset() {
+	*x = Condition{}
+	mi := &file_proteus_v1_template_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Condition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Condition) ProtoMessage() {}
+
+func (x *Condition) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Condition.ProtoReflect.Descriptor instead.
+func (*Condition) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *Condition) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *Condition) GetOp() ConditionOp {
+	if x != nil {
+		return x.Op
+	}
+	return ConditionOp_CONDITION_OP_UNSPECIFIED
+}
+
+func (x *Condition) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+// BlockStyle tunes one block.
+type BlockStyle struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Align      Align                  `protobuf:"varint,1,opt,name=align,proto3,enum=proteus.v1.Align" json:"align,omitempty"`
+	SpaceBelow Spacing                `protobuf:"varint,2,opt,name=space_below,json=spaceBelow,proto3,enum=proteus.v1.Spacing" json:"space_below,omitempty"`
+	// Text size in points; 0 inherits the theme.
+	FontSizePt float64 `protobuf:"fixed64,3,opt,name=font_size_pt,json=fontSizePt,proto3" json:"font_size_pt,omitempty"`
+	Bold       bool    `protobuf:"varint,4,opt,name=bold,proto3" json:"bold,omitempty"`
+	// CSS colours.
+	Color         string `protobuf:"bytes,5,opt,name=color,proto3" json:"color,omitempty"`
+	Background    string `protobuf:"bytes,6,opt,name=background,proto3" json:"background,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BlockStyle) Reset() {
+	*x = BlockStyle{}
+	mi := &file_proteus_v1_template_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BlockStyle) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlockStyle) ProtoMessage() {}
+
+func (x *BlockStyle) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlockStyle.ProtoReflect.Descriptor instead.
+func (*BlockStyle) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *BlockStyle) GetAlign() Align {
+	if x != nil {
+		return x.Align
+	}
+	return Align_ALIGN_UNSPECIFIED
+}
+
+func (x *BlockStyle) GetSpaceBelow() Spacing {
+	if x != nil {
+		return x.SpaceBelow
+	}
+	return Spacing_SPACING_UNSPECIFIED
+}
+
+func (x *BlockStyle) GetFontSizePt() float64 {
+	if x != nil {
+		return x.FontSizePt
+	}
+	return 0
+}
+
+func (x *BlockStyle) GetBold() bool {
+	if x != nil {
+		return x.Bold
+	}
+	return false
+}
+
+func (x *BlockStyle) GetColor() string {
+	if x != nil {
+		return x.Color
+	}
+	return ""
+}
+
+func (x *BlockStyle) GetBackground() string {
+	if x != nil {
+		return x.Background
+	}
+	return ""
+}
+
+// Heading is a title line. Text may use placeholders.
+type Heading struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Text  string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	// 1 (largest) to 3; default 1.
+	Level         int32 `protobuf:"varint,2,opt,name=level,proto3" json:"level,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Heading) Reset() {
+	*x = Heading{}
+	mi := &file_proteus_v1_template_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Heading) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Heading) ProtoMessage() {}
+
+func (x *Heading) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Heading.ProtoReflect.Descriptor instead.
+func (*Heading) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *Heading) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *Heading) GetLevel() int32 {
+	if x != nil {
+		return x.Level
+	}
+	return 0
+}
+
+// Text is one or more paragraphs; blank lines separate paragraphs. It may
+// use placeholders and the helper functions.
+type Text struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Text          string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Text) Reset() {
+	*x = Text{}
+	mi := &file_proteus_v1_template_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Text) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Text) ProtoMessage() {}
+
+func (x *Text) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Text.ProtoReflect.Descriptor instead.
+func (*Text) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *Text) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+// Field prints one value.
+type Field struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Path   string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Format FieldFormat            `protobuf:"varint,2,opt,name=format,proto3,enum=proteus.v1.FieldFormat" json:"format,omitempty"`
+	// Printed before the value as a caption, such as "Invoice no.".
+	Label         string `protobuf:"bytes,3,opt,name=label,proto3" json:"label,omitempty"`
+	Prefix        string `protobuf:"bytes,4,opt,name=prefix,proto3" json:"prefix,omitempty"`
+	Suffix        string `protobuf:"bytes,5,opt,name=suffix,proto3" json:"suffix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Field) Reset() {
+	*x = Field{}
+	mi := &file_proteus_v1_template_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Field) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Field) ProtoMessage() {}
+
+func (x *Field) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Field.ProtoReflect.Descriptor instead.
+func (*Field) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *Field) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *Field) GetFormat() FieldFormat {
+	if x != nil {
+		return x.Format
+	}
+	return FieldFormat_FIELD_FORMAT_UNSPECIFIED
+}
+
+func (x *Field) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *Field) GetPrefix() string {
+	if x != nil {
+		return x.Prefix
+	}
+	return ""
+}
+
+func (x *Field) GetSuffix() string {
+	if x != nil {
+		return x.Suffix
+	}
+	return ""
+}
+
+// Image draws an asset of the template or an image named by a field.
+type Image struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Source:
+	//
+	//	*Image_Asset
+	//	*Image_Path
+	Source        isImage_Source `protobuf_oneof:"source"`
+	WidthMm       float64        `protobuf:"fixed64,3,opt,name=width_mm,json=widthMm,proto3" json:"width_mm,omitempty"`
+	HeightMm      float64        `protobuf:"fixed64,4,opt,name=height_mm,json=heightMm,proto3" json:"height_mm,omitempty"`
+	Alt           string         `protobuf:"bytes,5,opt,name=alt,proto3" json:"alt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Image) Reset() {
+	*x = Image{}
+	mi := &file_proteus_v1_template_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Image) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Image) ProtoMessage() {}
+
+func (x *Image) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Image.ProtoReflect.Descriptor instead.
+func (*Image) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *Image) GetSource() isImage_Source {
+	if x != nil {
+		return x.Source
+	}
+	return nil
+}
+
+func (x *Image) GetAsset() string {
+	if x != nil {
+		if x, ok := x.Source.(*Image_Asset); ok {
+			return x.Asset
+		}
+	}
+	return ""
+}
+
+func (x *Image) GetPath() string {
+	if x != nil {
+		if x, ok := x.Source.(*Image_Path); ok {
+			return x.Path
+		}
+	}
+	return ""
+}
+
+func (x *Image) GetWidthMm() float64 {
+	if x != nil {
+		return x.WidthMm
+	}
+	return 0
+}
+
+func (x *Image) GetHeightMm() float64 {
+	if x != nil {
+		return x.HeightMm
+	}
+	return 0
+}
+
+func (x *Image) GetAlt() string {
+	if x != nil {
+		return x.Alt
+	}
+	return ""
+}
+
+type isImage_Source interface {
+	isImage_Source()
+}
+
+type Image_Asset struct {
+	// Asset path, such as "assets/logo.png".
+	Asset string `protobuf:"bytes,1,opt,name=asset,proto3,oneof"`
+}
+
+type Image_Path struct {
+	// Field holding an asset path or a data: URL.
+	Path string `protobuf:"bytes,2,opt,name=path,proto3,oneof"`
+}
+
+func (*Image_Asset) isImage_Source() {}
+
+func (*Image_Path) isImage_Source() {}
+
+// Table repeats a row for each item of a list field.
+type Table struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Path of the list, such as "items".
+	List    string    `protobuf:"bytes,1,opt,name=list,proto3" json:"list,omitempty"`
+	Columns []*Column `protobuf:"bytes,2,rep,name=columns,proto3" json:"columns,omitempty"`
+	// Repeat the header row on every page; on by default.
+	RepeatHeader *bool `protobuf:"varint,3,opt,name=repeat_header,json=repeatHeader,proto3,oneof" json:"repeat_header,omitempty"`
+	// Keep each row on one page; on by default.
+	KeepRows *bool `protobuf:"varint,4,opt,name=keep_rows,json=keepRows,proto3,oneof" json:"keep_rows,omitempty"`
+	// Shown instead of the table when the list is empty.
+	EmptyText string `protobuf:"bytes,5,opt,name=empty_text,json=emptyText,proto3" json:"empty_text,omitempty"`
+	Striped   bool   `protobuf:"varint,6,opt,name=striped,proto3" json:"striped,omitempty"`
+	// Number the rows in a first column.
+	Numbered      bool `protobuf:"varint,7,opt,name=numbered,proto3" json:"numbered,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Table) Reset() {
+	*x = Table{}
+	mi := &file_proteus_v1_template_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Table) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Table) ProtoMessage() {}
+
+func (x *Table) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Table.ProtoReflect.Descriptor instead.
+func (*Table) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *Table) GetList() string {
+	if x != nil {
+		return x.List
+	}
+	return ""
+}
+
+func (x *Table) GetColumns() []*Column {
+	if x != nil {
+		return x.Columns
+	}
+	return nil
+}
+
+func (x *Table) GetRepeatHeader() bool {
+	if x != nil && x.RepeatHeader != nil {
+		return *x.RepeatHeader
+	}
+	return false
+}
+
+func (x *Table) GetKeepRows() bool {
+	if x != nil && x.KeepRows != nil {
+		return *x.KeepRows
+	}
+	return false
+}
+
+func (x *Table) GetEmptyText() string {
+	if x != nil {
+		return x.EmptyText
+	}
+	return ""
+}
+
+func (x *Table) GetStriped() bool {
+	if x != nil {
+		return x.Striped
+	}
+	return false
+}
+
+func (x *Table) GetNumbered() bool {
+	if x != nil {
+		return x.Numbered
+	}
+	return false
+}
+
+// Column of a Table.
+type Column struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Header string                 `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
+	// Key in each item, such as "qty", or text with placeholders that may
+	// use the item's fields, such as "{{.qty}} x {{.unit}}".
+	Path   string      `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	Format FieldFormat `protobuf:"varint,3,opt,name=format,proto3,enum=proteus.v1.FieldFormat" json:"format,omitempty"`
+	Align  Align       `protobuf:"varint,4,opt,name=align,proto3,enum=proteus.v1.Align" json:"align,omitempty"`
+	// Share of the table width in percent; 0 shares the rest equally.
+	WidthPct      float64 `protobuf:"fixed64,5,opt,name=width_pct,json=widthPct,proto3" json:"width_pct,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Column) Reset() {
+	*x = Column{}
+	mi := &file_proteus_v1_template_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Column) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Column) ProtoMessage() {}
+
+func (x *Column) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Column.ProtoReflect.Descriptor instead.
+func (*Column) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *Column) GetHeader() string {
+	if x != nil {
+		return x.Header
+	}
+	return ""
+}
+
+func (x *Column) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *Column) GetFormat() FieldFormat {
+	if x != nil {
+		return x.Format
+	}
+	return FieldFormat_FIELD_FORMAT_UNSPECIFIED
+}
+
+func (x *Column) GetAlign() Align {
+	if x != nil {
+		return x.Align
+	}
+	return Align_ALIGN_UNSPECIFIED
+}
+
+func (x *Column) GetWidthPct() float64 {
+	if x != nil {
+		return x.WidthPct
+	}
+	return 0
+}
+
+// KeyValue lists labelled values, such as "Date: 2 Nov 2026".
+type KeyValue struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rows          []*KeyValueRow         `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KeyValue) Reset() {
+	*x = KeyValue{}
+	mi := &file_proteus_v1_template_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KeyValue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KeyValue) ProtoMessage() {}
+
+func (x *KeyValue) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KeyValue.ProtoReflect.Descriptor instead.
+func (*KeyValue) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *KeyValue) GetRows() []*KeyValueRow {
+	if x != nil {
+		return x.Rows
+	}
+	return nil
+}
+
+type KeyValueRow struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Label string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	// Text with placeholders.
+	Value         string      `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Format        FieldFormat `protobuf:"varint,3,opt,name=format,proto3,enum=proteus.v1.FieldFormat" json:"format,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KeyValueRow) Reset() {
+	*x = KeyValueRow{}
+	mi := &file_proteus_v1_template_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KeyValueRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KeyValueRow) ProtoMessage() {}
+
+func (x *KeyValueRow) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KeyValueRow.ProtoReflect.Descriptor instead.
+func (*KeyValueRow) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *KeyValueRow) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *KeyValueRow) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *KeyValueRow) GetFormat() FieldFormat {
+	if x != nil {
+		return x.Format
+	}
+	return FieldFormat_FIELD_FORMAT_UNSPECIFIED
+}
+
+// Totals is a right-aligned list of amounts, such as subtotal, tax and total.
+type Totals struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rows          []*TotalRow            `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Totals) Reset() {
+	*x = Totals{}
+	mi := &file_proteus_v1_template_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Totals) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Totals) ProtoMessage() {}
+
+func (x *Totals) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Totals.ProtoReflect.Descriptor instead.
+func (*Totals) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *Totals) GetRows() []*TotalRow {
+	if x != nil {
+		return x.Rows
+	}
+	return nil
+}
+
+// Aggregate is a computed value, such as the sum of items.amount.
+type Aggregate struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Func  AggregateFunc          `protobuf:"varint,1,opt,name=func,proto3,enum=proteus.v1.AggregateFunc" json:"func,omitempty"`
+	List  string                 `protobuf:"bytes,2,opt,name=list,proto3" json:"list,omitempty"`
+	// Key in each item; unused by COUNT.
+	Column        string `protobuf:"bytes,3,opt,name=column,proto3" json:"column,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Aggregate) Reset() {
+	*x = Aggregate{}
+	mi := &file_proteus_v1_template_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Aggregate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Aggregate) ProtoMessage() {}
+
+func (x *Aggregate) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Aggregate.ProtoReflect.Descriptor instead.
+func (*Aggregate) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *Aggregate) GetFunc() AggregateFunc {
+	if x != nil {
+		return x.Func
+	}
+	return AggregateFunc_AGGREGATE_FUNC_UNSPECIFIED
+}
+
+func (x *Aggregate) GetList() string {
+	if x != nil {
+		return x.List
+	}
+	return ""
+}
+
+func (x *Aggregate) GetColumn() string {
+	if x != nil {
+		return x.Column
+	}
+	return ""
+}
+
+type TotalRow struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Label string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	// Types that are valid to be assigned to Value:
+	//
+	//	*TotalRow_Path
+	//	*TotalRow_Aggregate
+	Value isTotalRow_Value `protobuf_oneof:"value"`
+	// Default MONEY.
+	Format FieldFormat `protobuf:"varint,4,opt,name=format,proto3,enum=proteus.v1.FieldFormat" json:"format,omitempty"`
+	// Larger and bold, for the grand total.
+	Emphasized    bool `protobuf:"varint,5,opt,name=emphasized,proto3" json:"emphasized,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TotalRow) Reset() {
+	*x = TotalRow{}
+	mi := &file_proteus_v1_template_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TotalRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TotalRow) ProtoMessage() {}
+
+func (x *TotalRow) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TotalRow.ProtoReflect.Descriptor instead.
+func (*TotalRow) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *TotalRow) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *TotalRow) GetValue() isTotalRow_Value {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+func (x *TotalRow) GetPath() string {
+	if x != nil {
+		if x, ok := x.Value.(*TotalRow_Path); ok {
+			return x.Path
+		}
+	}
+	return ""
+}
+
+func (x *TotalRow) GetAggregate() *Aggregate {
+	if x != nil {
+		if x, ok := x.Value.(*TotalRow_Aggregate); ok {
+			return x.Aggregate
+		}
+	}
+	return nil
+}
+
+func (x *TotalRow) GetFormat() FieldFormat {
+	if x != nil {
+		return x.Format
+	}
+	return FieldFormat_FIELD_FORMAT_UNSPECIFIED
+}
+
+func (x *TotalRow) GetEmphasized() bool {
+	if x != nil {
+		return x.Emphasized
+	}
+	return false
+}
+
+type isTotalRow_Value interface {
+	isTotalRow_Value()
+}
+
+type TotalRow_Path struct {
+	// Field path.
+	Path string `protobuf:"bytes,2,opt,name=path,proto3,oneof"`
+}
+
+type TotalRow_Aggregate struct {
+	Aggregate *Aggregate `protobuf:"bytes,3,opt,name=aggregate,proto3,oneof"`
+}
+
+func (*TotalRow_Path) isTotalRow_Value() {}
+
+func (*TotalRow_Aggregate) isTotalRow_Value() {}
+
+// Columns places regions side by side.
+type Columns struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Columns []*Region              `protobuf:"bytes,1,rep,name=columns,proto3" json:"columns,omitempty"`
+	// Width of each column as a share of the total; empty shares equally.
+	Widths        []float64 `protobuf:"fixed64,2,rep,packed,name=widths,proto3" json:"widths,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Columns) Reset() {
+	*x = Columns{}
+	mi := &file_proteus_v1_template_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Columns) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Columns) ProtoMessage() {}
+
+func (x *Columns) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Columns.ProtoReflect.Descriptor instead.
+func (*Columns) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *Columns) GetColumns() []*Region {
+	if x != nil {
+		return x.Columns
+	}
+	return nil
+}
+
+func (x *Columns) GetWidths() []float64 {
+	if x != nil {
+		return x.Widths
+	}
+	return nil
+}
+
+// Signature draws signature lines.
+type Signature struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Lines         []*SignatureLine       `protobuf:"bytes,1,rep,name=lines,proto3" json:"lines,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Signature) Reset() {
+	*x = Signature{}
+	mi := &file_proteus_v1_template_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Signature) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Signature) ProtoMessage() {}
+
+func (x *Signature) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Signature.ProtoReflect.Descriptor instead.
+func (*Signature) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *Signature) GetLines() []*SignatureLine {
+	if x != nil {
+		return x.Lines
+	}
+	return nil
+}
+
+type SignatureLine struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Text under the line, such as "Authorized signature"; may use placeholders.
+	Label         string `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SignatureLine) Reset() {
+	*x = SignatureLine{}
+	mi := &file_proteus_v1_template_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SignatureLine) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SignatureLine) ProtoMessage() {}
+
+func (x *SignatureLine) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SignatureLine.ProtoReflect.Descriptor instead.
+func (*SignatureLine) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *SignatureLine) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+// QrCode draws a QR code of a value.
+type QrCode struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Text with placeholders, such as "{{.verify_url}}".
+	Value string `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	// Side in millimetres; default 25.
+	SizeMm        float64 `protobuf:"fixed64,2,opt,name=size_mm,json=sizeMm,proto3" json:"size_mm,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QrCode) Reset() {
+	*x = QrCode{}
+	mi := &file_proteus_v1_template_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QrCode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QrCode) ProtoMessage() {}
+
+func (x *QrCode) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QrCode.ProtoReflect.Descriptor instead.
+func (*QrCode) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *QrCode) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *QrCode) GetSizeMm() float64 {
+	if x != nil {
+		return x.SizeMm
+	}
+	return 0
+}
+
+type Divider struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Divider) Reset() {
+	*x = Divider{}
+	mi := &file_proteus_v1_template_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Divider) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Divider) ProtoMessage() {}
+
+func (x *Divider) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Divider.ProtoReflect.Descriptor instead.
+func (*Divider) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{25}
+}
+
+type Spacer struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	HeightMm      float64                `protobuf:"fixed64,1,opt,name=height_mm,json=heightMm,proto3" json:"height_mm,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Spacer) Reset() {
+	*x = Spacer{}
+	mi := &file_proteus_v1_template_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Spacer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Spacer) ProtoMessage() {}
+
+func (x *Spacer) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Spacer.ProtoReflect.Descriptor instead.
+func (*Spacer) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *Spacer) GetHeightMm() float64 {
+	if x != nil {
+		return x.HeightMm
+	}
+	return 0
+}
+
+// Section groups blocks, optionally repeating them for each item of a
+// list; placeholders inside then refer to the item.
+type Section struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Content *Region                `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	Repeat  string                 `protobuf:"bytes,2,opt,name=repeat,proto3" json:"repeat,omitempty"`
+	// Start each repetition on a new page.
+	PagePerItem   bool `protobuf:"varint,3,opt,name=page_per_item,json=pagePerItem,proto3" json:"page_per_item,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Section) Reset() {
+	*x = Section{}
+	mi := &file_proteus_v1_template_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Section) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Section) ProtoMessage() {}
+
+func (x *Section) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Section.ProtoReflect.Descriptor instead.
+func (*Section) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *Section) GetContent() *Region {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
+func (x *Section) GetRepeat() string {
+	if x != nil {
+		return x.Repeat
+	}
+	return ""
+}
+
+func (x *Section) GetPagePerItem() bool {
+	if x != nil {
+		return x.PagePerItem
+	}
+	return false
+}
+
+type PageBreak struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PageBreak) Reset() {
+	*x = PageBreak{}
+	mi := &file_proteus_v1_template_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PageBreak) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PageBreak) ProtoMessage() {}
+
+func (x *PageBreak) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PageBreak.ProtoReflect.Descriptor instead.
+func (*PageBreak) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{28}
+}
+
 type CreateTemplateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// id, revision, times and size_bytes are ignored.
-	Template      *Template `protobuf:"bytes,1,opt,name=template,proto3" json:"template,omitempty"`
+	Template *Template `protobuf:"bytes,1,opt,name=template,proto3" json:"template,omitempty"`
+	// Copy this starter (see ListStarterTemplates); fields set in template
+	// override the starter's. The name is still required.
+	StarterId     string `protobuf:"bytes,2,opt,name=starter_id,json=starterId,proto3" json:"starter_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateTemplateRequest) Reset() {
 	*x = CreateTemplateRequest{}
-	mi := &file_proteus_v1_template_proto_msgTypes[1]
+	mi := &file_proteus_v1_template_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -191,7 +2647,7 @@ func (x *CreateTemplateRequest) String() string {
 func (*CreateTemplateRequest) ProtoMessage() {}
 
 func (x *CreateTemplateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[1]
+	mi := &file_proteus_v1_template_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -204,7 +2660,7 @@ func (x *CreateTemplateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTemplateRequest.ProtoReflect.Descriptor instead.
 func (*CreateTemplateRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{1}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *CreateTemplateRequest) GetTemplate() *Template {
@@ -212,6 +2668,13 @@ func (x *CreateTemplateRequest) GetTemplate() *Template {
 		return x.Template
 	}
 	return nil
+}
+
+func (x *CreateTemplateRequest) GetStarterId() string {
+	if x != nil {
+		return x.StarterId
+	}
+	return ""
 }
 
 type CreateTemplateResponse struct {
@@ -223,7 +2686,7 @@ type CreateTemplateResponse struct {
 
 func (x *CreateTemplateResponse) Reset() {
 	*x = CreateTemplateResponse{}
-	mi := &file_proteus_v1_template_proto_msgTypes[2]
+	mi := &file_proteus_v1_template_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -235,7 +2698,7 @@ func (x *CreateTemplateResponse) String() string {
 func (*CreateTemplateResponse) ProtoMessage() {}
 
 func (x *CreateTemplateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[2]
+	mi := &file_proteus_v1_template_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -248,7 +2711,7 @@ func (x *CreateTemplateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTemplateResponse.ProtoReflect.Descriptor instead.
 func (*CreateTemplateResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{2}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *CreateTemplateResponse) GetTemplate() *Template {
@@ -267,7 +2730,7 @@ type GetTemplateRequest struct {
 
 func (x *GetTemplateRequest) Reset() {
 	*x = GetTemplateRequest{}
-	mi := &file_proteus_v1_template_proto_msgTypes[3]
+	mi := &file_proteus_v1_template_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -279,7 +2742,7 @@ func (x *GetTemplateRequest) String() string {
 func (*GetTemplateRequest) ProtoMessage() {}
 
 func (x *GetTemplateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[3]
+	mi := &file_proteus_v1_template_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -292,7 +2755,7 @@ func (x *GetTemplateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTemplateRequest.ProtoReflect.Descriptor instead.
 func (*GetTemplateRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{3}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetTemplateRequest) GetId() string {
@@ -311,7 +2774,7 @@ type GetTemplateResponse struct {
 
 func (x *GetTemplateResponse) Reset() {
 	*x = GetTemplateResponse{}
-	mi := &file_proteus_v1_template_proto_msgTypes[4]
+	mi := &file_proteus_v1_template_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -323,7 +2786,7 @@ func (x *GetTemplateResponse) String() string {
 func (*GetTemplateResponse) ProtoMessage() {}
 
 func (x *GetTemplateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[4]
+	mi := &file_proteus_v1_template_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -336,7 +2799,7 @@ func (x *GetTemplateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTemplateResponse.ProtoReflect.Descriptor instead.
 func (*GetTemplateResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{4}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetTemplateResponse) GetTemplate() *Template {
@@ -351,14 +2814,16 @@ type ListTemplatesRequest struct {
 	// At most this many templates; default 50, maximum 200.
 	PageSize int32 `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	// next_page_token from the previous response.
-	PageToken     string `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	PageToken string `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// Only templates with this category.
+	Category      string `protobuf:"bytes,3,opt,name=category,proto3" json:"category,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListTemplatesRequest) Reset() {
 	*x = ListTemplatesRequest{}
-	mi := &file_proteus_v1_template_proto_msgTypes[5]
+	mi := &file_proteus_v1_template_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -370,7 +2835,7 @@ func (x *ListTemplatesRequest) String() string {
 func (*ListTemplatesRequest) ProtoMessage() {}
 
 func (x *ListTemplatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[5]
+	mi := &file_proteus_v1_template_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -383,7 +2848,7 @@ func (x *ListTemplatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTemplatesRequest.ProtoReflect.Descriptor instead.
 func (*ListTemplatesRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{5}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ListTemplatesRequest) GetPageSize() int32 {
@@ -400,6 +2865,13 @@ func (x *ListTemplatesRequest) GetPageToken() string {
 	return ""
 }
 
+func (x *ListTemplatesRequest) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
 type ListTemplatesResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Without content, assets or sample data.
@@ -412,7 +2884,7 @@ type ListTemplatesResponse struct {
 
 func (x *ListTemplatesResponse) Reset() {
 	*x = ListTemplatesResponse{}
-	mi := &file_proteus_v1_template_proto_msgTypes[6]
+	mi := &file_proteus_v1_template_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -424,7 +2896,7 @@ func (x *ListTemplatesResponse) String() string {
 func (*ListTemplatesResponse) ProtoMessage() {}
 
 func (x *ListTemplatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[6]
+	mi := &file_proteus_v1_template_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -437,7 +2909,7 @@ func (x *ListTemplatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTemplatesResponse.ProtoReflect.Descriptor instead.
 func (*ListTemplatesResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{6}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ListTemplatesResponse) GetTemplates() []*Template {
@@ -465,7 +2937,7 @@ type UpdateTemplateRequest struct {
 
 func (x *UpdateTemplateRequest) Reset() {
 	*x = UpdateTemplateRequest{}
-	mi := &file_proteus_v1_template_proto_msgTypes[7]
+	mi := &file_proteus_v1_template_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -477,7 +2949,7 @@ func (x *UpdateTemplateRequest) String() string {
 func (*UpdateTemplateRequest) ProtoMessage() {}
 
 func (x *UpdateTemplateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[7]
+	mi := &file_proteus_v1_template_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -490,7 +2962,7 @@ func (x *UpdateTemplateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTemplateRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTemplateRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{7}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *UpdateTemplateRequest) GetTemplate() *Template {
@@ -509,7 +2981,7 @@ type UpdateTemplateResponse struct {
 
 func (x *UpdateTemplateResponse) Reset() {
 	*x = UpdateTemplateResponse{}
-	mi := &file_proteus_v1_template_proto_msgTypes[8]
+	mi := &file_proteus_v1_template_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -521,7 +2993,7 @@ func (x *UpdateTemplateResponse) String() string {
 func (*UpdateTemplateResponse) ProtoMessage() {}
 
 func (x *UpdateTemplateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[8]
+	mi := &file_proteus_v1_template_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -534,7 +3006,7 @@ func (x *UpdateTemplateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTemplateResponse.ProtoReflect.Descriptor instead.
 func (*UpdateTemplateResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{8}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *UpdateTemplateResponse) GetTemplate() *Template {
@@ -553,7 +3025,7 @@ type DeleteTemplateRequest struct {
 
 func (x *DeleteTemplateRequest) Reset() {
 	*x = DeleteTemplateRequest{}
-	mi := &file_proteus_v1_template_proto_msgTypes[9]
+	mi := &file_proteus_v1_template_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -565,7 +3037,7 @@ func (x *DeleteTemplateRequest) String() string {
 func (*DeleteTemplateRequest) ProtoMessage() {}
 
 func (x *DeleteTemplateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[9]
+	mi := &file_proteus_v1_template_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -578,7 +3050,7 @@ func (x *DeleteTemplateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTemplateRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTemplateRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{9}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *DeleteTemplateRequest) GetId() string {
@@ -596,7 +3068,7 @@ type DeleteTemplateResponse struct {
 
 func (x *DeleteTemplateResponse) Reset() {
 	*x = DeleteTemplateResponse{}
-	mi := &file_proteus_v1_template_proto_msgTypes[10]
+	mi := &file_proteus_v1_template_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -608,7 +3080,7 @@ func (x *DeleteTemplateResponse) String() string {
 func (*DeleteTemplateResponse) ProtoMessage() {}
 
 func (x *DeleteTemplateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[10]
+	mi := &file_proteus_v1_template_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -621,7 +3093,7 @@ func (x *DeleteTemplateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTemplateResponse.ProtoReflect.Descriptor instead.
 func (*DeleteTemplateResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{10}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{38}
 }
 
 type RenderTemplateRequest struct {
@@ -639,7 +3111,7 @@ type RenderTemplateRequest struct {
 
 func (x *RenderTemplateRequest) Reset() {
 	*x = RenderTemplateRequest{}
-	mi := &file_proteus_v1_template_proto_msgTypes[11]
+	mi := &file_proteus_v1_template_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -651,7 +3123,7 @@ func (x *RenderTemplateRequest) String() string {
 func (*RenderTemplateRequest) ProtoMessage() {}
 
 func (x *RenderTemplateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[11]
+	mi := &file_proteus_v1_template_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -664,7 +3136,7 @@ func (x *RenderTemplateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenderTemplateRequest.ProtoReflect.Descriptor instead.
 func (*RenderTemplateRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{11}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *RenderTemplateRequest) GetSource() isRenderTemplateRequest_Source {
@@ -728,7 +3200,7 @@ type RenderTemplateResponse struct {
 
 func (x *RenderTemplateResponse) Reset() {
 	*x = RenderTemplateResponse{}
-	mi := &file_proteus_v1_template_proto_msgTypes[12]
+	mi := &file_proteus_v1_template_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -740,7 +3212,7 @@ func (x *RenderTemplateResponse) String() string {
 func (*RenderTemplateResponse) ProtoMessage() {}
 
 func (x *RenderTemplateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[12]
+	mi := &file_proteus_v1_template_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -753,7 +3225,7 @@ func (x *RenderTemplateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenderTemplateResponse.ProtoReflect.Descriptor instead.
 func (*RenderTemplateResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{12}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *RenderTemplateResponse) GetFormat() InputFormat {
@@ -772,20 +3244,23 @@ func (x *RenderTemplateResponse) GetContent() []byte {
 
 type ConvertTemplateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// A stored template. Leave empty to convert template instead.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Values for the placeholders. Empty uses the template's sample_data.
 	Data *structpb.Struct `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
 	// Defaults to PDF.
 	OutputFormat OutputFormat `protobuf:"varint,3,opt,name=output_format,json=outputFormat,proto3,enum=proteus.v1.OutputFormat" json:"output_format,omitempty"`
 	// Merged over the template's options.
-	Options       *Options `protobuf:"bytes,4,opt,name=options,proto3" json:"options,omitempty"`
+	Options *Options `protobuf:"bytes,4,opt,name=options,proto3" json:"options,omitempty"`
+	// An unsaved template, such as one being edited, for an exact preview.
+	Template      *Template `protobuf:"bytes,5,opt,name=template,proto3" json:"template,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ConvertTemplateRequest) Reset() {
 	*x = ConvertTemplateRequest{}
-	mi := &file_proteus_v1_template_proto_msgTypes[13]
+	mi := &file_proteus_v1_template_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -797,7 +3272,7 @@ func (x *ConvertTemplateRequest) String() string {
 func (*ConvertTemplateRequest) ProtoMessage() {}
 
 func (x *ConvertTemplateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[13]
+	mi := &file_proteus_v1_template_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -810,7 +3285,7 @@ func (x *ConvertTemplateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertTemplateRequest.ProtoReflect.Descriptor instead.
 func (*ConvertTemplateRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{13}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ConvertTemplateRequest) GetId() string {
@@ -841,6 +3316,13 @@ func (x *ConvertTemplateRequest) GetOptions() *Options {
 	return nil
 }
 
+func (x *ConvertTemplateRequest) GetTemplate() *Template {
+	if x != nil {
+		return x.Template
+	}
+	return nil
+}
+
 // ConvertTemplateResponse has the fields of ConvertResponse.
 type ConvertTemplateResponse struct {
 	state        protoimpl.MessageState `protogen:"open.v1"`
@@ -857,7 +3339,7 @@ type ConvertTemplateResponse struct {
 
 func (x *ConvertTemplateResponse) Reset() {
 	*x = ConvertTemplateResponse{}
-	mi := &file_proteus_v1_template_proto_msgTypes[14]
+	mi := &file_proteus_v1_template_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -869,7 +3351,7 @@ func (x *ConvertTemplateResponse) String() string {
 func (*ConvertTemplateResponse) ProtoMessage() {}
 
 func (x *ConvertTemplateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[14]
+	mi := &file_proteus_v1_template_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -882,7 +3364,7 @@ func (x *ConvertTemplateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertTemplateResponse.ProtoReflect.Descriptor instead.
 func (*ConvertTemplateResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{14}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *ConvertTemplateResponse) GetContent() []byte {
@@ -944,7 +3426,7 @@ type SubmitTemplateJobRequest struct {
 
 func (x *SubmitTemplateJobRequest) Reset() {
 	*x = SubmitTemplateJobRequest{}
-	mi := &file_proteus_v1_template_proto_msgTypes[15]
+	mi := &file_proteus_v1_template_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -956,7 +3438,7 @@ func (x *SubmitTemplateJobRequest) String() string {
 func (*SubmitTemplateJobRequest) ProtoMessage() {}
 
 func (x *SubmitTemplateJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[15]
+	mi := &file_proteus_v1_template_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -969,7 +3451,7 @@ func (x *SubmitTemplateJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitTemplateJobRequest.ProtoReflect.Descriptor instead.
 func (*SubmitTemplateJobRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{15}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *SubmitTemplateJobRequest) GetId() string {
@@ -1016,7 +3498,7 @@ type SubmitTemplateJobResponse struct {
 
 func (x *SubmitTemplateJobResponse) Reset() {
 	*x = SubmitTemplateJobResponse{}
-	mi := &file_proteus_v1_template_proto_msgTypes[16]
+	mi := &file_proteus_v1_template_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1028,7 +3510,7 @@ func (x *SubmitTemplateJobResponse) String() string {
 func (*SubmitTemplateJobResponse) ProtoMessage() {}
 
 func (x *SubmitTemplateJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_template_proto_msgTypes[16]
+	mi := &file_proteus_v1_template_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1041,7 +3523,7 @@ func (x *SubmitTemplateJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitTemplateJobResponse.ProtoReflect.Descriptor instead.
 func (*SubmitTemplateJobResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_template_proto_rawDescGZIP(), []int{16}
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *SubmitTemplateJobResponse) GetJob() *Job {
@@ -1051,12 +3533,199 @@ func (x *SubmitTemplateJobResponse) GetJob() *Job {
 	return nil
 }
 
+type ListStarterTemplatesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Only starters with this category.
+	Category      string `protobuf:"bytes,1,opt,name=category,proto3" json:"category,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListStarterTemplatesRequest) Reset() {
+	*x = ListStarterTemplatesRequest{}
+	mi := &file_proteus_v1_template_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListStarterTemplatesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListStarterTemplatesRequest) ProtoMessage() {}
+
+func (x *ListStarterTemplatesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListStarterTemplatesRequest.ProtoReflect.Descriptor instead.
+func (*ListStarterTemplatesRequest) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *ListStarterTemplatesRequest) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+type ListStarterTemplatesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Complete templates without id; starter_id names each one.
+	Starters      []*Template `protobuf:"bytes,1,rep,name=starters,proto3" json:"starters,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListStarterTemplatesResponse) Reset() {
+	*x = ListStarterTemplatesResponse{}
+	mi := &file_proteus_v1_template_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListStarterTemplatesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListStarterTemplatesResponse) ProtoMessage() {}
+
+func (x *ListStarterTemplatesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListStarterTemplatesResponse.ProtoReflect.Descriptor instead.
+func (*ListStarterTemplatesResponse) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *ListStarterTemplatesResponse) GetStarters() []*Template {
+	if x != nil {
+		return x.Starters
+	}
+	return nil
+}
+
+type ConvertToCodeRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// When not zero it must equal the stored revision (ABORTED otherwise).
+	Revision      int64 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConvertToCodeRequest) Reset() {
+	*x = ConvertToCodeRequest{}
+	mi := &file_proteus_v1_template_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConvertToCodeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConvertToCodeRequest) ProtoMessage() {}
+
+func (x *ConvertToCodeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConvertToCodeRequest.ProtoReflect.Descriptor instead.
+func (*ConvertToCodeRequest) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *ConvertToCodeRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ConvertToCodeRequest) GetRevision() int64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
+type ConvertToCodeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Template      *Template              `protobuf:"bytes,1,opt,name=template,proto3" json:"template,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConvertToCodeResponse) Reset() {
+	*x = ConvertToCodeResponse{}
+	mi := &file_proteus_v1_template_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConvertToCodeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConvertToCodeResponse) ProtoMessage() {}
+
+func (x *ConvertToCodeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_template_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConvertToCodeResponse.ProtoReflect.Descriptor instead.
+func (*ConvertToCodeResponse) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_template_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *ConvertToCodeResponse) GetTemplate() *Template {
+	if x != nil {
+		return x.Template
+	}
+	return nil
+}
+
 var File_proteus_v1_template_proto protoreflect.FileDescriptor
 
 const file_proteus_v1_template_proto_rawDesc = "" +
 	"\n" +
 	"\x19proteus/v1/template.proto\x12\n" +
-	"proteus.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bproteus/v1/conversion.proto\"\xe4\x03\n" +
+	"proteus.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bproteus/v1/conversion.proto\"\xfa\x04\n" +
 	"\bTemplate\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -1074,19 +3743,172 @@ const file_proteus_v1_template_proto_rawDesc = "" +
 	"\vupdate_time\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"updateTime\x12\x1d\n" +
 	"\n" +
-	"size_bytes\x18\f \x01(\x03R\tsizeBytes\"I\n" +
+	"size_bytes\x18\f \x01(\x03R\tsizeBytes\x12\x1a\n" +
+	"\bcategory\x18\r \x01(\tR\bcategory\x12*\n" +
+	"\x06layout\x18\x0e \x01(\v2\x12.proteus.v1.LayoutR\x06layout\x12-\n" +
+	"\x06fields\x18\x0f \x03(\v2\x15.proteus.v1.FieldSpecR\x06fields\x12\x1d\n" +
+	"\n" +
+	"starter_id\x18\x10 \x01(\tR\tstarterId\"\xad\x02\n" +
+	"\tFieldSpec\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x14\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\x12)\n" +
+	"\x04type\x18\x03 \x01(\x0e2\x15.proteus.v1.FieldTypeR\x04type\x12\x1a\n" +
+	"\brequired\x18\x04 \x01(\bR\brequired\x12\x18\n" +
+	"\achoices\x18\x05 \x03(\tR\achoices\x126\n" +
+	"\vitem_fields\x18\x06 \x03(\v2\x15.proteus.v1.FieldSpecR\n" +
+	"itemFields\x12;\n" +
+	"\rdefault_value\x18\a \x01(\v2\x16.google.protobuf.ValueR\fdefaultValue\x12 \n" +
+	"\vdescription\x18\b \x01(\tR\vdescription\";\n" +
+	"\vDataProblem\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"H\n" +
+	"\x11TemplateDataError\x123\n" +
+	"\bproblems\x18\x01 \x03(\v2\x17.proteus.v1.DataProblemR\bproblems\"\xb1\x01\n" +
+	"\x06Layout\x12'\n" +
+	"\x05theme\x18\x01 \x01(\v2\x11.proteus.v1.ThemeR\x05theme\x12*\n" +
+	"\x06header\x18\x02 \x01(\v2\x12.proteus.v1.RegionR\x06header\x12&\n" +
+	"\x04body\x18\x03 \x01(\v2\x12.proteus.v1.RegionR\x04body\x12*\n" +
+	"\x06footer\x18\x04 \x01(\v2\x12.proteus.v1.RegionR\x06footer\"\xc0\x01\n" +
+	"\x05Theme\x12\x1f\n" +
+	"\vfont_family\x18\x01 \x01(\tR\n" +
+	"fontFamily\x12 \n" +
+	"\ffont_size_pt\x18\x02 \x01(\x01R\n" +
+	"fontSizePt\x12!\n" +
+	"\faccent_color\x18\x03 \x01(\tR\vaccentColor\x12\x1d\n" +
+	"\n" +
+	"text_color\x18\x04 \x01(\tR\ttextColor\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\x12\x1a\n" +
+	"\bcurrency\x18\x06 \x01(\tR\bcurrency\"P\n" +
+	"\x06Region\x12)\n" +
+	"\x06blocks\x18\x01 \x03(\v2\x11.proteus.v1.BlockR\x06blocks\x12\x1b\n" +
+	"\theight_mm\x18\x02 \x01(\x01R\bheightMm\"\x90\x06\n" +
+	"\x05Block\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
+	"\ashow_if\x18\x02 \x01(\v2\x15.proteus.v1.ConditionR\x06showIf\x12,\n" +
+	"\x05style\x18\x03 \x01(\v2\x16.proteus.v1.BlockStyleR\x05style\x12/\n" +
+	"\aheading\x18\n" +
+	" \x01(\v2\x13.proteus.v1.HeadingH\x00R\aheading\x12&\n" +
+	"\x04text\x18\v \x01(\v2\x10.proteus.v1.TextH\x00R\x04text\x12)\n" +
+	"\x05field\x18\f \x01(\v2\x11.proteus.v1.FieldH\x00R\x05field\x12)\n" +
+	"\x05image\x18\r \x01(\v2\x11.proteus.v1.ImageH\x00R\x05image\x12)\n" +
+	"\x05table\x18\x0e \x01(\v2\x11.proteus.v1.TableH\x00R\x05table\x123\n" +
+	"\tkey_value\x18\x0f \x01(\v2\x14.proteus.v1.KeyValueH\x00R\bkeyValue\x12,\n" +
+	"\x06totals\x18\x10 \x01(\v2\x12.proteus.v1.TotalsH\x00R\x06totals\x12/\n" +
+	"\acolumns\x18\x11 \x01(\v2\x13.proteus.v1.ColumnsH\x00R\acolumns\x125\n" +
+	"\tsignature\x18\x12 \x01(\v2\x15.proteus.v1.SignatureH\x00R\tsignature\x12$\n" +
+	"\x02qr\x18\x13 \x01(\v2\x12.proteus.v1.QrCodeH\x00R\x02qr\x12/\n" +
+	"\adivider\x18\x14 \x01(\v2\x13.proteus.v1.DividerH\x00R\adivider\x12,\n" +
+	"\x06spacer\x18\x15 \x01(\v2\x12.proteus.v1.SpacerH\x00R\x06spacer\x12/\n" +
+	"\asection\x18\x16 \x01(\v2\x13.proteus.v1.SectionH\x00R\asection\x126\n" +
+	"\n" +
+	"page_break\x18\x17 \x01(\v2\x15.proteus.v1.PageBreakH\x00R\tpageBreakB\x06\n" +
+	"\x04kind\"^\n" +
+	"\tCondition\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12'\n" +
+	"\x02op\x18\x02 \x01(\x0e2\x17.proteus.v1.ConditionOpR\x02op\x12\x14\n" +
+	"\x05value\x18\x03 \x01(\tR\x05value\"\xd7\x01\n" +
+	"\n" +
+	"BlockStyle\x12'\n" +
+	"\x05align\x18\x01 \x01(\x0e2\x11.proteus.v1.AlignR\x05align\x124\n" +
+	"\vspace_below\x18\x02 \x01(\x0e2\x13.proteus.v1.SpacingR\n" +
+	"spaceBelow\x12 \n" +
+	"\ffont_size_pt\x18\x03 \x01(\x01R\n" +
+	"fontSizePt\x12\x12\n" +
+	"\x04bold\x18\x04 \x01(\bR\x04bold\x12\x14\n" +
+	"\x05color\x18\x05 \x01(\tR\x05color\x12\x1e\n" +
+	"\n" +
+	"background\x18\x06 \x01(\tR\n" +
+	"background\"3\n" +
+	"\aHeading\x12\x12\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\x12\x14\n" +
+	"\x05level\x18\x02 \x01(\x05R\x05level\"\x1a\n" +
+	"\x04Text\x12\x12\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\"\x92\x01\n" +
+	"\x05Field\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12/\n" +
+	"\x06format\x18\x02 \x01(\x0e2\x17.proteus.v1.FieldFormatR\x06format\x12\x14\n" +
+	"\x05label\x18\x03 \x01(\tR\x05label\x12\x16\n" +
+	"\x06prefix\x18\x04 \x01(\tR\x06prefix\x12\x16\n" +
+	"\x06suffix\x18\x05 \x01(\tR\x06suffix\"\x89\x01\n" +
+	"\x05Image\x12\x16\n" +
+	"\x05asset\x18\x01 \x01(\tH\x00R\x05asset\x12\x14\n" +
+	"\x04path\x18\x02 \x01(\tH\x00R\x04path\x12\x19\n" +
+	"\bwidth_mm\x18\x03 \x01(\x01R\awidthMm\x12\x1b\n" +
+	"\theight_mm\x18\x04 \x01(\x01R\bheightMm\x12\x10\n" +
+	"\x03alt\x18\x05 \x01(\tR\x03altB\b\n" +
+	"\x06source\"\x8a\x02\n" +
+	"\x05Table\x12\x12\n" +
+	"\x04list\x18\x01 \x01(\tR\x04list\x12,\n" +
+	"\acolumns\x18\x02 \x03(\v2\x12.proteus.v1.ColumnR\acolumns\x12(\n" +
+	"\rrepeat_header\x18\x03 \x01(\bH\x00R\frepeatHeader\x88\x01\x01\x12 \n" +
+	"\tkeep_rows\x18\x04 \x01(\bH\x01R\bkeepRows\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"empty_text\x18\x05 \x01(\tR\temptyText\x12\x18\n" +
+	"\astriped\x18\x06 \x01(\bR\astriped\x12\x1a\n" +
+	"\bnumbered\x18\a \x01(\bR\bnumberedB\x10\n" +
+	"\x0e_repeat_headerB\f\n" +
+	"\n" +
+	"_keep_rows\"\xab\x01\n" +
+	"\x06Column\x12\x16\n" +
+	"\x06header\x18\x01 \x01(\tR\x06header\x12\x12\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\x12/\n" +
+	"\x06format\x18\x03 \x01(\x0e2\x17.proteus.v1.FieldFormatR\x06format\x12'\n" +
+	"\x05align\x18\x04 \x01(\x0e2\x11.proteus.v1.AlignR\x05align\x12\x1b\n" +
+	"\twidth_pct\x18\x05 \x01(\x01R\bwidthPct\"7\n" +
+	"\bKeyValue\x12+\n" +
+	"\x04rows\x18\x01 \x03(\v2\x17.proteus.v1.KeyValueRowR\x04rows\"j\n" +
+	"\vKeyValueRow\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x12/\n" +
+	"\x06format\x18\x03 \x01(\x0e2\x17.proteus.v1.FieldFormatR\x06format\"2\n" +
+	"\x06Totals\x12(\n" +
+	"\x04rows\x18\x01 \x03(\v2\x14.proteus.v1.TotalRowR\x04rows\"f\n" +
+	"\tAggregate\x12-\n" +
+	"\x04func\x18\x01 \x01(\x0e2\x19.proteus.v1.AggregateFuncR\x04func\x12\x12\n" +
+	"\x04list\x18\x02 \x01(\tR\x04list\x12\x16\n" +
+	"\x06column\x18\x03 \x01(\tR\x06column\"\xc7\x01\n" +
+	"\bTotalRow\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x12\x14\n" +
+	"\x04path\x18\x02 \x01(\tH\x00R\x04path\x125\n" +
+	"\taggregate\x18\x03 \x01(\v2\x15.proteus.v1.AggregateH\x00R\taggregate\x12/\n" +
+	"\x06format\x18\x04 \x01(\x0e2\x17.proteus.v1.FieldFormatR\x06format\x12\x1e\n" +
+	"\n" +
+	"emphasized\x18\x05 \x01(\bR\n" +
+	"emphasizedB\a\n" +
+	"\x05value\"O\n" +
+	"\aColumns\x12,\n" +
+	"\acolumns\x18\x01 \x03(\v2\x12.proteus.v1.RegionR\acolumns\x12\x16\n" +
+	"\x06widths\x18\x02 \x03(\x01R\x06widths\"<\n" +
+	"\tSignature\x12/\n" +
+	"\x05lines\x18\x01 \x03(\v2\x19.proteus.v1.SignatureLineR\x05lines\"%\n" +
+	"\rSignatureLine\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\"7\n" +
+	"\x06QrCode\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\x12\x17\n" +
+	"\asize_mm\x18\x02 \x01(\x01R\x06sizeMm\"\t\n" +
+	"\aDivider\"%\n" +
+	"\x06Spacer\x12\x1b\n" +
+	"\theight_mm\x18\x01 \x01(\x01R\bheightMm\"s\n" +
+	"\aSection\x12,\n" +
+	"\acontent\x18\x01 \x01(\v2\x12.proteus.v1.RegionR\acontent\x12\x16\n" +
+	"\x06repeat\x18\x02 \x01(\tR\x06repeat\x12\"\n" +
+	"\rpage_per_item\x18\x03 \x01(\bR\vpagePerItem\"\v\n" +
+	"\tPageBreak\"h\n" +
 	"\x15CreateTemplateRequest\x120\n" +
-	"\btemplate\x18\x01 \x01(\v2\x14.proteus.v1.TemplateR\btemplate\"J\n" +
+	"\btemplate\x18\x01 \x01(\v2\x14.proteus.v1.TemplateR\btemplate\x12\x1d\n" +
+	"\n" +
+	"starter_id\x18\x02 \x01(\tR\tstarterId\"J\n" +
 	"\x16CreateTemplateResponse\x120\n" +
 	"\btemplate\x18\x01 \x01(\v2\x14.proteus.v1.TemplateR\btemplate\"$\n" +
 	"\x12GetTemplateRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"G\n" +
 	"\x13GetTemplateResponse\x120\n" +
-	"\btemplate\x18\x01 \x01(\v2\x14.proteus.v1.TemplateR\btemplate\"R\n" +
+	"\btemplate\x18\x01 \x01(\v2\x14.proteus.v1.TemplateR\btemplate\"n\n" +
 	"\x14ListTemplatesRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\x02 \x01(\tR\tpageToken\"s\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x1a\n" +
+	"\bcategory\x18\x03 \x01(\tR\bcategory\"s\n" +
 	"\x15ListTemplatesResponse\x122\n" +
 	"\ttemplates\x18\x01 \x03(\v2\x14.proteus.v1.TemplateR\ttemplates\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"I\n" +
@@ -1104,12 +3926,13 @@ const file_proteus_v1_template_proto_rawDesc = "" +
 	"\x06source\"c\n" +
 	"\x16RenderTemplateResponse\x12/\n" +
 	"\x06format\x18\x01 \x01(\x0e2\x17.proteus.v1.InputFormatR\x06format\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\fR\acontent\"\xc3\x01\n" +
+	"\acontent\x18\x02 \x01(\fR\acontent\"\xf5\x01\n" +
 	"\x16ConvertTemplateRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12+\n" +
 	"\x04data\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04data\x12=\n" +
 	"\routput_format\x18\x03 \x01(\x0e2\x18.proteus.v1.OutputFormatR\foutputFormat\x12-\n" +
-	"\aoptions\x18\x04 \x01(\v2\x13.proteus.v1.OptionsR\aoptions\"\xe9\x01\n" +
+	"\aoptions\x18\x04 \x01(\v2\x13.proteus.v1.OptionsR\aoptions\x120\n" +
+	"\btemplate\x18\x05 \x01(\v2\x14.proteus.v1.TemplateR\btemplate\"\xe9\x01\n" +
 	"\x17ConvertTemplateResponse\x12\x18\n" +
 	"\acontent\x18\x01 \x01(\fR\acontent\x12=\n" +
 	"\routput_format\x18\x02 \x01(\x0e2\x18.proteus.v1.OutputFormatR\foutputFormat\x12\x1b\n" +
@@ -1126,7 +3949,60 @@ const file_proteus_v1_template_proto_rawDesc = "" +
 	"\vwebhook_url\x18\x05 \x01(\tR\n" +
 	"webhookUrl\">\n" +
 	"\x19SubmitTemplateJobResponse\x12!\n" +
-	"\x03job\x18\x01 \x01(\v2\x0f.proteus.v1.JobR\x03job2\xf5\x05\n" +
+	"\x03job\x18\x01 \x01(\v2\x0f.proteus.v1.JobR\x03job\"9\n" +
+	"\x1bListStarterTemplatesRequest\x12\x1a\n" +
+	"\bcategory\x18\x01 \x01(\tR\bcategory\"P\n" +
+	"\x1cListStarterTemplatesResponse\x120\n" +
+	"\bstarters\x18\x01 \x03(\v2\x14.proteus.v1.TemplateR\bstarters\"B\n" +
+	"\x14ConvertToCodeRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
+	"\brevision\x18\x02 \x01(\x03R\brevision\"I\n" +
+	"\x15ConvertToCodeResponse\x120\n" +
+	"\btemplate\x18\x01 \x01(\v2\x14.proteus.v1.TemplateR\btemplate*\xec\x01\n" +
+	"\tFieldType\x12\x1a\n" +
+	"\x16FIELD_TYPE_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fFIELD_TYPE_TEXT\x10\x01\x12\x15\n" +
+	"\x11FIELD_TYPE_NUMBER\x10\x02\x12\x14\n" +
+	"\x10FIELD_TYPE_MONEY\x10\x03\x12\x13\n" +
+	"\x0fFIELD_TYPE_DATE\x10\x04\x12\x13\n" +
+	"\x0fFIELD_TYPE_BOOL\x10\x05\x12\x15\n" +
+	"\x11FIELD_TYPE_CHOICE\x10\x06\x12\x14\n" +
+	"\x10FIELD_TYPE_IMAGE\x10\a\x12\x13\n" +
+	"\x0fFIELD_TYPE_LIST\x10\b\x12\x15\n" +
+	"\x11FIELD_TYPE_OBJECT\x10\t*\xc6\x01\n" +
+	"\vConditionOp\x12\x1c\n" +
+	"\x18CONDITION_OP_UNSPECIFIED\x10\x00\x12\x17\n" +
+	"\x13CONDITION_OP_IS_SET\x10\x01\x12\x19\n" +
+	"\x15CONDITION_OP_IS_EMPTY\x10\x02\x12\x17\n" +
+	"\x13CONDITION_OP_EQUALS\x10\x03\x12\x1b\n" +
+	"\x17CONDITION_OP_NOT_EQUALS\x10\x04\x12\x18\n" +
+	"\x14CONDITION_OP_GREATER\x10\x05\x12\x15\n" +
+	"\x11CONDITION_OP_LESS\x10\x06*Q\n" +
+	"\x05Align\x12\x15\n" +
+	"\x11ALIGN_UNSPECIFIED\x10\x00\x12\x0e\n" +
+	"\n" +
+	"ALIGN_LEFT\x10\x01\x12\x10\n" +
+	"\fALIGN_CENTER\x10\x02\x12\x0f\n" +
+	"\vALIGN_RIGHT\x10\x03*n\n" +
+	"\aSpacing\x12\x17\n" +
+	"\x13SPACING_UNSPECIFIED\x10\x00\x12\x10\n" +
+	"\fSPACING_NONE\x10\x01\x12\x11\n" +
+	"\rSPACING_SMALL\x10\x02\x12\x12\n" +
+	"\x0eSPACING_MEDIUM\x10\x03\x12\x11\n" +
+	"\rSPACING_LARGE\x10\x04*\xbe\x01\n" +
+	"\vFieldFormat\x12\x1c\n" +
+	"\x18FIELD_FORMAT_UNSPECIFIED\x10\x00\x12\x15\n" +
+	"\x11FIELD_FORMAT_TEXT\x10\x01\x12\x17\n" +
+	"\x13FIELD_FORMAT_NUMBER\x10\x02\x12\x18\n" +
+	"\x14FIELD_FORMAT_INTEGER\x10\x03\x12\x16\n" +
+	"\x12FIELD_FORMAT_MONEY\x10\x04\x12\x15\n" +
+	"\x11FIELD_FORMAT_DATE\x10\x05\x12\x18\n" +
+	"\x14FIELD_FORMAT_PERCENT\x10\x06*}\n" +
+	"\rAggregateFunc\x12\x1e\n" +
+	"\x1aAGGREGATE_FUNC_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12AGGREGATE_FUNC_SUM\x10\x01\x12\x18\n" +
+	"\x14AGGREGATE_FUNC_COUNT\x10\x02\x12\x1a\n" +
+	"\x16AGGREGATE_FUNC_AVERAGE\x10\x032\xbd\a\n" +
 	"\x0fTemplateService\x12Y\n" +
 	"\x0eCreateTemplate\x12!.proteus.v1.CreateTemplateRequest\x1a\".proteus.v1.CreateTemplateResponse\"\x00\x12S\n" +
 	"\vGetTemplate\x12\x1e.proteus.v1.GetTemplateRequest\x1a\x1f.proteus.v1.GetTemplateResponse\"\x03\x90\x02\x01\x12Y\n" +
@@ -1135,7 +4011,9 @@ const file_proteus_v1_template_proto_rawDesc = "" +
 	"\x0eDeleteTemplate\x12!.proteus.v1.DeleteTemplateRequest\x1a\".proteus.v1.DeleteTemplateResponse\"\x03\x90\x02\x02\x12\\\n" +
 	"\x0eRenderTemplate\x12!.proteus.v1.RenderTemplateRequest\x1a\".proteus.v1.RenderTemplateResponse\"\x03\x90\x02\x01\x12\\\n" +
 	"\x0fConvertTemplate\x12\".proteus.v1.ConvertTemplateRequest\x1a#.proteus.v1.ConvertTemplateResponse\"\x00\x12b\n" +
-	"\x11SubmitTemplateJob\x12$.proteus.v1.SubmitTemplateJobRequest\x1a%.proteus.v1.SubmitTemplateJobResponse\"\x00B=Z;github.com/gsoultan/proteus-server/gen/proteus/v1;proteusv1b\x06proto3"
+	"\x11SubmitTemplateJob\x12$.proteus.v1.SubmitTemplateJobRequest\x1a%.proteus.v1.SubmitTemplateJobResponse\"\x00\x12n\n" +
+	"\x14ListStarterTemplates\x12'.proteus.v1.ListStarterTemplatesRequest\x1a(.proteus.v1.ListStarterTemplatesResponse\"\x03\x90\x02\x01\x12V\n" +
+	"\rConvertToCode\x12 .proteus.v1.ConvertToCodeRequest\x1a!.proteus.v1.ConvertToCodeResponse\"\x00B=Z;github.com/gsoultan/proteus-server/gen/proteus/v1;proteusv1b\x06proto3"
 
 var (
 	file_proteus_v1_template_proto_rawDescOnce sync.Once
@@ -1149,78 +4027,168 @@ func file_proteus_v1_template_proto_rawDescGZIP() []byte {
 	return file_proteus_v1_template_proto_rawDescData
 }
 
-var file_proteus_v1_template_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_proteus_v1_template_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_proteus_v1_template_proto_msgTypes = make([]protoimpl.MessageInfo, 49)
 var file_proteus_v1_template_proto_goTypes = []any{
-	(*Template)(nil),                  // 0: proteus.v1.Template
-	(*CreateTemplateRequest)(nil),     // 1: proteus.v1.CreateTemplateRequest
-	(*CreateTemplateResponse)(nil),    // 2: proteus.v1.CreateTemplateResponse
-	(*GetTemplateRequest)(nil),        // 3: proteus.v1.GetTemplateRequest
-	(*GetTemplateResponse)(nil),       // 4: proteus.v1.GetTemplateResponse
-	(*ListTemplatesRequest)(nil),      // 5: proteus.v1.ListTemplatesRequest
-	(*ListTemplatesResponse)(nil),     // 6: proteus.v1.ListTemplatesResponse
-	(*UpdateTemplateRequest)(nil),     // 7: proteus.v1.UpdateTemplateRequest
-	(*UpdateTemplateResponse)(nil),    // 8: proteus.v1.UpdateTemplateResponse
-	(*DeleteTemplateRequest)(nil),     // 9: proteus.v1.DeleteTemplateRequest
-	(*DeleteTemplateResponse)(nil),    // 10: proteus.v1.DeleteTemplateResponse
-	(*RenderTemplateRequest)(nil),     // 11: proteus.v1.RenderTemplateRequest
-	(*RenderTemplateResponse)(nil),    // 12: proteus.v1.RenderTemplateResponse
-	(*ConvertTemplateRequest)(nil),    // 13: proteus.v1.ConvertTemplateRequest
-	(*ConvertTemplateResponse)(nil),   // 14: proteus.v1.ConvertTemplateResponse
-	(*SubmitTemplateJobRequest)(nil),  // 15: proteus.v1.SubmitTemplateJobRequest
-	(*SubmitTemplateJobResponse)(nil), // 16: proteus.v1.SubmitTemplateJobResponse
-	(InputFormat)(0),                  // 17: proteus.v1.InputFormat
-	(*Asset)(nil),                     // 18: proteus.v1.Asset
-	(*Options)(nil),                   // 19: proteus.v1.Options
-	(*structpb.Struct)(nil),           // 20: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),     // 21: google.protobuf.Timestamp
-	(OutputFormat)(0),                 // 22: proteus.v1.OutputFormat
-	(*Job)(nil),                       // 23: proteus.v1.Job
+	(FieldType)(0),                       // 0: proteus.v1.FieldType
+	(ConditionOp)(0),                     // 1: proteus.v1.ConditionOp
+	(Align)(0),                           // 2: proteus.v1.Align
+	(Spacing)(0),                         // 3: proteus.v1.Spacing
+	(FieldFormat)(0),                     // 4: proteus.v1.FieldFormat
+	(AggregateFunc)(0),                   // 5: proteus.v1.AggregateFunc
+	(*Template)(nil),                     // 6: proteus.v1.Template
+	(*FieldSpec)(nil),                    // 7: proteus.v1.FieldSpec
+	(*DataProblem)(nil),                  // 8: proteus.v1.DataProblem
+	(*TemplateDataError)(nil),            // 9: proteus.v1.TemplateDataError
+	(*Layout)(nil),                       // 10: proteus.v1.Layout
+	(*Theme)(nil),                        // 11: proteus.v1.Theme
+	(*Region)(nil),                       // 12: proteus.v1.Region
+	(*Block)(nil),                        // 13: proteus.v1.Block
+	(*Condition)(nil),                    // 14: proteus.v1.Condition
+	(*BlockStyle)(nil),                   // 15: proteus.v1.BlockStyle
+	(*Heading)(nil),                      // 16: proteus.v1.Heading
+	(*Text)(nil),                         // 17: proteus.v1.Text
+	(*Field)(nil),                        // 18: proteus.v1.Field
+	(*Image)(nil),                        // 19: proteus.v1.Image
+	(*Table)(nil),                        // 20: proteus.v1.Table
+	(*Column)(nil),                       // 21: proteus.v1.Column
+	(*KeyValue)(nil),                     // 22: proteus.v1.KeyValue
+	(*KeyValueRow)(nil),                  // 23: proteus.v1.KeyValueRow
+	(*Totals)(nil),                       // 24: proteus.v1.Totals
+	(*Aggregate)(nil),                    // 25: proteus.v1.Aggregate
+	(*TotalRow)(nil),                     // 26: proteus.v1.TotalRow
+	(*Columns)(nil),                      // 27: proteus.v1.Columns
+	(*Signature)(nil),                    // 28: proteus.v1.Signature
+	(*SignatureLine)(nil),                // 29: proteus.v1.SignatureLine
+	(*QrCode)(nil),                       // 30: proteus.v1.QrCode
+	(*Divider)(nil),                      // 31: proteus.v1.Divider
+	(*Spacer)(nil),                       // 32: proteus.v1.Spacer
+	(*Section)(nil),                      // 33: proteus.v1.Section
+	(*PageBreak)(nil),                    // 34: proteus.v1.PageBreak
+	(*CreateTemplateRequest)(nil),        // 35: proteus.v1.CreateTemplateRequest
+	(*CreateTemplateResponse)(nil),       // 36: proteus.v1.CreateTemplateResponse
+	(*GetTemplateRequest)(nil),           // 37: proteus.v1.GetTemplateRequest
+	(*GetTemplateResponse)(nil),          // 38: proteus.v1.GetTemplateResponse
+	(*ListTemplatesRequest)(nil),         // 39: proteus.v1.ListTemplatesRequest
+	(*ListTemplatesResponse)(nil),        // 40: proteus.v1.ListTemplatesResponse
+	(*UpdateTemplateRequest)(nil),        // 41: proteus.v1.UpdateTemplateRequest
+	(*UpdateTemplateResponse)(nil),       // 42: proteus.v1.UpdateTemplateResponse
+	(*DeleteTemplateRequest)(nil),        // 43: proteus.v1.DeleteTemplateRequest
+	(*DeleteTemplateResponse)(nil),       // 44: proteus.v1.DeleteTemplateResponse
+	(*RenderTemplateRequest)(nil),        // 45: proteus.v1.RenderTemplateRequest
+	(*RenderTemplateResponse)(nil),       // 46: proteus.v1.RenderTemplateResponse
+	(*ConvertTemplateRequest)(nil),       // 47: proteus.v1.ConvertTemplateRequest
+	(*ConvertTemplateResponse)(nil),      // 48: proteus.v1.ConvertTemplateResponse
+	(*SubmitTemplateJobRequest)(nil),     // 49: proteus.v1.SubmitTemplateJobRequest
+	(*SubmitTemplateJobResponse)(nil),    // 50: proteus.v1.SubmitTemplateJobResponse
+	(*ListStarterTemplatesRequest)(nil),  // 51: proteus.v1.ListStarterTemplatesRequest
+	(*ListStarterTemplatesResponse)(nil), // 52: proteus.v1.ListStarterTemplatesResponse
+	(*ConvertToCodeRequest)(nil),         // 53: proteus.v1.ConvertToCodeRequest
+	(*ConvertToCodeResponse)(nil),        // 54: proteus.v1.ConvertToCodeResponse
+	(InputFormat)(0),                     // 55: proteus.v1.InputFormat
+	(*Asset)(nil),                        // 56: proteus.v1.Asset
+	(*Options)(nil),                      // 57: proteus.v1.Options
+	(*structpb.Struct)(nil),              // 58: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),        // 59: google.protobuf.Timestamp
+	(*structpb.Value)(nil),               // 60: google.protobuf.Value
+	(OutputFormat)(0),                    // 61: proteus.v1.OutputFormat
+	(*Job)(nil),                          // 62: proteus.v1.Job
 }
 var file_proteus_v1_template_proto_depIdxs = []int32{
-	17, // 0: proteus.v1.Template.format:type_name -> proteus.v1.InputFormat
-	18, // 1: proteus.v1.Template.assets:type_name -> proteus.v1.Asset
-	19, // 2: proteus.v1.Template.options:type_name -> proteus.v1.Options
-	20, // 3: proteus.v1.Template.sample_data:type_name -> google.protobuf.Struct
-	21, // 4: proteus.v1.Template.create_time:type_name -> google.protobuf.Timestamp
-	21, // 5: proteus.v1.Template.update_time:type_name -> google.protobuf.Timestamp
-	0,  // 6: proteus.v1.CreateTemplateRequest.template:type_name -> proteus.v1.Template
-	0,  // 7: proteus.v1.CreateTemplateResponse.template:type_name -> proteus.v1.Template
-	0,  // 8: proteus.v1.GetTemplateResponse.template:type_name -> proteus.v1.Template
-	0,  // 9: proteus.v1.ListTemplatesResponse.templates:type_name -> proteus.v1.Template
-	0,  // 10: proteus.v1.UpdateTemplateRequest.template:type_name -> proteus.v1.Template
-	0,  // 11: proteus.v1.UpdateTemplateResponse.template:type_name -> proteus.v1.Template
-	0,  // 12: proteus.v1.RenderTemplateRequest.template:type_name -> proteus.v1.Template
-	20, // 13: proteus.v1.RenderTemplateRequest.data:type_name -> google.protobuf.Struct
-	17, // 14: proteus.v1.RenderTemplateResponse.format:type_name -> proteus.v1.InputFormat
-	20, // 15: proteus.v1.ConvertTemplateRequest.data:type_name -> google.protobuf.Struct
-	22, // 16: proteus.v1.ConvertTemplateRequest.output_format:type_name -> proteus.v1.OutputFormat
-	19, // 17: proteus.v1.ConvertTemplateRequest.options:type_name -> proteus.v1.Options
-	22, // 18: proteus.v1.ConvertTemplateResponse.output_format:type_name -> proteus.v1.OutputFormat
-	20, // 19: proteus.v1.SubmitTemplateJobRequest.data:type_name -> google.protobuf.Struct
-	22, // 20: proteus.v1.SubmitTemplateJobRequest.output_format:type_name -> proteus.v1.OutputFormat
-	19, // 21: proteus.v1.SubmitTemplateJobRequest.options:type_name -> proteus.v1.Options
-	23, // 22: proteus.v1.SubmitTemplateJobResponse.job:type_name -> proteus.v1.Job
-	1,  // 23: proteus.v1.TemplateService.CreateTemplate:input_type -> proteus.v1.CreateTemplateRequest
-	3,  // 24: proteus.v1.TemplateService.GetTemplate:input_type -> proteus.v1.GetTemplateRequest
-	5,  // 25: proteus.v1.TemplateService.ListTemplates:input_type -> proteus.v1.ListTemplatesRequest
-	7,  // 26: proteus.v1.TemplateService.UpdateTemplate:input_type -> proteus.v1.UpdateTemplateRequest
-	9,  // 27: proteus.v1.TemplateService.DeleteTemplate:input_type -> proteus.v1.DeleteTemplateRequest
-	11, // 28: proteus.v1.TemplateService.RenderTemplate:input_type -> proteus.v1.RenderTemplateRequest
-	13, // 29: proteus.v1.TemplateService.ConvertTemplate:input_type -> proteus.v1.ConvertTemplateRequest
-	15, // 30: proteus.v1.TemplateService.SubmitTemplateJob:input_type -> proteus.v1.SubmitTemplateJobRequest
-	2,  // 31: proteus.v1.TemplateService.CreateTemplate:output_type -> proteus.v1.CreateTemplateResponse
-	4,  // 32: proteus.v1.TemplateService.GetTemplate:output_type -> proteus.v1.GetTemplateResponse
-	6,  // 33: proteus.v1.TemplateService.ListTemplates:output_type -> proteus.v1.ListTemplatesResponse
-	8,  // 34: proteus.v1.TemplateService.UpdateTemplate:output_type -> proteus.v1.UpdateTemplateResponse
-	10, // 35: proteus.v1.TemplateService.DeleteTemplate:output_type -> proteus.v1.DeleteTemplateResponse
-	12, // 36: proteus.v1.TemplateService.RenderTemplate:output_type -> proteus.v1.RenderTemplateResponse
-	14, // 37: proteus.v1.TemplateService.ConvertTemplate:output_type -> proteus.v1.ConvertTemplateResponse
-	16, // 38: proteus.v1.TemplateService.SubmitTemplateJob:output_type -> proteus.v1.SubmitTemplateJobResponse
-	31, // [31:39] is the sub-list for method output_type
-	23, // [23:31] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	55, // 0: proteus.v1.Template.format:type_name -> proteus.v1.InputFormat
+	56, // 1: proteus.v1.Template.assets:type_name -> proteus.v1.Asset
+	57, // 2: proteus.v1.Template.options:type_name -> proteus.v1.Options
+	58, // 3: proteus.v1.Template.sample_data:type_name -> google.protobuf.Struct
+	59, // 4: proteus.v1.Template.create_time:type_name -> google.protobuf.Timestamp
+	59, // 5: proteus.v1.Template.update_time:type_name -> google.protobuf.Timestamp
+	10, // 6: proteus.v1.Template.layout:type_name -> proteus.v1.Layout
+	7,  // 7: proteus.v1.Template.fields:type_name -> proteus.v1.FieldSpec
+	0,  // 8: proteus.v1.FieldSpec.type:type_name -> proteus.v1.FieldType
+	7,  // 9: proteus.v1.FieldSpec.item_fields:type_name -> proteus.v1.FieldSpec
+	60, // 10: proteus.v1.FieldSpec.default_value:type_name -> google.protobuf.Value
+	8,  // 11: proteus.v1.TemplateDataError.problems:type_name -> proteus.v1.DataProblem
+	11, // 12: proteus.v1.Layout.theme:type_name -> proteus.v1.Theme
+	12, // 13: proteus.v1.Layout.header:type_name -> proteus.v1.Region
+	12, // 14: proteus.v1.Layout.body:type_name -> proteus.v1.Region
+	12, // 15: proteus.v1.Layout.footer:type_name -> proteus.v1.Region
+	13, // 16: proteus.v1.Region.blocks:type_name -> proteus.v1.Block
+	14, // 17: proteus.v1.Block.show_if:type_name -> proteus.v1.Condition
+	15, // 18: proteus.v1.Block.style:type_name -> proteus.v1.BlockStyle
+	16, // 19: proteus.v1.Block.heading:type_name -> proteus.v1.Heading
+	17, // 20: proteus.v1.Block.text:type_name -> proteus.v1.Text
+	18, // 21: proteus.v1.Block.field:type_name -> proteus.v1.Field
+	19, // 22: proteus.v1.Block.image:type_name -> proteus.v1.Image
+	20, // 23: proteus.v1.Block.table:type_name -> proteus.v1.Table
+	22, // 24: proteus.v1.Block.key_value:type_name -> proteus.v1.KeyValue
+	24, // 25: proteus.v1.Block.totals:type_name -> proteus.v1.Totals
+	27, // 26: proteus.v1.Block.columns:type_name -> proteus.v1.Columns
+	28, // 27: proteus.v1.Block.signature:type_name -> proteus.v1.Signature
+	30, // 28: proteus.v1.Block.qr:type_name -> proteus.v1.QrCode
+	31, // 29: proteus.v1.Block.divider:type_name -> proteus.v1.Divider
+	32, // 30: proteus.v1.Block.spacer:type_name -> proteus.v1.Spacer
+	33, // 31: proteus.v1.Block.section:type_name -> proteus.v1.Section
+	34, // 32: proteus.v1.Block.page_break:type_name -> proteus.v1.PageBreak
+	1,  // 33: proteus.v1.Condition.op:type_name -> proteus.v1.ConditionOp
+	2,  // 34: proteus.v1.BlockStyle.align:type_name -> proteus.v1.Align
+	3,  // 35: proteus.v1.BlockStyle.space_below:type_name -> proteus.v1.Spacing
+	4,  // 36: proteus.v1.Field.format:type_name -> proteus.v1.FieldFormat
+	21, // 37: proteus.v1.Table.columns:type_name -> proteus.v1.Column
+	4,  // 38: proteus.v1.Column.format:type_name -> proteus.v1.FieldFormat
+	2,  // 39: proteus.v1.Column.align:type_name -> proteus.v1.Align
+	23, // 40: proteus.v1.KeyValue.rows:type_name -> proteus.v1.KeyValueRow
+	4,  // 41: proteus.v1.KeyValueRow.format:type_name -> proteus.v1.FieldFormat
+	26, // 42: proteus.v1.Totals.rows:type_name -> proteus.v1.TotalRow
+	5,  // 43: proteus.v1.Aggregate.func:type_name -> proteus.v1.AggregateFunc
+	25, // 44: proteus.v1.TotalRow.aggregate:type_name -> proteus.v1.Aggregate
+	4,  // 45: proteus.v1.TotalRow.format:type_name -> proteus.v1.FieldFormat
+	12, // 46: proteus.v1.Columns.columns:type_name -> proteus.v1.Region
+	29, // 47: proteus.v1.Signature.lines:type_name -> proteus.v1.SignatureLine
+	12, // 48: proteus.v1.Section.content:type_name -> proteus.v1.Region
+	6,  // 49: proteus.v1.CreateTemplateRequest.template:type_name -> proteus.v1.Template
+	6,  // 50: proteus.v1.CreateTemplateResponse.template:type_name -> proteus.v1.Template
+	6,  // 51: proteus.v1.GetTemplateResponse.template:type_name -> proteus.v1.Template
+	6,  // 52: proteus.v1.ListTemplatesResponse.templates:type_name -> proteus.v1.Template
+	6,  // 53: proteus.v1.UpdateTemplateRequest.template:type_name -> proteus.v1.Template
+	6,  // 54: proteus.v1.UpdateTemplateResponse.template:type_name -> proteus.v1.Template
+	6,  // 55: proteus.v1.RenderTemplateRequest.template:type_name -> proteus.v1.Template
+	58, // 56: proteus.v1.RenderTemplateRequest.data:type_name -> google.protobuf.Struct
+	55, // 57: proteus.v1.RenderTemplateResponse.format:type_name -> proteus.v1.InputFormat
+	58, // 58: proteus.v1.ConvertTemplateRequest.data:type_name -> google.protobuf.Struct
+	61, // 59: proteus.v1.ConvertTemplateRequest.output_format:type_name -> proteus.v1.OutputFormat
+	57, // 60: proteus.v1.ConvertTemplateRequest.options:type_name -> proteus.v1.Options
+	6,  // 61: proteus.v1.ConvertTemplateRequest.template:type_name -> proteus.v1.Template
+	61, // 62: proteus.v1.ConvertTemplateResponse.output_format:type_name -> proteus.v1.OutputFormat
+	58, // 63: proteus.v1.SubmitTemplateJobRequest.data:type_name -> google.protobuf.Struct
+	61, // 64: proteus.v1.SubmitTemplateJobRequest.output_format:type_name -> proteus.v1.OutputFormat
+	57, // 65: proteus.v1.SubmitTemplateJobRequest.options:type_name -> proteus.v1.Options
+	62, // 66: proteus.v1.SubmitTemplateJobResponse.job:type_name -> proteus.v1.Job
+	6,  // 67: proteus.v1.ListStarterTemplatesResponse.starters:type_name -> proteus.v1.Template
+	6,  // 68: proteus.v1.ConvertToCodeResponse.template:type_name -> proteus.v1.Template
+	35, // 69: proteus.v1.TemplateService.CreateTemplate:input_type -> proteus.v1.CreateTemplateRequest
+	37, // 70: proteus.v1.TemplateService.GetTemplate:input_type -> proteus.v1.GetTemplateRequest
+	39, // 71: proteus.v1.TemplateService.ListTemplates:input_type -> proteus.v1.ListTemplatesRequest
+	41, // 72: proteus.v1.TemplateService.UpdateTemplate:input_type -> proteus.v1.UpdateTemplateRequest
+	43, // 73: proteus.v1.TemplateService.DeleteTemplate:input_type -> proteus.v1.DeleteTemplateRequest
+	45, // 74: proteus.v1.TemplateService.RenderTemplate:input_type -> proteus.v1.RenderTemplateRequest
+	47, // 75: proteus.v1.TemplateService.ConvertTemplate:input_type -> proteus.v1.ConvertTemplateRequest
+	49, // 76: proteus.v1.TemplateService.SubmitTemplateJob:input_type -> proteus.v1.SubmitTemplateJobRequest
+	51, // 77: proteus.v1.TemplateService.ListStarterTemplates:input_type -> proteus.v1.ListStarterTemplatesRequest
+	53, // 78: proteus.v1.TemplateService.ConvertToCode:input_type -> proteus.v1.ConvertToCodeRequest
+	36, // 79: proteus.v1.TemplateService.CreateTemplate:output_type -> proteus.v1.CreateTemplateResponse
+	38, // 80: proteus.v1.TemplateService.GetTemplate:output_type -> proteus.v1.GetTemplateResponse
+	40, // 81: proteus.v1.TemplateService.ListTemplates:output_type -> proteus.v1.ListTemplatesResponse
+	42, // 82: proteus.v1.TemplateService.UpdateTemplate:output_type -> proteus.v1.UpdateTemplateResponse
+	44, // 83: proteus.v1.TemplateService.DeleteTemplate:output_type -> proteus.v1.DeleteTemplateResponse
+	46, // 84: proteus.v1.TemplateService.RenderTemplate:output_type -> proteus.v1.RenderTemplateResponse
+	48, // 85: proteus.v1.TemplateService.ConvertTemplate:output_type -> proteus.v1.ConvertTemplateResponse
+	50, // 86: proteus.v1.TemplateService.SubmitTemplateJob:output_type -> proteus.v1.SubmitTemplateJobResponse
+	52, // 87: proteus.v1.TemplateService.ListStarterTemplates:output_type -> proteus.v1.ListStarterTemplatesResponse
+	54, // 88: proteus.v1.TemplateService.ConvertToCode:output_type -> proteus.v1.ConvertToCodeResponse
+	79, // [79:89] is the sub-list for method output_type
+	69, // [69:79] is the sub-list for method input_type
+	69, // [69:69] is the sub-list for extension type_name
+	69, // [69:69] is the sub-list for extension extendee
+	0,  // [0:69] is the sub-list for field type_name
 }
 
 func init() { file_proteus_v1_template_proto_init() }
@@ -1229,7 +4197,32 @@ func file_proteus_v1_template_proto_init() {
 		return
 	}
 	file_proteus_v1_conversion_proto_init()
-	file_proteus_v1_template_proto_msgTypes[11].OneofWrappers = []any{
+	file_proteus_v1_template_proto_msgTypes[7].OneofWrappers = []any{
+		(*Block_Heading)(nil),
+		(*Block_Text)(nil),
+		(*Block_Field)(nil),
+		(*Block_Image)(nil),
+		(*Block_Table)(nil),
+		(*Block_KeyValue)(nil),
+		(*Block_Totals)(nil),
+		(*Block_Columns)(nil),
+		(*Block_Signature)(nil),
+		(*Block_Qr)(nil),
+		(*Block_Divider)(nil),
+		(*Block_Spacer)(nil),
+		(*Block_Section)(nil),
+		(*Block_PageBreak)(nil),
+	}
+	file_proteus_v1_template_proto_msgTypes[13].OneofWrappers = []any{
+		(*Image_Asset)(nil),
+		(*Image_Path)(nil),
+	}
+	file_proteus_v1_template_proto_msgTypes[14].OneofWrappers = []any{}
+	file_proteus_v1_template_proto_msgTypes[20].OneofWrappers = []any{
+		(*TotalRow_Path)(nil),
+		(*TotalRow_Aggregate)(nil),
+	}
+	file_proteus_v1_template_proto_msgTypes[39].OneofWrappers = []any{
 		(*RenderTemplateRequest_Id)(nil),
 		(*RenderTemplateRequest_Template)(nil),
 	}
@@ -1238,13 +4231,14 @@ func file_proteus_v1_template_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proteus_v1_template_proto_rawDesc), len(file_proteus_v1_template_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   17,
+			NumEnums:      6,
+			NumMessages:   49,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_proteus_v1_template_proto_goTypes,
 		DependencyIndexes: file_proteus_v1_template_proto_depIdxs,
+		EnumInfos:         file_proteus_v1_template_proto_enumTypes,
 		MessageInfos:      file_proteus_v1_template_proto_msgTypes,
 	}.Build()
 	File_proteus_v1_template_proto = out.File

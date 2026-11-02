@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package convert turns API requests into calls to the proteus-converter engine.
 // It holds no conversion logic of its own: it validates input, builds engine
 // options, and enforces concurrency and time limits.
@@ -6,6 +8,7 @@ package convert
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	proteus "github.com/gsoultan/proteus-converter"
 
@@ -97,13 +100,13 @@ func FromProto(doc *proteusv1.Document, out proteusv1.OutputFormat, opts *proteu
 			req.Assets[key] = a.GetData()
 		}
 	}
-	if err := validateOptions(opts, targets[req.Output]); err != nil {
+	if err := validateOptions(opts, targets[req.Output], doc); err != nil {
 		return nil, err
 	}
 	return req, nil
 }
 
-func validateOptions(o *proteusv1.Options, t Target) error {
+func validateOptions(o *proteusv1.Options, t Target, doc *proteusv1.Document) error {
 	if o.GetPdf() != nil && t.Format != PDF {
 		return badf("pdf options need output_format PDF")
 	}
@@ -132,6 +135,9 @@ func validateOptions(o *proteusv1.Options, t Target) error {
 				}
 			}
 		}
+		if err := validateWatermark(p.GetWatermark(), doc); err != nil {
+			return err
+		}
 	}
 	switch o.GetMediaType() {
 	case proteusv1.MediaType_MEDIA_TYPE_UNSPECIFIED, proteusv1.MediaType_MEDIA_TYPE_PRINT, proteusv1.MediaType_MEDIA_TYPE_SCREEN:
@@ -140,6 +146,56 @@ func validateOptions(o *proteusv1.Options, t Target) error {
 	}
 	if len(o.GetStylesheet()) > 1<<20 {
 		return badf("stylesheet is larger than 1 MiB")
+	}
+	return nil
+}
+
+// validateWatermark checks a watermark; an image must be one of the
+// document's assets.
+func validateWatermark(w *proteusv1.Watermark, doc *proteusv1.Document) error {
+	if w == nil {
+		return nil
+	}
+	switch m := w.GetMark().(type) {
+	case *proteusv1.Watermark_Text:
+		if utf8.RuneCountInString(m.Text) > 200 {
+			return badf("watermark text is longer than 200 characters")
+		}
+	case *proteusv1.Watermark_ImageAsset:
+		found := false
+		for _, a := range doc.GetAssets() {
+			if a.GetPath() == m.ImageAsset {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return badf("watermark image_asset %q is not among the document's assets", m.ImageAsset)
+		}
+	}
+	if o := w.GetOpacity(); o < 0 || o > 1 {
+		return badf("watermark opacity must be between 0 and 1")
+	}
+	if fs := w.GetFontSizePt(); fs < 0 || fs > 1000 {
+		return badf("watermark font_size_pt must be between 0 and 1000")
+	}
+	if a := w.GetAngleDeg(); a < -360 || a > 360 {
+		return badf("watermark angle_deg must be between -360 and 360")
+	}
+	if iw := w.GetImageWidthMm(); iw < 0 || iw > 1000 {
+		return badf("watermark image_width_mm must be between 0 and 1000")
+	}
+	if len(w.GetFontFamily()) > 200 || len(w.GetColor()) > 50 {
+		return badf("watermark font_family or color is too long")
+	}
+	if _, ok := proteusv1.WatermarkPlacement_name[int32(w.GetPlacement())]; !ok {
+		return badf("unknown watermark placement %v", w.GetPlacement())
+	}
+	if _, ok := proteusv1.WatermarkLayer_name[int32(w.GetLayer())]; !ok {
+		return badf("unknown watermark layer %v", w.GetLayer())
+	}
+	if _, ok := proteusv1.WatermarkPages_name[int32(w.GetPages())]; !ok {
+		return badf("unknown watermark pages %v", w.GetPages())
 	}
 	return nil
 }

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 package rpc
 
 import (
@@ -5,6 +7,7 @@ import (
 	"errors"
 
 	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectproto"
 
 	proteusv1 "github.com/gsoultan/proteus-server/gen/proteus/v1"
 	"github.com/gsoultan/proteus-server/gen/proteus/v1/proteusv1connect"
@@ -22,7 +25,17 @@ var _ proteusv1connect.TemplateServiceHandler = (*templateService)(nil)
 
 // toConnect adds the template errors to the conversion error mapping.
 func (s *templateService) toConnect(ctx context.Context, err error) error {
+	var de *templates.DataError
+	var le *templates.LayoutError
 	switch {
+	case errors.As(err, &de):
+		cerr := connect.NewError(connect.CodeInvalidArgument, err.Error())
+		if detail, derr := connectproto.NewErrorDetail(de.Detail()); derr == nil {
+			cerr = cerr.WithDetail(detail)
+		}
+		return cerr
+	case errors.As(err, &le):
+		return connect.NewError(connect.CodeInvalidArgument, err.Error())
 	case errors.Is(err, templates.ErrNotFound):
 		return connect.NewError(connect.CodeNotFound, err.Error())
 	case errors.Is(err, templates.ErrNameTaken):
@@ -38,7 +51,7 @@ func (s *templateService) toConnect(ctx context.Context, err error) error {
 func (s *templateService) tpl() *templates.Service { return s.conv.api.templates }
 
 func (s *templateService) CreateTemplate(ctx context.Context, req *proteusv1.CreateTemplateRequest) (*proteusv1.CreateTemplateResponse, error) {
-	t, err := s.tpl().Create(ctx, auth.Caller(ctx), req.GetTemplate())
+	t, err := s.tpl().Create(ctx, auth.Caller(ctx), req.GetTemplate(), req.GetStarterId())
 	if err != nil {
 		return nil, s.toConnect(ctx, err)
 	}
@@ -54,7 +67,7 @@ func (s *templateService) GetTemplate(ctx context.Context, req *proteusv1.GetTem
 }
 
 func (s *templateService) ListTemplates(ctx context.Context, req *proteusv1.ListTemplatesRequest) (*proteusv1.ListTemplatesResponse, error) {
-	list, next, err := s.tpl().List(ctx, auth.Caller(ctx), req.GetPageSize(), req.GetPageToken())
+	list, next, err := s.tpl().List(ctx, auth.Caller(ctx), req.GetCategory(), req.GetPageSize(), req.GetPageToken())
 	if err != nil {
 		return nil, s.toConnect(ctx, err)
 	}
@@ -96,9 +109,21 @@ func (s *templateService) RenderTemplate(ctx context.Context, req *proteusv1.Ren
 }
 
 // ConvertTemplate renders and converts synchronously; like Convert, a full
-// pool answers RESOURCE_EXHAUSTED at once.
+// pool answers RESOURCE_EXHAUSTED at once. An unsaved template in the
+// request is previewed in place of a stored one.
 func (s *templateService) ConvertTemplate(ctx context.Context, req *proteusv1.ConvertTemplateRequest) (*proteusv1.ConvertTemplateResponse, error) {
-	r, err := s.tpl().Render(ctx, auth.Caller(ctx), req.GetId(), req.GetData(), req.GetOutputFormat(), req.GetOptions())
+	var (
+		r   *templates.Rendered
+		err error
+	)
+	switch {
+	case req.GetTemplate() != nil && req.GetId() != "":
+		err = &convert.BadRequestError{Msg: "id and template are exclusive"}
+	case req.GetTemplate() != nil:
+		r, err = s.tpl().RenderConvert(ctx, req.GetTemplate(), req.GetData(), req.GetOutputFormat(), req.GetOptions())
+	default:
+		r, err = s.tpl().Render(ctx, auth.Caller(ctx), req.GetId(), req.GetData(), req.GetOutputFormat(), req.GetOptions())
+	}
 	if err != nil {
 		return nil, s.toConnect(ctx, err)
 	}
@@ -109,7 +134,7 @@ func (s *templateService) ConvertTemplate(ctx context.Context, req *proteusv1.Co
 		return nil, err
 	}
 	fileName := res.GetFileName()
-	if r.Options.GetMetadata().GetTitle() == "" {
+	if r.Options.GetMetadata().GetTitle() == "" && r.Name != "" {
 		if f, ok := convert.OutputFromProto(res.GetOutputFormat()); ok {
 			fileName = convert.FileName(r.Name, f)
 		}
@@ -134,4 +159,20 @@ func (s *templateService) SubmitTemplateJob(ctx context.Context, req *proteusv1.
 		return nil, s.toConnect(ctx, err)
 	}
 	return &proteusv1.SubmitTemplateJobResponse{Job: jobs.ToProto(rec)}, nil
+}
+
+func (s *templateService) ListStarterTemplates(_ context.Context, req *proteusv1.ListStarterTemplatesRequest) (*proteusv1.ListStarterTemplatesResponse, error) {
+	list, err := templates.Starters(req.GetCategory())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, "starters are unavailable")
+	}
+	return &proteusv1.ListStarterTemplatesResponse{Starters: list}, nil
+}
+
+func (s *templateService) ConvertToCode(ctx context.Context, req *proteusv1.ConvertToCodeRequest) (*proteusv1.ConvertToCodeResponse, error) {
+	t, err := s.tpl().ConvertToCode(ctx, auth.Caller(ctx), req.GetId(), req.GetRevision())
+	if err != nil {
+		return nil, s.toConnect(ctx, err)
+	}
+	return &proteusv1.ConvertToCodeResponse{Template: t}, nil
 }
