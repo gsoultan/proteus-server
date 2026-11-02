@@ -8,15 +8,20 @@ import "proteus/v1/conversion.proto";
 
 option go_package = "github.com/gsoultan/proteus-server/gen/proteus/v1;proteusv1";
 
-// TemplateService stores reusable HTML and Markdown documents with
-// placeholders and converts them by filling in data. A filled-in template
+// TemplateService stores reusable document templates (invoices, quotations,
+// receipts, purchase orders, delivery notes, letters, certificates, reports
+// or anything else) and converts them by filling in data. A template is
+// either code (HTML or Markdown with placeholders) or a visual layout of
+// blocks that the server compiles into the same HTML, so both kinds render
+// and convert the same way. A filled-in template
 // is an ordinary document, so it converts to every output format that
 // ConversionService.ListFormats lists for the template's input format.
 //
 // Template content uses Go template syntax: {{.customer.name}} inserts a
 // value, {{range .items}}...{{end}} repeats, {{if .paid}}...{{end}} chooses.
 // Inserted values are HTML-escaped, so data can never add markup or
-// scripts. See the README for the helper functions.
+// scripts. See the README for the helper functions (money, sum, date,
+// number, qr and more).
 //
 // Like jobs, templates belong to the API key that created them; other keys
 // get NOT_FOUND.
@@ -61,6 +66,17 @@ service TemplateService {
   // SubmitTemplateJob fills a stored template with data and queues the
   // conversion. Follow the job with the ConversionService job RPCs.
   rpc SubmitTemplateJob(SubmitTemplateJobRequest) returns (SubmitTemplateJobResponse) {}
+
+  // ListStarterTemplates returns the built-in starters: complete visual
+  // templates with sample data and fields to copy with CreateTemplate.
+  rpc ListStarterTemplates(ListStarterTemplatesRequest) returns (ListStarterTemplatesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // ConvertToCode turns a visual template into a code template: the
+  // compiled HTML becomes its content and the layout is dropped, so the
+  // HTML can be edited directly. This cannot be undone.
+  rpc ConvertToCode(ConvertToCodeRequest) returns (ConvertToCodeResponse) {}
 }
 
 // Template is a stored document with placeholders.
@@ -90,11 +106,358 @@ message Template {
   google.protobuf.Timestamp update_time = 11;
   // Total size of content and assets in bytes. Assigned by the server.
   int64 size_bytes = 12;
+  // Kind of document, such as invoice, quotation, receipt, purchase_order,
+  // delivery_note, letter, certificate or report; any label up to 50
+  // characters. Used to filter and group templates.
+  string category = 13;
+  // Set for a visual template. The server compiles it into content on every
+  // create and update; content sent with a layout is ignored.
+  Layout layout = 14;
+  // The data the template expects. Requests are checked against it: a
+  // missing required field or a value of the wrong type is refused with
+  // INVALID_ARGUMENT and a TemplateDataError detail listing every problem.
+  // Empty means any data is accepted.
+  repeated FieldSpec fields = 15;
+  // The starter the template was created from, if any.
+  string starter_id = 16;
 }
+
+// FieldType is the type of a data field.
+enum FieldType {
+  FIELD_TYPE_UNSPECIFIED = 0; // text
+  FIELD_TYPE_TEXT = 1;
+  FIELD_TYPE_NUMBER = 2;
+  // A number formatted as an amount of money.
+  FIELD_TYPE_MONEY = 3;
+  // An RFC 3339 or YYYY-MM-DD string.
+  FIELD_TYPE_DATE = 4;
+  FIELD_TYPE_BOOL = 5;
+  // One of choices.
+  FIELD_TYPE_CHOICE = 6;
+  // An asset path or a data: URL of an image.
+  FIELD_TYPE_IMAGE = 7;
+  // A list of objects described by item_fields.
+  FIELD_TYPE_LIST = 8;
+  // An object described by item_fields.
+  FIELD_TYPE_OBJECT = 9;
+}
+
+// FieldSpec describes one piece of data a template expects.
+message FieldSpec {
+  // Dotted path in the data, such as "client.name" or "items"; inside a
+  // list or object, the key of the item field, such as "qty".
+  string path = 1;
+  // Shown in forms; defaults to the path.
+  string label = 2;
+  FieldType type = 3;
+  bool required = 4;
+  // Allowed values of a CHOICE field.
+  repeated string choices = 5;
+  // Fields of each item of a LIST, or of an OBJECT.
+  repeated FieldSpec item_fields = 6;
+  // Used when the data has no value.
+  google.protobuf.Value default_value = 7;
+  // Help text for forms.
+  string description = 8;
+}
+
+// DataProblem is one thing wrong with the data sent for a template.
+message DataProblem {
+  // Path of the field, such as "items[2].qty".
+  string path = 1;
+  string message = 2;
+}
+
+// TemplateDataError is attached as an error detail to INVALID_ARGUMENT when
+// the data does not match the template's fields.
+message TemplateDataError {
+  repeated DataProblem problems = 1;
+}
+
+// Layout is a visual template: a header and a footer that repeat on every
+// page and the body that flows between them. The server compiles it into
+// HTML with placeholders; blocks never contain raw HTML.
+message Layout {
+  Theme theme = 1;
+  Region header = 2;
+  Region body = 3;
+  Region footer = 4;
+}
+
+// Theme sets fonts, colours and formats for the whole document.
+message Theme {
+  // CSS font-family list; default "Inter, Helvetica, Arial, sans-serif".
+  string font_family = 1;
+  // Body text size in points; default 10.
+  double font_size_pt = 2;
+  // Accent colour for headings, table headers and rules; default #3b5bdb.
+  string accent_color = 3;
+  // Body text colour; default #212529.
+  string text_color = 4;
+  // BCP 47 tag that decides number and date formats: en-US, id-ID, de-DE,
+  // en-GB or fr-FR; default en-US.
+  string locale = 5;
+  // ISO 4217 code used by money fields; default USD.
+  string currency = 6;
+}
+
+// Region is an ordered run of blocks.
+message Region {
+  repeated Block blocks = 1;
+  // For header and footer: the height reserved on every page in
+  // millimetres; default 25 for a header and 15 for a footer.
+  double height_mm = 2;
+}
+
+// Block is one element of a layout.
+message Block {
+  // Unique within the layout; assigned by the client. Problems are
+  // reported by id.
+  string id = 1;
+  // Show the block only when the condition holds.
+  Condition show_if = 2;
+  BlockStyle style = 3;
+  oneof kind {
+    Heading heading = 10;
+    Text text = 11;
+    Field field = 12;
+    Image image = 13;
+    Table table = 14;
+    KeyValue key_value = 15;
+    Totals totals = 16;
+    Columns columns = 17;
+    Signature signature = 18;
+    QrCode qr = 19;
+    Divider divider = 20;
+    Spacer spacer = 21;
+    Section section = 22;
+    PageBreak page_break = 23;
+  }
+}
+
+// ConditionOp compares a field with a value.
+enum ConditionOp {
+  CONDITION_OP_UNSPECIFIED = 0; // IS_SET
+  // The field has a non-empty value.
+  CONDITION_OP_IS_SET = 1;
+  CONDITION_OP_IS_EMPTY = 2;
+  CONDITION_OP_EQUALS = 3;
+  CONDITION_OP_NOT_EQUALS = 4;
+  CONDITION_OP_GREATER = 5;
+  CONDITION_OP_LESS = 6;
+}
+
+// Condition is a test on one field, such as status equals "draft".
+message Condition {
+  string path = 1;
+  ConditionOp op = 2;
+  // Compared as a number when both sides parse as one, else as text.
+  string value = 3;
+}
+
+// Align is horizontal alignment.
+enum Align {
+  ALIGN_UNSPECIFIED = 0; // left
+  ALIGN_LEFT = 1;
+  ALIGN_CENTER = 2;
+  ALIGN_RIGHT = 3;
+}
+
+// Spacing is the gap below a block.
+enum Spacing {
+  SPACING_UNSPECIFIED = 0; // medium
+  SPACING_NONE = 1;
+  SPACING_SMALL = 2;
+  SPACING_MEDIUM = 3;
+  SPACING_LARGE = 4;
+}
+
+// BlockStyle tunes one block.
+message BlockStyle {
+  Align align = 1;
+  Spacing space_below = 2;
+  // Text size in points; 0 inherits the theme.
+  double font_size_pt = 3;
+  bool bold = 4;
+  // CSS colours.
+  string color = 5;
+  string background = 6;
+}
+
+// FieldFormat says how a value is printed.
+enum FieldFormat {
+  FIELD_FORMAT_UNSPECIFIED = 0; // as is
+  FIELD_FORMAT_TEXT = 1;
+  // Thousands separators and two decimals in the theme's locale.
+  FIELD_FORMAT_NUMBER = 2;
+  // No decimals.
+  FIELD_FORMAT_INTEGER = 3;
+  // The theme's currency and locale.
+  FIELD_FORMAT_MONEY = 4;
+  // A date in the theme's locale.
+  FIELD_FORMAT_DATE = 5;
+  // A fraction (0.11) or a number (11) printed as 11%.
+  FIELD_FORMAT_PERCENT = 6;
+}
+
+// Heading is a title line. Text may use placeholders.
+message Heading {
+  string text = 1;
+  // 1 (largest) to 3; default 1.
+  int32 level = 2;
+}
+
+// Text is one or more paragraphs; blank lines separate paragraphs. It may
+// use placeholders and the helper functions.
+message Text {
+  string text = 1;
+}
+
+// Field prints one value.
+message Field {
+  string path = 1;
+  FieldFormat format = 2;
+  // Printed before the value as a caption, such as "Invoice no.".
+  string label = 3;
+  string prefix = 4;
+  string suffix = 5;
+}
+
+// Image draws an asset of the template or an image named by a field.
+message Image {
+  oneof source {
+    // Asset path, such as "assets/logo.png".
+    string asset = 1;
+    // Field holding an asset path or a data: URL.
+    string path = 2;
+  }
+  double width_mm = 3;
+  double height_mm = 4;
+  string alt = 5;
+}
+
+// Table repeats a row for each item of a list field.
+message Table {
+  // Path of the list, such as "items".
+  string list = 1;
+  repeated Column columns = 2;
+  // Repeat the header row on every page; on by default.
+  optional bool repeat_header = 3;
+  // Keep each row on one page; on by default.
+  optional bool keep_rows = 4;
+  // Shown instead of the table when the list is empty.
+  string empty_text = 5;
+  bool striped = 6;
+  // Number the rows in a first column.
+  bool numbered = 7;
+}
+
+// Column of a Table.
+message Column {
+  string header = 1;
+  // Key in each item, such as "qty", or text with placeholders that may
+  // use the item's fields, such as "{{.qty}} x {{.unit}}".
+  string path = 2;
+  FieldFormat format = 3;
+  Align align = 4;
+  // Share of the table width in percent; 0 shares the rest equally.
+  double width_pct = 5;
+}
+
+// KeyValue lists labelled values, such as "Date: 2 Nov 2026".
+message KeyValue {
+  repeated KeyValueRow rows = 1;
+}
+
+message KeyValueRow {
+  string label = 1;
+  // Text with placeholders.
+  string value = 2;
+  FieldFormat format = 3;
+}
+
+// Totals is a right-aligned list of amounts, such as subtotal, tax and total.
+message Totals {
+  repeated TotalRow rows = 1;
+}
+
+// AggregateFunc computes a value from a list column.
+enum AggregateFunc {
+  AGGREGATE_FUNC_UNSPECIFIED = 0; // SUM
+  AGGREGATE_FUNC_SUM = 1;
+  AGGREGATE_FUNC_COUNT = 2;
+  AGGREGATE_FUNC_AVERAGE = 3;
+}
+
+// Aggregate is a computed value, such as the sum of items.amount.
+message Aggregate {
+  AggregateFunc func = 1;
+  string list = 2;
+  // Key in each item; unused by COUNT.
+  string column = 3;
+}
+
+message TotalRow {
+  string label = 1;
+  oneof value {
+    // Field path.
+    string path = 2;
+    Aggregate aggregate = 3;
+  }
+  // Default MONEY.
+  FieldFormat format = 4;
+  // Larger and bold, for the grand total.
+  bool emphasized = 5;
+}
+
+// Columns places regions side by side.
+message Columns {
+  repeated Region columns = 1;
+  // Width of each column as a share of the total; empty shares equally.
+  repeated double widths = 2;
+}
+
+// Signature draws signature lines.
+message Signature {
+  repeated SignatureLine lines = 1;
+}
+
+message SignatureLine {
+  // Text under the line, such as "Authorized signature"; may use placeholders.
+  string label = 1;
+}
+
+// QrCode draws a QR code of a value.
+message QrCode {
+  // Text with placeholders, such as "{{.verify_url}}".
+  string value = 1;
+  // Side in millimetres; default 25.
+  double size_mm = 2;
+}
+
+message Divider {}
+
+message Spacer {
+  double height_mm = 1;
+}
+
+// Section groups blocks, optionally repeating them for each item of a
+// list; placeholders inside then refer to the item.
+message Section {
+  Region content = 1;
+  string repeat = 2;
+  // Start each repetition on a new page.
+  bool page_per_item = 3;
+}
+
+message PageBreak {}
 
 message CreateTemplateRequest {
   // id, revision, times and size_bytes are ignored.
   Template template = 1;
+  // Copy this starter (see ListStarterTemplates); fields set in template
+  // override the starter's. The name is still required.
+  string starter_id = 2;
 }
 
 message CreateTemplateResponse {
@@ -114,6 +477,8 @@ message ListTemplatesRequest {
   int32 page_size = 1;
   // next_page_token from the previous response.
   string page_token = 2;
+  // Only templates with this category.
+  string category = 3;
 }
 
 message ListTemplatesResponse {
@@ -157,6 +522,7 @@ message RenderTemplateResponse {
 }
 
 message ConvertTemplateRequest {
+  // A stored template. Leave empty to convert template instead.
   string id = 1;
   // Values for the placeholders. Empty uses the template's sample_data.
   google.protobuf.Struct data = 2;
@@ -164,6 +530,8 @@ message ConvertTemplateRequest {
   OutputFormat output_format = 3;
   // Merged over the template's options.
   Options options = 4;
+  // An unsaved template, such as one being edited, for an exact preview.
+  Template template = 5;
 }
 
 // ConvertTemplateResponse has the fields of ConvertResponse.
@@ -191,4 +559,24 @@ message SubmitTemplateJobRequest {
 
 message SubmitTemplateJobResponse {
   Job job = 1;
+}
+
+message ListStarterTemplatesRequest {
+  // Only starters with this category.
+  string category = 1;
+}
+
+message ListStarterTemplatesResponse {
+  // Complete templates without id; starter_id names each one.
+  repeated Template starters = 1;
+}
+
+message ConvertToCodeRequest {
+  string id = 1;
+  // When not zero it must equal the stored revision (ABORTED otherwise).
+  int64 revision = 2;
+}
+
+message ConvertToCodeResponse {
+  Template template = 1;
 }

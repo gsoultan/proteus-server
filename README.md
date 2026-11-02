@@ -67,14 +67,16 @@ Neither needs a key. Prometheus metrics are on a separate admin listener
 
 | RPC | Use |
 | --- | --- |
-| `CreateTemplate` | Store a template: name, description, input format, content, assets, default options and sample data. |
-| `GetTemplate` | A template with its content and assets. |
-| `ListTemplates` | The caller's templates by name, without content; paged with `page_size` and `page_token`. |
+| `CreateTemplate` | Store a template: name, description, category, input format, content or visual `layout`, `fields`, assets, default options and sample data; or copy a starter with `starter_id`. |
+| `GetTemplate` | A template with its content, layout, fields and assets. |
+| `ListTemplates` | The caller's templates by name, without content; filter by `category`, paged with `page_size` and `page_token`. |
 | `UpdateTemplate` | Replace a template; send `revision` back to refuse overwriting someone else's edit. |
 | `DeleteTemplate` | Remove a template; jobs made from it are kept. |
 | `RenderTemplate` | Fill a stored or an unsaved template with data and return the document, for previews. |
-| `ConvertTemplate` | Fill a template with data and convert it synchronously, like `Convert`. |
+| `ConvertTemplate` | Fill a stored template (`id`) or an unsaved one (`template`) with data and convert it synchronously, like `Convert`. |
 | `SubmitTemplateJob` | Fill a template with data and queue the conversion; follow it with the job RPCs. |
+| `ListStarterTemplates` | The built-in starters (invoice, quotation, receipt, purchase order, delivery note, letter, certificate, report, blank): complete visual templates with fields and sample data. |
+| `ConvertToCode` | Turn a visual template into a code template: the compiled HTML becomes the content and the layout is dropped. |
 
 Send the key as `authorization: Bearer <key>` or `x-api-key: <key>`. Jobs and
 templates are visible only to the key that created them; any other key gets
@@ -137,6 +139,44 @@ A template is a stored HTML or Markdown document with placeholders in
   steps, objects may have up to 500 keys, and rendering stops after
   `PROTEUS_TEMPLATE_RENDER_TIMEOUT`.
 
+More helpers, with the locale and currency of the template's theme (or
+`en-US`/`USD` for code templates): `money .x`, `money .x "EUR"`, `fnumber .x 2`,
+`fdate .d`, `fdate .d "02/01/2006"`, `percent .rate`; `sum .items "amount"`,
+`count .items`, `avg .items "amount"`; `add`, `sub`, `mul`, `div`, `round`;
+`nl2br .text`; `qr .url` (a PNG data URL for an `<img>`).
+
+#### Fields
+
+`fields` describe the data a template expects: a dotted `path`, a `type`
+(text, number, money, date, bool, choice, image, list or object with
+`item_fields`), `required`, `choices`, `default_value`, a label and help text.
+When a template has fields, every render checks the data against them first
+and a mismatch is `INVALID_ARGUMENT` with a `proteus.v1.TemplateDataError`
+detail listing each problem (`items[2].qty: must be a number`). Defaults fill
+in missing values. Fields are also what a form builder shows.
+
+#### Visual templates
+
+Instead of `content`, a template can carry a `layout`: a theme (font, accent
+colour, locale, currency), a header and a footer region that repeat on every
+page, and a body of blocks: heading, text, field, image, table, key-value
+list, totals (with sums, counts and averages over a list), columns, signature
+lines, QR code, divider, spacer, page break and repeating sections. Any block
+can have a `show_if` condition on a data field. The server compiles the layout
+to HTML with template actions when the template is saved (errors name the
+block), so a visual template renders and converts exactly like a code one; the
+compiled HTML is returned as `content`. `ConvertToCode` keeps that HTML and
+drops the layout when a layout stops being enough. `ListStarterTemplates`
+returns nine ready-made layouts to copy with `CreateTemplate{starter_id}`.
+
+#### Watermarks
+
+`options.page.watermark` stamps text (or an image asset) on every page, the
+first page or all but the first, centred or tiled, behind or over the content,
+with opacity, angle, size, colour and font family. The text may be a template:
+the invoice starter uses `{{if eq .status "paid"}}PAID{{end}}`, so paid
+invoices are stamped and others are not.
+
 A template's `options` are defaults: options in a convert or job request are
 merged over them, field by field. Page and PDF defaults are dropped when the
 output format does not use them. Templates are checked when saved (syntax,
@@ -183,7 +223,8 @@ checks as resources.
 
 Without a database, jobs and templates live in memory on the instance that
 accepted them and are lost on restart. With `PROTEUS_DATABASE_URL`, every
-instance shares a `jobs` and a `templates` table (in `PROTEUS_DATABASE_SCHEMA`,
+instance shares a `jobs` and a `templates` table (templates carry a `category`
+column, indexed with the owner and name, for the filtered listing) (in `PROTEUS_DATABASE_SCHEMA`,
 default `public`). Templates are unique on key and name, listing reads a
 projection without the template body, and an update only applies if the
 revision it read is still current. Any instance can answer any job:

@@ -28,6 +28,7 @@ type Row struct {
 	Name        string
 	Description string
 	Format      string
+	Category    string
 	Revision    int64
 	SizeBytes   int64
 	Body        []byte
@@ -75,7 +76,7 @@ const (
 	opNotExists runtime.Op = 33
 )
 
-const nCols = 10
+const nCols = 11
 
 // Query is a value type: composing one allocates nothing. Predicates
 // are a postfix token stream, so disjunction and negation are
@@ -222,20 +223,27 @@ func (q *Query) cursor(col uint32, r Row) {
 		q.strs[q.ns] = r.Format
 		q.ns++
 	case 7:
+		if int(q.ns) >= len(q.strs) {
+			q.over = true
+			return
+		}
+		q.strs[q.ns] = r.Category
+		q.ns++
+	case 8:
 		if int(q.nn) >= len(q.nums) {
 			q.over = true
 			return
 		}
 		q.nums[q.nn] = int64(r.Revision)
 		q.nn++
-	case 8:
+	case 9:
 		if int(q.nn) >= len(q.nums) {
 			q.over = true
 			return
 		}
 		q.nums[q.nn] = int64(r.SizeBytes)
 		q.nn++
-	case 9:
+	case 10:
 		if int(q.nby) >= len(q.byts) {
 			q.over = true
 			return
@@ -403,9 +411,10 @@ var (
 	Name        = TextCol{4}
 	Description = TextCol{5}
 	Format      = TextCol{6}
-	Revision    = Int64Col{7}
-	SizeBytes   = Int64Col{8}
-	Body        = NullBytesCol{9}
+	Category    = TextCol{7}
+	Revision    = Int64Col{8}
+	SizeBytes   = Int64Col{9}
+	Body        = NullBytesCol{10}
 )
 
 // UUIDCol addresses a uuid column.
@@ -649,14 +658,14 @@ func (q *Query) leaf(p Pred) {
 			}
 			q.anyRaw[q.nar] = p.anyRaw
 			q.nar++
-		case 3, 4, 5, 6:
+		case 3, 4, 5, 6, 7:
 			if int(q.nas) >= 3 {
 				q.over = true
 				return
 			}
 			q.anyStr[q.nas] = p.anyStr
 			q.nas++
-		case 7, 8:
+		case 8, 9:
 			if int(q.nai64) >= 3 {
 				q.over = true
 				return
@@ -686,21 +695,21 @@ func (q *Query) leaf(p Pred) {
 		}
 		q.tims[q.ntm] = p.tim
 		q.ntm++
-	case 3, 4, 5, 6:
+	case 3, 4, 5, 6, 7:
 		if int(q.ns) >= 6 {
 			q.over = true
 			return
 		}
 		q.strs[q.ns] = p.str
 		q.ns++
-	case 7, 8:
+	case 8, 9:
 		if int(q.nn) >= 6 {
 			q.over = true
 			return
 		}
 		q.nums[q.nn] = p.num
 		q.nn++
-	case 9:
+	case 10:
 		if int(q.nby) >= 2 {
 			q.over = true
 			return
@@ -784,6 +793,20 @@ func (q Query) FormatNotIn(v ...string) Query       { return q.Where(Format.NotI
 func (q Query) FormatHasPrefix(v string) Query      { return q.Where(Format.HasPrefix(v)) }
 func (q Query) FormatHasSuffix(v string) Query      { return q.Where(Format.HasSuffix(v)) }
 func (q Query) FormatContains(v string) Query       { return q.Where(Format.Contains(v)) }
+func (q Query) CategoryEq(v string) Query           { return q.Where(Category.Eq(v)) }
+func (q Query) CategoryNotEq(v string) Query        { return q.Where(Category.NotEq(v)) }
+func (q Query) CategoryGt(v string) Query           { return q.Where(Category.Gt(v)) }
+func (q Query) CategoryGte(v string) Query          { return q.Where(Category.Gte(v)) }
+func (q Query) CategoryLt(v string) Query           { return q.Where(Category.Lt(v)) }
+func (q Query) CategoryLte(v string) Query          { return q.Where(Category.Lte(v)) }
+func (q Query) CategoryEqLower(v string) Query      { return q.Where(Category.EqLower(v)) }
+func (q Query) CategoryLike(v string) Query         { return q.Where(Category.Like(v)) }
+func (q Query) CategoryILike(v string) Query        { return q.Where(Category.ILike(v)) }
+func (q Query) CategoryIn(v ...string) Query        { return q.Where(Category.In(v...)) }
+func (q Query) CategoryNotIn(v ...string) Query     { return q.Where(Category.NotIn(v...)) }
+func (q Query) CategoryHasPrefix(v string) Query    { return q.Where(Category.HasPrefix(v)) }
+func (q Query) CategoryHasSuffix(v string) Query    { return q.Where(Category.HasSuffix(v)) }
+func (q Query) CategoryContains(v string) Query     { return q.Where(Category.Contains(v)) }
 func (q Query) RevisionEq(v int64) Query            { return q.Where(Revision.Eq(v)) }
 func (q Query) RevisionNotEq(v int64) Query         { return q.Where(Revision.NotEq(v)) }
 func (q Query) RevisionGt(v int64) Query            { return q.Where(Revision.Gt(v)) }
@@ -805,7 +828,7 @@ func (q Query) BodyNotEq(v []byte) Query            { return q.Where(Body.NotEq(
 func (q Query) BodyIsNull() Query                   { return q.Where(Body.IsNull()) }
 func (q Query) BodyIsNotNull() Query                { return q.Where(Body.IsNotNull()) }
 
-const selectPrefix = `SELECT "id", "created_at", "updated_at", "owner", "name", "description", "format", "revision", "size_bytes", "body" FROM "templates"`
+const selectPrefix = `SELECT "id", "created_at", "updated_at", "owner", "name", "description", "format", "category", "revision", "size_bytes", "body" FROM "templates"`
 const countPrefix = `SELECT count(*) FROM "templates"`
 const existsPrefix = `SELECT 1 FROM "templates"`
 const existsSuffix = ` LIMIT 1`
@@ -847,6 +870,7 @@ var orderTable = [nCols][4]string{
 	{"\"name\"", "\"name\" DESC", "\"name\" ASC NULLS FIRST", "\"name\" DESC NULLS LAST"},
 	{"\"description\"", "\"description\" DESC", "\"description\" ASC NULLS FIRST", "\"description\" DESC NULLS LAST"},
 	{"\"format\"", "\"format\" DESC", "\"format\" ASC NULLS FIRST", "\"format\" DESC NULLS LAST"},
+	{"\"category\"", "\"category\" DESC", "\"category\" ASC NULLS FIRST", "\"category\" DESC NULLS LAST"},
 	{"\"revision\"", "\"revision\" DESC", "\"revision\" ASC NULLS FIRST", "\"revision\" DESC NULLS LAST"},
 	{"\"size_bytes\"", "\"size_bytes\" DESC", "\"size_bytes\" ASC NULLS FIRST", "\"size_bytes\" DESC NULLS LAST"},
 	{"\"body\"", "\"body\" DESC", "\"body\" ASC NULLS FIRST", "\"body\" DESC NULLS LAST"},
@@ -862,6 +886,7 @@ var identTable = [nCols]string{
 	"\"name\"",
 	"\"description\"",
 	"\"format\"",
+	"\"category\"",
 	"\"revision\"",
 	"\"size_bytes\"",
 	"\"body\"",
@@ -897,7 +922,7 @@ func orderOf(dir, col uint32) string {
 
 // fragTable is every predicate this table can produce, lowered at build
 // time. Runtime splices; it never formats.
-var fragTable = [10][34]runtime.Frag{
+var fragTable = [11][34]runtime.Frag{
 	{ // id
 		opEq:    {A: "\"id\" = $"},
 		opNotEq: {A: "\"id\" <> $"},
@@ -983,6 +1008,22 @@ var fragTable = [10][34]runtime.Frag{
 		opTextHasPrefix: {A: "\"format\" LIKE (replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
 		opTextHasSuffix: {A: "\"format\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_')) ESCAPE '!'"},
 		opTextContains:  {A: "\"format\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
+	},
+	{ // category
+		opEq:            {A: "\"category\" = $"},
+		opNotEq:         {A: "\"category\" <> $"},
+		opGt:            {A: "\"category\" > $"},
+		opGte:           {A: "\"category\" >= $"},
+		opLt:            {A: "\"category\" < $"},
+		opLte:           {A: "\"category\" <= $"},
+		opEqLower:       {A: "lower(\"category\") = lower($", B: ")"},
+		opLike:          {A: "\"category\" LIKE $"},
+		opILike:         {A: "\"category\" ILIKE $"},
+		opIn:            {A: "\"category\" = ANY($", B: ")"},
+		opNotIn:         {A: "\"category\" <> ALL($", B: ")"},
+		opTextHasPrefix: {A: "\"category\" LIKE (replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
+		opTextHasSuffix: {A: "\"category\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_')) ESCAPE '!'"},
+		opTextContains:  {A: "\"category\" LIKE ('%' || replace(replace(replace($", B: ", '!', '!!'), '%', '!%'), '_', '!_') || '%') ESCAPE '!'"},
 	},
 	{ // revision
 		opEq:    {A: "\"revision\" = $"},
@@ -1092,7 +1133,7 @@ func (q Query) existsStmt(toks []runtime.Tok) *runtime.Stmt { return existsStmtF
 const (
 	distinctOpen = "SELECT DISTINCT ON ("
 	distinctSep  = ", "
-	distinctTail = ") \"id\", \"created_at\", \"updated_at\", \"owner\", \"name\", \"description\", \"format\", \"revision\", \"size_bytes\", \"body\" FROM \"templates\""
+	distinctTail = ") \"id\", \"created_at\", \"updated_at\", \"owner\", \"name\", \"description\", \"format\", \"category\", \"revision\", \"size_bytes\", \"body\" FROM \"templates\""
 )
 
 // distinctCaches are AllDistinctOn's, without and with an offset. The
@@ -1262,15 +1303,16 @@ func scan(rv [][]byte, r *Row, sl *runtime.Slab) error {
 	r.Name = sl.Str(rv[4])
 	r.Description = sl.Str(rv[5])
 	r.Format = sl.Str(rv[6])
-	if len(rv[7]) != 8 {
-		return runtime.ShapeErr("revision", "int8", 8, rv[7])
-	}
-	r.Revision = runtime.Int8(rv[7])
+	r.Category = sl.Str(rv[7])
 	if len(rv[8]) != 8 {
-		return runtime.ShapeErr("size_bytes", "int8", 8, rv[8])
+		return runtime.ShapeErr("revision", "int8", 8, rv[8])
 	}
-	r.SizeBytes = runtime.Int8(rv[8])
-	r.Body = runtime.Bytes(rv[9])
+	r.Revision = runtime.Int8(rv[8])
+	if len(rv[9]) != 8 {
+		return runtime.ShapeErr("size_bytes", "int8", 8, rv[9])
+	}
+	r.SizeBytes = runtime.Int8(rv[9])
+	r.Body = runtime.Bytes(rv[10])
 	return nil
 }
 
@@ -1338,11 +1380,11 @@ func (q Query) bindPreds(b *binder) []any {
 				b.anyRaw[nar] = q.anyRaw[nar]
 				v = append(v, &b.anyRaw[nar])
 				nar++
-			case 3, 4, 5, 6:
+			case 3, 4, 5, 6, 7:
 				b.anyStr[nas] = q.anyStr[nas]
 				v = append(v, &b.anyStr[nas])
 				nas++
-			case 7, 8:
+			case 8, 9:
 				b.anyI64[nai64] = q.anyI64[nai64]
 				v = append(v, &b.anyI64[nai64])
 				nai64++
@@ -1358,15 +1400,15 @@ func (q Query) bindPreds(b *binder) []any {
 			b.tims[ntm] = q.tims[ntm]
 			v = append(v, &b.tims[ntm])
 			ntm++
-		case 3, 4, 5, 6:
+		case 3, 4, 5, 6, 7:
 			b.strs[ns] = q.strs[ns]
 			v = append(v, &b.strs[ns])
 			ns++
-		case 7, 8:
+		case 8, 9:
 			b.nums[nn] = q.nums[nn]
 			v = append(v, &b.nums[nn])
 			nn++
-		case 9:
+		case 10:
 			b.byts[nby] = q.byts[nby]
 			v = append(v, &b.byts[nby])
 			nby++
@@ -1557,7 +1599,7 @@ func (q Query) Prepare(b *Binder) (string, []any) {
 	return q.readStmt(q.stream(&buf)).SQL, q.bind(b)
 }
 
-// MetaRow is the "Meta" projection: the same read, 9 column(s) instead of
+// MetaRow is the "Meta" projection: the same read, 10 column(s) instead of
 // the whole row. Narrower tuples, no TOAST fetch for what nobody asked,
 // and an index-only scan becomes POSSIBLE — the full-row read forecloses
 // it by construction.
@@ -1567,13 +1609,14 @@ type MetaRow struct {
 	Name        string
 	Description string
 	Format      string
+	Category    string
 	Revision    int64
 	SizeBytes   int64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 
-const metaPrefix = `SELECT "id", "owner", "name", "description", "format", "revision", "size_bytes", "created_at", "updated_at" FROM "templates"`
+const metaPrefix = `SELECT "id", "owner", "name", "description", "format", "category", "revision", "size_bytes", "created_at", "updated_at" FROM "templates"`
 
 var (
 	metaCache       = runtime.NewTreeCache()
@@ -1600,22 +1643,23 @@ func scanMeta(rv [][]byte, r *MetaRow, sl *runtime.Slab) error {
 	r.Name = sl.Str(rv[2])
 	r.Description = sl.Str(rv[3])
 	r.Format = sl.Str(rv[4])
-	if len(rv[5]) != 8 {
-		return runtime.ShapeErr("revision", "int8", 8, rv[5])
-	}
-	r.Revision = runtime.Int8(rv[5])
+	r.Category = sl.Str(rv[5])
 	if len(rv[6]) != 8 {
-		return runtime.ShapeErr("size_bytes", "int8", 8, rv[6])
+		return runtime.ShapeErr("revision", "int8", 8, rv[6])
 	}
-	r.SizeBytes = runtime.Int8(rv[6])
+	r.Revision = runtime.Int8(rv[6])
 	if len(rv[7]) != 8 {
-		return runtime.ShapeErr("created_at", "timestamptz", 8, rv[7])
+		return runtime.ShapeErr("size_bytes", "int8", 8, rv[7])
 	}
-	r.CreatedAt = runtime.Timestamptz(rv[7])
+	r.SizeBytes = runtime.Int8(rv[7])
 	if len(rv[8]) != 8 {
-		return runtime.ShapeErr("updated_at", "timestamptz", 8, rv[8])
+		return runtime.ShapeErr("created_at", "timestamptz", 8, rv[8])
 	}
-	r.UpdatedAt = runtime.Timestamptz(rv[8])
+	r.CreatedAt = runtime.Timestamptz(rv[8])
+	if len(rv[9]) != 8 {
+		return runtime.ShapeErr("updated_at", "timestamptz", 8, rv[9])
+	}
+	r.UpdatedAt = runtime.Timestamptz(rv[9])
 	return nil
 }
 
@@ -1669,7 +1713,7 @@ func (q Query) OneMeta(ctx context.Context, ex runtime.Executor) (MetaRow, bool,
 
 // insertSQL does not vary: the column list is fixed by the table, so
 // the placeholders are known at build time and nothing is spliced.
-const insertSQL = `INSERT INTO "templates" ("id", "created_at", "updated_at", "owner", "name", "description", "format", "revision", "size_bytes", "body") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING "id", "created_at", "updated_at", "owner", "name", "description", "format", "revision", "size_bytes", "body"`
+const insertSQL = `INSERT INTO "templates" ("id", "created_at", "updated_at", "owner", "name", "description", "format", "category", "revision", "size_bytes", "body") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING "id", "created_at", "updated_at", "owner", "name", "description", "format", "category", "revision", "size_bytes", "body"`
 
 const updatePrefix = `UPDATE "templates" SET `
 const deletePrefix = `DELETE FROM "templates"`
@@ -1682,12 +1726,13 @@ const (
 	dName        uint64 = 1 << 2
 	dDescription uint64 = 1 << 3
 	dFormat      uint64 = 1 << 4
-	dRevision    uint64 = 1 << 5
-	dSizeBytes   uint64 = 1 << 6
-	dBody        uint64 = 1 << 7
+	dCategory    uint64 = 1 << 5
+	dRevision    uint64 = 1 << 6
+	dSizeBytes   uint64 = 1 << 7
+	dBody        uint64 = 1 << 8
 )
 
-const nUpdatable = 8
+const nUpdatable = 9
 
 // setFrags is every assignment this table can make, lowered at build time.
 var setFrags = [nUpdatable]runtime.Frag{
@@ -1696,6 +1741,7 @@ var setFrags = [nUpdatable]runtime.Frag{
 	{A: "\"name\" = $", B: ""},        // name
 	{A: "\"description\" = $", B: ""}, // description
 	{A: "\"format\" = $", B: ""},      // format
+	{A: "\"category\" = $", B: ""},    // category
 	{A: "\"revision\" = $", B: ""},    // revision
 	{A: "\"size_bytes\" = $", B: ""},  // size_bytes
 	{A: "\"body\" = $", B: ""},        // body
@@ -1710,6 +1756,7 @@ var exprFrags = [nUpdatable]runtime.Frag{
 	{},                                   // name has no server-side form
 	{},                                   // description has no server-side form
 	{},                                   // format has no server-side form
+	{},                                   // category has no server-side form
 	{A: "\"revision\" = \"revision\" + 1", B: ""},     // revision = its own value plus one
 	{A: "\"size_bytes\" = \"size_bytes\" + 1", B: ""}, // size_bytes = its own value plus one
 	{}, // body has no server-side form
@@ -1726,6 +1773,7 @@ var addFrags = [nUpdatable]runtime.Frag{
 	{}, // name cannot be added to
 	{}, // description cannot be added to
 	{}, // format cannot be added to
+	{}, // category cannot be added to
 	{A: "\"revision\" = \"revision\" + $", B: ""},     // revision = its own value plus an amount
 	{A: "\"size_bytes\" = \"size_bytes\" + $", B: ""}, // size_bytes = its own value plus an amount
 	{}, // body cannot be added to
@@ -1747,12 +1795,13 @@ const (
 	iName        uint64 = 1 << 4
 	iDescription uint64 = 1 << 5
 	iFormat      uint64 = 1 << 6
-	iRevision    uint64 = 1 << 7
-	iSizeBytes   uint64 = 1 << 8
-	iBody        uint64 = 1 << 9
+	iCategory    uint64 = 1 << 7
+	iRevision    uint64 = 1 << 8
+	iSizeBytes   uint64 = 1 << 9
+	iBody        uint64 = 1 << 10
 )
 
-const nInsertable = 10
+const nInsertable = 11
 
 // insCols is the quoted column name for each insert bit.
 var insCols = [nInsertable]string{
@@ -1763,6 +1812,7 @@ var insCols = [nInsertable]string{
 	"\"name\"",
 	"\"description\"",
 	"\"format\"",
+	"\"category\"",
 	"\"revision\"",
 	"\"size_bytes\"",
 	"\"body\"",
@@ -1774,7 +1824,7 @@ var insParts = runtime.InsertParts{Open: " (", Sep: ", ", Mid: ") VALUES (", Clo
 var insPlaceholder = runtime.Placeholder{}
 
 const insPrefix = "INSERT INTO \"templates\""
-const insReturning = " RETURNING \"id\", \"created_at\", \"updated_at\", \"owner\", \"name\", \"description\", \"format\", \"revision\", \"size_bytes\", \"body\""
+const insReturning = " RETURNING \"id\", \"created_at\", \"updated_at\", \"owner\", \"name\", \"description\", \"format\", \"category\", \"revision\", \"size_bytes\", \"body\""
 
 var insCache = runtime.NewMaskCache()
 
@@ -1793,7 +1843,7 @@ var updOpCache = runtime.NewMaskCache()
 // part of it. Without it m.Row() would hold what the row held BEFORE
 // the statement, so a caller reading back the counter it just
 // incremented would get the old number and never know.
-const updReturning = " RETURNING \"id\", \"created_at\", \"updated_at\", \"owner\", \"name\", \"description\", \"format\", \"revision\", \"size_bytes\", \"body\""
+const updReturning = " RETURNING \"id\", \"created_at\", \"updated_at\", \"owner\", \"name\", \"description\", \"format\", \"category\", \"revision\", \"size_bytes\", \"body\""
 
 // Masks reports how many distinct UPDATE shapes have compiled.
 func Masks() int { return updCache.Masks() }
@@ -1875,6 +1925,12 @@ func (m *Mut) SetFormat(v string) {
 	m.row.Format = v
 	m.dirty |= dFormat
 	m.expr &^= dFormat
+}
+
+func (m *Mut) SetCategory(v string) {
+	m.row.Category = v
+	m.dirty |= dCategory
+	m.expr &^= dCategory
 }
 
 func (m *Mut) SetRevision(v int64) {
@@ -1975,10 +2031,12 @@ func (n *Ins) insertArgs(args []any) []any {
 		case 6:
 			args = append(args, n.row.Format)
 		case 7:
-			args = append(args, n.row.Revision)
+			args = append(args, n.row.Category)
 		case 8:
-			args = append(args, n.row.SizeBytes)
+			args = append(args, n.row.Revision)
 		case 9:
+			args = append(args, n.row.SizeBytes)
+		case 10:
 			args = append(args, n.row.Body)
 		}
 	}
@@ -2018,6 +2076,11 @@ func (n *Ins) SetDescription(v string) {
 func (n *Ins) SetFormat(v string) {
 	n.row.Format = v
 	n.set |= iFormat
+}
+
+func (n *Ins) SetCategory(v string) {
+	n.row.Category = v
+	n.set |= iCategory
 }
 
 func (n *Ins) SetRevision(v int64) {
@@ -2091,7 +2154,7 @@ var conflictSpecs = []string{
 
 // assignable is the columns target i may overwrite, given the mask.
 func assignable(i uint8, mask uint64) []string {
-	set := make([]string, 0, 8)
+	set := make([]string, 0, 9)
 	for j, bit := range assignBits[i] {
 		if mask&(1<<bit) != 0 {
 			set = append(set, assignNames[i][j])
@@ -2104,13 +2167,13 @@ func assignable(i uint8, mask uint64) []string {
 // of each column it may overwrite. An empty row is a target whose key
 // covers every updatable column.
 var assignBits = [2][]uint8{
-	{2, 3, 4, 5, 6, 7, 8, 9},
-	{2, 5, 6, 7, 8, 9},
+	{2, 3, 4, 5, 6, 7, 8, 9, 10},
+	{2, 5, 6, 7, 8, 9, 10},
 }
 
 var assignNames = [2][]string{
-	{"updated_at", "owner", "name", "description", "format", "revision", "size_bytes", "body"},
-	{"updated_at", "description", "format", "revision", "size_bytes", "body"},
+	{"updated_at", "owner", "name", "description", "format", "category", "revision", "size_bytes", "body"},
+	{"updated_at", "description", "format", "category", "revision", "size_bytes", "body"},
 }
 
 // OnConflictID upserts on the unique index over (id).
@@ -2176,6 +2239,7 @@ var assignFor = map[string]string{
 	"name":        "\"name\" = EXCLUDED.\"name\"",
 	"description": "\"description\" = EXCLUDED.\"description\"",
 	"format":      "\"format\" = EXCLUDED.\"format\"",
+	"category":    "\"category\" = EXCLUDED.\"category\"",
 	"revision":    "\"revision\" = EXCLUDED.\"revision\"",
 	"size_bytes":  "\"size_bytes\" = EXCLUDED.\"size_bytes\"",
 	"body":        "\"body\" = EXCLUDED.\"body\"",
@@ -2254,7 +2318,7 @@ func Inserts() int { return insCache.Masks() }
 // Insert writes every insertable column, zero values included, and reads
 // the row back so database defaults land in r.
 func Insert(ctx context.Context, ex runtime.Executor, r *Row) error {
-	args := make([]any, 0, 10)
+	args := make([]any, 0, 11)
 	args = append(args, r.ID)
 	args = append(args, r.CreatedAt)
 	args = append(args, r.UpdatedAt)
@@ -2262,6 +2326,7 @@ func Insert(ctx context.Context, ex runtime.Executor, r *Row) error {
 	args = append(args, r.Name)
 	args = append(args, r.Description)
 	args = append(args, r.Format)
+	args = append(args, r.Category)
 	args = append(args, r.Revision)
 	args = append(args, r.SizeBytes)
 	args = append(args, r.Body)
@@ -2298,6 +2363,7 @@ var copyCols = []string{
 	"name",
 	"description",
 	"format",
+	"category",
 	"revision",
 	"size_bytes",
 	"body",
@@ -2307,7 +2373,7 @@ var copyCols = []string{
 type rowSource struct {
 	rows []Row
 	i    int
-	buf  [10]any
+	buf  [11]any
 }
 
 func (s *rowSource) Next() bool {
@@ -2326,9 +2392,10 @@ func (s *rowSource) Values() []any {
 	s.buf[4] = &r.Name
 	s.buf[5] = &r.Description
 	s.buf[6] = &r.Format
-	s.buf[7] = &r.Revision
-	s.buf[8] = &r.SizeBytes
-	s.buf[9] = &r.Body
+	s.buf[7] = &r.Category
+	s.buf[8] = &r.Revision
+	s.buf[9] = &r.SizeBytes
+	s.buf[10] = &r.Body
 	return s.buf[:]
 }
 
@@ -2349,7 +2416,7 @@ func InsertAll(ctx context.Context, ex runtime.Executor, rows []Row) (int64, err
 func InsertOp(r Row) runtime.BatchOp {
 	const mask = 1<<nInsertable - 1 // every insertable column
 	st := stmtForInsertNoReturn(mask, 0, 0)
-	args := make([]any, 0, 10)
+	args := make([]any, 0, 11)
 	args = append(args, r.ID)
 	args = append(args, r.CreatedAt)
 	args = append(args, r.UpdatedAt)
@@ -2357,6 +2424,7 @@ func InsertOp(r Row) runtime.BatchOp {
 	args = append(args, r.Name)
 	args = append(args, r.Description)
 	args = append(args, r.Format)
+	args = append(args, r.Category)
 	args = append(args, r.Revision)
 	args = append(args, r.SizeBytes)
 	args = append(args, r.Body)
@@ -2586,10 +2654,12 @@ func (m Mut) updateArgs(args []any) []any {
 		case 4:
 			args = append(args, m.row.Format)
 		case 5:
-			args = append(args, m.row.Revision)
+			args = append(args, m.row.Category)
 		case 6:
-			args = append(args, m.row.SizeBytes)
+			args = append(args, m.row.Revision)
 		case 7:
+			args = append(args, m.row.SizeBytes)
+		case 8:
 			args = append(args, m.row.Body)
 		}
 	}

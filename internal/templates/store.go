@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 package templates
 
 import (
@@ -29,6 +31,7 @@ type Record struct {
 	Name        string
 	Description string
 	Format      string // html or markdown
+	Category    string // kind of document; empty for none
 	Revision    int64
 	SizeBytes   int64
 	CreatedAt   time.Time
@@ -46,8 +49,9 @@ type Store interface {
 	// Get returns owner's template with its body; ErrNotFound otherwise.
 	Get(ctx context.Context, owner, id string) (*Record, error)
 	// List returns up to limit of owner's templates whose name sorts after
-	// after, ordered by name, without bodies.
-	List(ctx context.Context, owner, after string, limit int) ([]*Record, error)
+	// after, ordered by name, without bodies. A non-empty category keeps
+	// only templates with that category.
+	List(ctx context.Context, owner, category, after string, limit int) ([]*Record, error)
 	// Count returns how many templates owner has.
 	Count(ctx context.Context, owner string) (int64, error)
 	// Update replaces the name, description, format, size and body of
@@ -120,12 +124,12 @@ func (s *MemoryStore) Get(_ context.Context, owner, id string) (*Record, error) 
 }
 
 // List implements Store.
-func (s *MemoryStore) List(_ context.Context, owner, after string, limit int) ([]*Record, error) {
+func (s *MemoryStore) List(_ context.Context, owner, category, after string, limit int) ([]*Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var out []*Record
 	for _, r := range s.byID {
-		if r.Owner == owner && r.Name > after {
+		if r.Owner == owner && r.Name > after && (category == "" || r.Category == category) {
 			out = append(out, clone(r, false))
 		}
 	}

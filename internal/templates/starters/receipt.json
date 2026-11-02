@@ -1,0 +1,457 @@
+{
+  "name": "Receipt",
+  "description": "Proof of payment with method and reference.",
+  "format": "INPUT_FORMAT_HTML",
+  "category": "receipt",
+  "starterId": "receipt",
+  "options": {
+    "page": {
+      "size": "PAGE_SIZE_A4",
+      "marginMm": 15
+    }
+  },
+  "layout": {
+    "theme": {
+      "locale": "id-ID",
+      "currency": "IDR",
+      "accentColor": "#3b5bdb"
+    },
+    "header": {
+      "blocks": [
+        {
+          "id": "letterhead",
+          "columns": {
+            "columns": [
+              {
+                "blocks": [
+                  {
+                    "id": "logo",
+                    "image": {
+                      "asset": "assets/logo.png",
+                      "widthMm": 30,
+                      "alt": "Logo"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_SMALL"
+                    }
+                  },
+                  {
+                    "id": "seller_name",
+                    "field": {
+                      "path": "seller.name"
+                    },
+                    "style": {
+                      "bold": true,
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  },
+                  {
+                    "id": "seller_addr",
+                    "field": {
+                      "path": "seller.address"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_NONE",
+                      "fontSizePt": 8.5
+                    }
+                  }
+                ]
+              },
+              {
+                "blocks": [
+                  {
+                    "id": "doc_title",
+                    "heading": {
+                      "text": "RECEIPT",
+                      "level": 1
+                    },
+                    "style": {
+                      "align": "ALIGN_RIGHT",
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  }
+                ]
+              }
+            ],
+            "widths": [
+              2,
+              1
+            ]
+          },
+          "style": {
+            "spaceBelow": "SPACING_NONE"
+          }
+        }
+      ],
+      "heightMm": 32
+    },
+    "footer": {
+      "blocks": [
+        {
+          "id": "footer_rule",
+          "divider": {},
+          "style": {
+            "spaceBelow": "SPACING_SMALL"
+          }
+        },
+        {
+          "id": "footer_text",
+          "text": {
+            "text": "{{.seller.name}} · {{.seller.email}}"
+          },
+          "style": {
+            "align": "ALIGN_CENTER",
+            "spaceBelow": "SPACING_NONE"
+          }
+        }
+      ],
+      "heightMm": 16
+    },
+    "body": {
+      "blocks": [
+        {
+          "id": "parties",
+          "columns": {
+            "columns": [
+              {
+                "blocks": [
+                  {
+                    "id": "bill_to",
+                    "field": {
+                      "path": "payer.name",
+                      "label": "Received from"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_NONE"
+                    }
+                  },
+                  {
+                    "id": "bill_addr",
+                    "field": {
+                      "path": "payer.address"
+                    },
+                    "style": {
+                      "spaceBelow": "SPACING_NONE",
+                      "fontSizePt": 9
+                    }
+                  },
+                  {
+                    "id": "bill_email",
+                    "field": {
+                      "path": "payer.email"
+                    },
+                    "showIf": {
+                      "path": "payer.email",
+                      "op": "CONDITION_OP_IS_SET"
+                    },
+                    "style": {
+                      "fontSizePt": 9
+                    }
+                  }
+                ]
+              },
+              {
+                "blocks": [
+                  {
+                    "id": "meta",
+                    "keyValue": {
+                      "rows": [
+                        {
+                          "label": "Receipt no.",
+                          "value": "number",
+                          "format": "FIELD_FORMAT_TEXT"
+                        },
+                        {
+                          "label": "Paid on",
+                          "value": "paid_on",
+                          "format": "FIELD_FORMAT_DATE"
+                        },
+                        {
+                          "label": "Method",
+                          "value": "method",
+                          "format": "FIELD_FORMAT_TEXT"
+                        },
+                        {
+                          "label": "Reference",
+                          "value": "reference",
+                          "format": "FIELD_FORMAT_TEXT"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ],
+            "widths": [
+              3,
+              2
+            ]
+          }
+        },
+        {
+          "id": "items",
+          "table": {
+            "list": "items",
+            "numbered": false,
+            "striped": true,
+            "emptyText": "No items",
+            "columns": [
+              {
+                "header": "Description",
+                "path": "description",
+                "format": "FIELD_FORMAT_UNSPECIFIED",
+                "widthPct": 46
+              },
+              {
+                "header": "Qty",
+                "path": "qty",
+                "format": "FIELD_FORMAT_INTEGER",
+                "widthPct": 10
+              },
+              {
+                "header": "Unit",
+                "path": "unit",
+                "format": "FIELD_FORMAT_UNSPECIFIED",
+                "widthPct": 12
+              },
+              {
+                "header": "Unit price",
+                "path": "price",
+                "format": "FIELD_FORMAT_MONEY",
+                "widthPct": 16
+              },
+              {
+                "header": "Amount",
+                "path": "amount",
+                "format": "FIELD_FORMAT_MONEY",
+                "widthPct": 16
+              }
+            ]
+          }
+        },
+        {
+          "id": "totals",
+          "totals": {
+            "rows": [
+              {
+                "label": "Subtotal",
+                "aggregate": {
+                  "func": "AGGREGATE_FUNC_SUM",
+                  "list": "items",
+                  "column": "amount"
+                }
+              },
+              {
+                "label": "Total",
+                "path": "total",
+                "emphasized": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "thanks",
+          "text": {
+            "text": "Thank you for your payment."
+          },
+          "style": {
+            "align": "ALIGN_CENTER"
+          }
+        },
+        {
+          "id": "signatures",
+          "signature": {
+            "lines": [
+              {
+                "label": "{{.seller.signer}}"
+              },
+              {
+                "label": ""
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "fields": [
+    {
+      "path": "number",
+      "type": "FIELD_TYPE_TEXT",
+      "required": true,
+      "label": "Receipt number"
+    },
+    {
+      "path": "paid_on",
+      "type": "FIELD_TYPE_DATE",
+      "required": true,
+      "label": "Paid on"
+    },
+    {
+      "path": "method",
+      "type": "FIELD_TYPE_CHOICE",
+      "required": false,
+      "label": "Payment method",
+      "choices": [
+        "cash",
+        "bank transfer",
+        "card",
+        "e-wallet"
+      ]
+    },
+    {
+      "path": "reference",
+      "type": "FIELD_TYPE_TEXT",
+      "required": false,
+      "label": "Reference"
+    },
+    {
+      "path": "seller",
+      "type": "FIELD_TYPE_OBJECT",
+      "required": true,
+      "label": "Seller",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true,
+          "label": "Company name"
+        },
+        {
+          "path": "address",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Address"
+        },
+        {
+          "path": "email",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Email"
+        },
+        {
+          "path": "phone",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Phone"
+        },
+        {
+          "path": "tax_id",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Tax ID"
+        },
+        {
+          "path": "signer",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false
+        }
+      ]
+    },
+    {
+      "path": "payer",
+      "type": "FIELD_TYPE_OBJECT",
+      "required": true,
+      "label": "Payer",
+      "itemFields": [
+        {
+          "path": "name",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true,
+          "label": "Name"
+        },
+        {
+          "path": "address",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Address"
+        },
+        {
+          "path": "email",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Email"
+        }
+      ]
+    },
+    {
+      "path": "items",
+      "type": "FIELD_TYPE_LIST",
+      "required": true,
+      "label": "Items",
+      "itemFields": [
+        {
+          "path": "description",
+          "type": "FIELD_TYPE_TEXT",
+          "required": true
+        },
+        {
+          "path": "qty",
+          "type": "FIELD_TYPE_NUMBER",
+          "required": true,
+          "label": "Quantity"
+        },
+        {
+          "path": "unit",
+          "type": "FIELD_TYPE_TEXT",
+          "required": false,
+          "label": "Unit"
+        },
+        {
+          "path": "price",
+          "type": "FIELD_TYPE_MONEY",
+          "required": true,
+          "label": "Unit price"
+        },
+        {
+          "path": "amount",
+          "type": "FIELD_TYPE_MONEY",
+          "required": false,
+          "label": "Amount"
+        }
+      ]
+    },
+    {
+      "path": "total",
+      "type": "FIELD_TYPE_MONEY",
+      "required": true,
+      "label": "Total"
+    }
+  ],
+  "sampleData": {
+    "number": "RC-2026-0088",
+    "paid_on": "2026-11-02",
+    "method": "bank transfer",
+    "reference": "TRF-88213",
+    "seller": {
+      "name": "Arunika Studio",
+      "address": "Jl. Braga 21, Bandung 40111",
+      "email": "hello@arunika.example",
+      "phone": "+62 22 555 0199",
+      "tax_id": "01.234.567.8-901.000",
+      "signer": "Cashier"
+    },
+    "payer": {
+      "name": "PT Sinar Lestari",
+      "address": "Jl. Sudirman 5, Jakarta 10220",
+      "email": "finance@sinarlestari.example"
+    },
+    "items": [
+      {
+        "description": "Brand identity package",
+        "qty": 1,
+        "unit": "project",
+        "price": 18000000,
+        "amount": 18000000
+      },
+      {
+        "description": "Website design, 8 pages",
+        "qty": 8,
+        "unit": "page",
+        "price": 2500000,
+        "amount": 20000000
+      }
+    ],
+    "total": 38000000
+  }
+}

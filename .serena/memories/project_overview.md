@@ -12,7 +12,9 @@ SubmitJob, GetJob, DownloadJobResult (server stream, 1 MiB chunks), DeleteJob; a
 proto/proteus/v1/template.proto, service proteus.v1.TemplateService with CreateTemplate,
 GetTemplate, ListTemplates (by name, page_token = base64url of last name), UpdateTemplate
 (revision = optimistic lock), DeleteTemplate, RenderTemplate (stored id or unsaved template,
-returns filled document), ConvertTemplate, SubmitTemplateJob (both take output_format). Served by
+returns filled document), ConvertTemplate (stored id or unsaved template draft), SubmitTemplateJob
+(both take output_format), ListStarterTemplates (built-in visual templates, filter by category),
+ConvertToCode (visual -> code template, optional revision check). Served by
 connect-go v2 (connectrpc.com/connect/v2) so one h2c listener answers gRPC, gRPC-Web and Connect.
 Also grpc.health.v1 (grpchealth/v2) and reflection (grpcreflect/v2). Metrics on a separate admin
 listener (PROTEUS_ADMIN_ADDR :9090, GET /metrics).
@@ -24,7 +26,10 @@ Layout:
 - internal/config: PROTEUS_* env parsing (sizes accept K/M/G/KiB/MiB/GiB).
 - internal/safefetch: SSRF-safe HTTP client (dial-time IP check, no proxy, caps).
 - internal/loader: per-request proteus.ResourceLoader: data: URLs, assets, remote via safefetch.
-- internal/convert: formats.go (InputFormat/OutputFormat, target table with MIME type, extension,
+- internal/convert: watermark: request.go validateWatermark (text or image asset, opacity 0-1,
+  angle, placement/layer/pages enums), engine.go watermarkOption builds core.Watermark via
+  proteus.WithWatermark; image assets resolved through loader.Asset(path).
+  formats.go (InputFormat/OutputFormat, target table with MIME type, extension,
   Paged flag and output check; Registry keyed by Route{From, To}; Converter interface getting an
   Input with the fetched source and the per-request loader), engine.go (ProteusEngine registers
   html/markdown -> pdf, engineOptions), request.go (FromProto(doc, output, opts) validation,
@@ -34,13 +39,29 @@ Layout:
   authenticate: Bearer or x-api-key, health/reflection exempt), conversionService, error mapping;
   templates.go = templateService (adds NotFound/AlreadyExists/Aborted/ResourceExhausted for
   template errors, reuses conversionService.convert and jobs.Submit).
-- internal/templates: Service (validate: name 1-200 runes unique per key, description <= 2000,
+- internal/templates: template builder support: fields.go (FieldSpec validation, CheckData ->
+  *DataError carrying proto DataProblems, mapped to InvalidArgument + TemplateDataError detail
+  via connectproto.NewErrorDetail; ApplyDefaults), format.go (Format{Locale, Currency}: Number,
+  Money, Date, Percent and the template funcs money/fnumber/fdate/percent/sum/count/avg/
+  add/sub/mul/div/round/nl2br/qr (go-qrcode PNG data URL)), layout.go (Compile(layout, page) ->
+  HTML with @page size/margins plus header/footer bands as position:fixed .pt-header/.pt-footer
+  at top:-H / bottom:-F, pt-* classes, structured show_if conditions, limits: 500 blocks, depth 4,
+  20k text, 20 columns, 50 rows, regions <= 150mm; LayoutError names the block), starters.go +
+  starters/*.json (protojson Templates embedded: invoice, quotation, receipt, purchase_order,
+  delivery_note, letter, certificate (landscape, QR), report, blank; Starter(id) returns a clone,
+  Starters(category) in display order; tests render every one and convert to PDF over RPC).
+  Service (validate: name 1-200 runes unique per key, description <= 2000, category <= 50 no
+  spaces, fields validated, layout compiled into Content when present,
   convert.FromProto checks of format/assets/options, size cap, parse, trial render with
   sample_data to catch html/template context errors; Render/RenderDraft; mergeOptions lays
   request options over template defaults and drops page/pdf defaults the output can't use),
-  render.go (html/template sandbox, see conventions), store.go (Store interface, MemoryStore),
-  storetest conformance suite. Body column = proto-marshalled Template with only content, assets,
-  options, sample_data.
+  render applies field defaults + CheckData, finish() merges options and renders a watermark text
+  that contains {{ }} (empty result drops the watermark); layoutOptions drops page size/margins
+  for compiled layouts because the @page rule carries them, keeping only the watermark),
+  render.go (html/template sandbox, see conventions; Execute/ExecuteWith(Format)), store.go
+  (Store interface with List(owner, category, after, limit), MemoryStore), storetest
+  conformance suite. Body column = proto-marshalled Template with content, assets, options,
+  sample_data, layout, fields, starter_id; Record.Category is its own column.
 - internal/jobs: Manager over a Store interface (store.go), MemoryStore (memstore.go),
   storetest conformance suite; workers claim with leases, webhooks HMAC-signed.
 - internal/storage/model: storm models Job and Template (unique owner+name, Meta projection

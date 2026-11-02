@@ -154,6 +154,61 @@ message PageOptions {
   // Every margin in millimetres (0 to 100). Ignored when margins is set.
   optional double margin_mm = 3;
   Margins margins = 4;
+  // A translucent stamp on the pages, such as DRAFT or a faint logo.
+  Watermark watermark = 5;
+}
+
+// WatermarkPlacement says where the mark goes on a page.
+enum WatermarkPlacement {
+  WATERMARK_PLACEMENT_UNSPECIFIED = 0; // center
+  WATERMARK_PLACEMENT_CENTER = 1;
+  // Repeated in a staggered grid over the whole page.
+  WATERMARK_PLACEMENT_TILED = 2;
+}
+
+// WatermarkLayer says whether the mark is painted under or over the document.
+enum WatermarkLayer {
+  WATERMARK_LAYER_UNSPECIFIED = 0; // behind
+  // Under the document's text; backgrounds and images stay beneath it.
+  WATERMARK_LAYER_BEHIND = 1;
+  // Over everything on the page.
+  WATERMARK_LAYER_OVER = 2;
+}
+
+// WatermarkPages selects the pages that get the mark.
+enum WatermarkPages {
+  WATERMARK_PAGES_UNSPECIFIED = 0; // all
+  WATERMARK_PAGES_ALL = 1;
+  WATERMARK_PAGES_FIRST = 2;
+  WATERMARK_PAGES_ALL_BUT_FIRST = 3;
+}
+
+// Watermark is a translucent stamp painted on the pages after layout, so it
+// never moves the document's content. Set text or image_asset; an empty
+// watermark stamps nothing.
+message Watermark {
+  oneof mark {
+    // Text such as DRAFT, COPY, PAID or CONFIDENTIAL, up to 200 characters.
+    // In a template it may use placeholders, so it can depend on the data.
+    string text = 1;
+    // Path of a PNG or JPEG in the document's assets, stamped instead of text.
+    string image_asset = 2;
+  }
+  // 0 to 1; default 0.15.
+  double opacity = 3;
+  // Text size in points; default 72.
+  double font_size_pt = 4;
+  // CSS font-family list for the text; a bold sans-serif by default.
+  string font_family = 5;
+  // CSS colour for the text; default #444444.
+  string color = 6;
+  // Rotation in degrees counter-clockwise; default 30. Set 0 for a level mark.
+  optional double angle_deg = 7;
+  // Drawn width of the image in millimetres; default half the page width.
+  double image_width_mm = 8;
+  WatermarkPlacement placement = 9;
+  WatermarkLayer layer = 10;
+  WatermarkPages pages = 11;
 }
 
 // PdfOptions apply only to PDF output.

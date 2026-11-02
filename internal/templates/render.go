@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 package templates
 
 import (
@@ -118,6 +120,7 @@ func (r *run) pairs(v any) (iter.Seq2[any, any], error) {
 // run is the state of one render.
 type run struct {
 	ctx      context.Context
+	format   Format
 	left     atomic.Int64
 	exceeded atomic.Bool
 }
@@ -289,7 +292,7 @@ func groupThousands(s string) string {
 func Parse(content []byte) (*template.Template, error) { return (&run{}).parse(content) }
 
 func (r *run) parse(content []byte) (*template.Template, error) {
-	t, err := template.New("template").Funcs(staticFuncs).Funcs(r.funcs()).
+	t, err := template.New("template").Funcs(staticFuncs).Funcs(r.funcs()).Funcs(r.format.funcs(r)).
 		Option("missingkey=zero").Parse(string(content))
 	if err != nil {
 		return nil, &TemplateError{Msg: cleanErr(err)}
@@ -453,10 +456,15 @@ type Limits struct {
 // ErrTooLarge, loops over the budget ErrTooManySteps, and passing ctx's
 // deadline ErrRenderTimeout. Other failures are *TemplateError.
 func Execute(ctx context.Context, content []byte, data *structpb.Struct, lim Limits) ([]byte, error) {
+	return ExecuteWith(ctx, content, data, lim, Format{})
+}
+
+// ExecuteWith is Execute with the money, number and date formats of f.
+func ExecuteWith(ctx context.Context, content []byte, data *structpb.Struct, lim Limits, f Format) ([]byte, error) {
 	if lim.MaxSteps <= 0 {
 		lim.MaxSteps = DefaultMaxSteps
 	}
-	r := &run{ctx: ctx}
+	r := &run{ctx: ctx, format: f}
 	r.left.Store(lim.MaxSteps)
 	// Parsed per render: the list functions are bound to this render.
 	t, err := r.parse(content)

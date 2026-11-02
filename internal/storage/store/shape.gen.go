@@ -43,6 +43,7 @@ func _assertTemplateShape(m m0.Template) {
 		m.Name,
 		m.Description,
 		m.Format,
+		m.Category,
 		m.Revision,
 		m.SizeBytes,
 		m.Body,

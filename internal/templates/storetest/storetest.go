@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package storetest is a conformance suite every templates.Store must pass.
 package storetest
 
@@ -48,23 +50,30 @@ func Run(t *testing.T, s templates.Store) {
 
 	t.Run("ListAndCount", func(t *testing.T) {
 		for _, n := range []string{"b", "c", "a"} {
-			if err := s.Create(ctx, &templates.Record{Owner: "alice", Name: n, Format: "html", Body: []byte(n)}); err != nil {
+			cat := ""
+			if n == "c" {
+				cat = "invoice"
+			}
+			if err := s.Create(ctx, &templates.Record{Owner: "alice", Name: n, Format: "html", Category: cat, Body: []byte(n)}); err != nil {
 				t.Fatal(err)
 			}
 		}
 		if n, err := s.Count(ctx, "alice"); err != nil || n != 4 {
 			t.Fatalf("Count = %d, %v", n, err)
 		}
-		page, err := s.List(ctx, "alice", "", 2)
+		page, err := s.List(ctx, "alice", "", "", 2)
 		if err != nil || len(page) != 2 || page[0].Name != "a" || page[1].Name != "b" || page[0].Body != nil {
 			t.Fatalf("List page 1 = %+v, %v", page, err)
 		}
-		page, err = s.List(ctx, "alice", "b", 10)
+		page, err = s.List(ctx, "alice", "", "b", 10)
 		if err != nil || len(page) != 2 || page[0].Name != "c" || page[1].Name != "invoice" {
 			t.Fatalf("List page 2 = %+v, %v", page, err)
 		}
-		if page, err := s.List(ctx, "carol", "", 10); err != nil || len(page) != 0 {
+		if page, err := s.List(ctx, "carol", "", "", 10); err != nil || len(page) != 0 {
 			t.Fatalf("carol List = %+v, %v", page, err)
+		}
+		if page, err := s.List(ctx, "alice", "invoice", "", 10); err != nil || len(page) != 1 || page[0].Name != "c" || page[0].Category != "invoice" {
+			t.Fatalf("List by category = %+v, %v", page, err)
 		}
 	})
 

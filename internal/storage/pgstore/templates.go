@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 package pgstore
 
 import (
@@ -32,6 +34,7 @@ func (s *Templates) Create(ctx context.Context, r *templates.Record) error {
 	n.SetName(r.Name)
 	n.SetDescription(r.Description)
 	n.SetFormat(r.Format)
+	n.SetCategory(r.Category)
 	n.SetRevision(1)
 	n.SetSizeBytes(r.SizeBytes)
 	n.SetBody(r.Body)
@@ -58,7 +61,7 @@ func (s *Templates) Get(ctx context.Context, owner, id string) (*templates.Recor
 	}
 	return &templates.Record{
 		ID: idString(row.ID), Owner: row.Owner, Name: row.Name, Description: row.Description,
-		Format: row.Format, Revision: row.Revision, SizeBytes: row.SizeBytes,
+		Format: row.Format, Category: row.Category, Revision: row.Revision, SizeBytes: row.SizeBytes,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Body: row.Body,
 	}, nil
 }
@@ -66,16 +69,19 @@ func (s *Templates) Get(ctx context.Context, owner, id string) (*templates.Recor
 func fromTemplateMeta(row template.MetaRow) *templates.Record {
 	return &templates.Record{
 		ID: idString(row.ID), Owner: row.Owner, Name: row.Name, Description: row.Description,
-		Format: row.Format, Revision: row.Revision, SizeBytes: row.SizeBytes,
+		Format: row.Format, Category: row.Category, Revision: row.Revision, SizeBytes: row.SizeBytes,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 }
 
 // List implements templates.Store. The (owner, name) unique index serves
 // both the filter and the order.
-func (s *Templates) List(ctx context.Context, owner, after string, limit int) ([]*templates.Record, error) {
-	rows, err := template.New().Where(template.Owner.Eq(owner), template.Name.Gt(after)).
-		Order(template.Name.Asc()).Limit(int64(limit)).AllMeta(ctx, s.ex)
+func (s *Templates) List(ctx context.Context, owner, category, after string, limit int) ([]*templates.Record, error) {
+	q := template.New().Where(template.Owner.Eq(owner), template.Name.Gt(after))
+	if category != "" {
+		q = q.Where(template.Category.Eq(category))
+	}
+	rows, err := q.Order(template.Name.Asc()).Limit(int64(limit)).AllMeta(ctx, s.ex)
 	if err != nil {
 		return nil, fmt.Errorf("pgstore: list templates: %w", err)
 	}
@@ -114,6 +120,7 @@ func (s *Templates) Update(ctx context.Context, r *templates.Record, expected in
 	m.SetName(r.Name)
 	m.SetDescription(r.Description)
 	m.SetFormat(r.Format)
+	m.SetCategory(r.Category)
 	m.SetSizeBytes(r.SizeBytes)
 	m.SetBody(r.Body)
 	m.SetRevision(cur.Revision + 1)

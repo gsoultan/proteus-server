@@ -1,0 +1,95 @@
+{
+  "name": "Blank",
+  "description": "Empty page with header and footer regions.",
+  "format": "INPUT_FORMAT_HTML",
+  "category": "",
+  "starterId": "blank",
+  "options": {
+    "page": {
+      "size": "PAGE_SIZE_A4",
+      "marginMm": 15
+    }
+  },
+  "layout": {
+    "theme": {
+      "locale": "en-US",
+      "currency": "USD"
+    },
+    "header": {
+      "blocks": [
+        {
+          "id": "header_title",
+          "field": {
+            "path": "title"
+          },
+          "style": {
+            "bold": true,
+            "spaceBelow": "SPACING_NONE"
+          }
+        }
+      ],
+      "heightMm": 20
+    },
+    "footer": {
+      "blocks": [
+        {
+          "id": "footer_rule",
+          "divider": {},
+          "style": {
+            "spaceBelow": "SPACING_SMALL"
+          }
+        },
+        {
+          "id": "footer_text",
+          "text": {
+            "text": "{{.footer}}"
+          },
+          "style": {
+            "align": "ALIGN_CENTER",
+            "spaceBelow": "SPACING_NONE"
+          }
+        }
+      ],
+      "heightMm": 16
+    },
+    "body": {
+      "blocks": [
+        {
+          "id": "heading",
+          "heading": {
+            "text": "{{.title}}",
+            "level": 1
+          }
+        },
+        {
+          "id": "body",
+          "text": {
+            "text": "{{.body}}"
+          }
+        }
+      ]
+    }
+  },
+  "fields": [
+    {
+      "path": "title",
+      "type": "FIELD_TYPE_TEXT",
+      "required": true
+    },
+    {
+      "path": "body",
+      "type": "FIELD_TYPE_TEXT",
+      "required": false
+    },
+    {
+      "path": "footer",
+      "type": "FIELD_TYPE_TEXT",
+      "required": false
+    }
+  ],
+  "sampleData": {
+    "title": "Untitled document",
+    "body": "Start writing here. Blank lines separate paragraphs.",
+    "footer": "Footer text"
+  }
+}

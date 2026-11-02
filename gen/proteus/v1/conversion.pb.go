@@ -229,6 +229,162 @@ func (MediaType) EnumDescriptor() ([]byte, []int) {
 	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{3}
 }
 
+// WatermarkPlacement says where the mark goes on a page.
+type WatermarkPlacement int32
+
+const (
+	WatermarkPlacement_WATERMARK_PLACEMENT_UNSPECIFIED WatermarkPlacement = 0 // center
+	WatermarkPlacement_WATERMARK_PLACEMENT_CENTER      WatermarkPlacement = 1
+	// Repeated in a staggered grid over the whole page.
+	WatermarkPlacement_WATERMARK_PLACEMENT_TILED WatermarkPlacement = 2
+)
+
+// Enum value maps for WatermarkPlacement.
+var (
+	WatermarkPlacement_name = map[int32]string{
+		0: "WATERMARK_PLACEMENT_UNSPECIFIED",
+		1: "WATERMARK_PLACEMENT_CENTER",
+		2: "WATERMARK_PLACEMENT_TILED",
+	}
+	WatermarkPlacement_value = map[string]int32{
+		"WATERMARK_PLACEMENT_UNSPECIFIED": 0,
+		"WATERMARK_PLACEMENT_CENTER":      1,
+		"WATERMARK_PLACEMENT_TILED":       2,
+	}
+)
+
+func (x WatermarkPlacement) Enum() *WatermarkPlacement {
+	p := new(WatermarkPlacement)
+	*p = x
+	return p
+}
+
+func (x WatermarkPlacement) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WatermarkPlacement) Descriptor() protoreflect.EnumDescriptor {
+	return file_proteus_v1_conversion_proto_enumTypes[4].Descriptor()
+}
+
+func (WatermarkPlacement) Type() protoreflect.EnumType {
+	return &file_proteus_v1_conversion_proto_enumTypes[4]
+}
+
+func (x WatermarkPlacement) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WatermarkPlacement.Descriptor instead.
+func (WatermarkPlacement) EnumDescriptor() ([]byte, []int) {
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{4}
+}
+
+// WatermarkLayer says whether the mark is painted under or over the document.
+type WatermarkLayer int32
+
+const (
+	WatermarkLayer_WATERMARK_LAYER_UNSPECIFIED WatermarkLayer = 0 // behind
+	// Under the document's text; backgrounds and images stay beneath it.
+	WatermarkLayer_WATERMARK_LAYER_BEHIND WatermarkLayer = 1
+	// Over everything on the page.
+	WatermarkLayer_WATERMARK_LAYER_OVER WatermarkLayer = 2
+)
+
+// Enum value maps for WatermarkLayer.
+var (
+	WatermarkLayer_name = map[int32]string{
+		0: "WATERMARK_LAYER_UNSPECIFIED",
+		1: "WATERMARK_LAYER_BEHIND",
+		2: "WATERMARK_LAYER_OVER",
+	}
+	WatermarkLayer_value = map[string]int32{
+		"WATERMARK_LAYER_UNSPECIFIED": 0,
+		"WATERMARK_LAYER_BEHIND":      1,
+		"WATERMARK_LAYER_OVER":        2,
+	}
+)
+
+func (x WatermarkLayer) Enum() *WatermarkLayer {
+	p := new(WatermarkLayer)
+	*p = x
+	return p
+}
+
+func (x WatermarkLayer) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WatermarkLayer) Descriptor() protoreflect.EnumDescriptor {
+	return file_proteus_v1_conversion_proto_enumTypes[5].Descriptor()
+}
+
+func (WatermarkLayer) Type() protoreflect.EnumType {
+	return &file_proteus_v1_conversion_proto_enumTypes[5]
+}
+
+func (x WatermarkLayer) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WatermarkLayer.Descriptor instead.
+func (WatermarkLayer) EnumDescriptor() ([]byte, []int) {
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{5}
+}
+
+// WatermarkPages selects the pages that get the mark.
+type WatermarkPages int32
+
+const (
+	WatermarkPages_WATERMARK_PAGES_UNSPECIFIED   WatermarkPages = 0 // all
+	WatermarkPages_WATERMARK_PAGES_ALL           WatermarkPages = 1
+	WatermarkPages_WATERMARK_PAGES_FIRST         WatermarkPages = 2
+	WatermarkPages_WATERMARK_PAGES_ALL_BUT_FIRST WatermarkPages = 3
+)
+
+// Enum value maps for WatermarkPages.
+var (
+	WatermarkPages_name = map[int32]string{
+		0: "WATERMARK_PAGES_UNSPECIFIED",
+		1: "WATERMARK_PAGES_ALL",
+		2: "WATERMARK_PAGES_FIRST",
+		3: "WATERMARK_PAGES_ALL_BUT_FIRST",
+	}
+	WatermarkPages_value = map[string]int32{
+		"WATERMARK_PAGES_UNSPECIFIED":   0,
+		"WATERMARK_PAGES_ALL":           1,
+		"WATERMARK_PAGES_FIRST":         2,
+		"WATERMARK_PAGES_ALL_BUT_FIRST": 3,
+	}
+)
+
+func (x WatermarkPages) Enum() *WatermarkPages {
+	p := new(WatermarkPages)
+	*p = x
+	return p
+}
+
+func (x WatermarkPages) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WatermarkPages) Descriptor() protoreflect.EnumDescriptor {
+	return file_proteus_v1_conversion_proto_enumTypes[6].Descriptor()
+}
+
+func (WatermarkPages) Type() protoreflect.EnumType {
+	return &file_proteus_v1_conversion_proto_enumTypes[6]
+}
+
+func (x WatermarkPages) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WatermarkPages.Descriptor instead.
+func (WatermarkPages) EnumDescriptor() ([]byte, []int) {
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{6}
+}
+
 // JobStatus is where a job is in its life.
 type JobStatus int32
 
@@ -269,11 +425,11 @@ func (x JobStatus) String() string {
 }
 
 func (JobStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_proteus_v1_conversion_proto_enumTypes[4].Descriptor()
+	return file_proteus_v1_conversion_proto_enumTypes[7].Descriptor()
 }
 
 func (JobStatus) Type() protoreflect.EnumType {
-	return &file_proteus_v1_conversion_proto_enumTypes[4]
+	return &file_proteus_v1_conversion_proto_enumTypes[7]
 }
 
 func (x JobStatus) Number() protoreflect.EnumNumber {
@@ -282,7 +438,7 @@ func (x JobStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use JobStatus.Descriptor instead.
 func (JobStatus) EnumDescriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{4}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{7}
 }
 
 // Conversion is one supported input to output pair.
@@ -839,8 +995,10 @@ type PageOptions struct {
 	Size      PageSize               `protobuf:"varint,1,opt,name=size,proto3,enum=proteus.v1.PageSize" json:"size,omitempty"`
 	Landscape bool                   `protobuf:"varint,2,opt,name=landscape,proto3" json:"landscape,omitempty"`
 	// Every margin in millimetres (0 to 100). Ignored when margins is set.
-	MarginMm      *float64 `protobuf:"fixed64,3,opt,name=margin_mm,json=marginMm,proto3,oneof" json:"margin_mm,omitempty"`
-	Margins       *Margins `protobuf:"bytes,4,opt,name=margins,proto3" json:"margins,omitempty"`
+	MarginMm *float64 `protobuf:"fixed64,3,opt,name=margin_mm,json=marginMm,proto3,oneof" json:"margin_mm,omitempty"`
+	Margins  *Margins `protobuf:"bytes,4,opt,name=margins,proto3" json:"margins,omitempty"`
+	// A translucent stamp on the pages, such as DRAFT or a faint logo.
+	Watermark     *Watermark `protobuf:"bytes,5,opt,name=watermark,proto3" json:"watermark,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -903,6 +1061,179 @@ func (x *PageOptions) GetMargins() *Margins {
 	return nil
 }
 
+func (x *PageOptions) GetWatermark() *Watermark {
+	if x != nil {
+		return x.Watermark
+	}
+	return nil
+}
+
+// Watermark is a translucent stamp painted on the pages after layout, so it
+// never moves the document's content. Set text or image_asset; an empty
+// watermark stamps nothing.
+type Watermark struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Mark:
+	//
+	//	*Watermark_Text
+	//	*Watermark_ImageAsset
+	Mark isWatermark_Mark `protobuf_oneof:"mark"`
+	// 0 to 1; default 0.15.
+	Opacity float64 `protobuf:"fixed64,3,opt,name=opacity,proto3" json:"opacity,omitempty"`
+	// Text size in points; default 72.
+	FontSizePt float64 `protobuf:"fixed64,4,opt,name=font_size_pt,json=fontSizePt,proto3" json:"font_size_pt,omitempty"`
+	// CSS font-family list for the text; a bold sans-serif by default.
+	FontFamily string `protobuf:"bytes,5,opt,name=font_family,json=fontFamily,proto3" json:"font_family,omitempty"`
+	// CSS colour for the text; default #444444.
+	Color string `protobuf:"bytes,6,opt,name=color,proto3" json:"color,omitempty"`
+	// Rotation in degrees counter-clockwise; default 30. Set 0 for a level mark.
+	AngleDeg *float64 `protobuf:"fixed64,7,opt,name=angle_deg,json=angleDeg,proto3,oneof" json:"angle_deg,omitempty"`
+	// Drawn width of the image in millimetres; default half the page width.
+	ImageWidthMm  float64            `protobuf:"fixed64,8,opt,name=image_width_mm,json=imageWidthMm,proto3" json:"image_width_mm,omitempty"`
+	Placement     WatermarkPlacement `protobuf:"varint,9,opt,name=placement,proto3,enum=proteus.v1.WatermarkPlacement" json:"placement,omitempty"`
+	Layer         WatermarkLayer     `protobuf:"varint,10,opt,name=layer,proto3,enum=proteus.v1.WatermarkLayer" json:"layer,omitempty"`
+	Pages         WatermarkPages     `protobuf:"varint,11,opt,name=pages,proto3,enum=proteus.v1.WatermarkPages" json:"pages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Watermark) Reset() {
+	*x = Watermark{}
+	mi := &file_proteus_v1_conversion_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Watermark) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Watermark) ProtoMessage() {}
+
+func (x *Watermark) ProtoReflect() protoreflect.Message {
+	mi := &file_proteus_v1_conversion_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Watermark.ProtoReflect.Descriptor instead.
+func (*Watermark) Descriptor() ([]byte, []int) {
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *Watermark) GetMark() isWatermark_Mark {
+	if x != nil {
+		return x.Mark
+	}
+	return nil
+}
+
+func (x *Watermark) GetText() string {
+	if x != nil {
+		if x, ok := x.Mark.(*Watermark_Text); ok {
+			return x.Text
+		}
+	}
+	return ""
+}
+
+func (x *Watermark) GetImageAsset() string {
+	if x != nil {
+		if x, ok := x.Mark.(*Watermark_ImageAsset); ok {
+			return x.ImageAsset
+		}
+	}
+	return ""
+}
+
+func (x *Watermark) GetOpacity() float64 {
+	if x != nil {
+		return x.Opacity
+	}
+	return 0
+}
+
+func (x *Watermark) GetFontSizePt() float64 {
+	if x != nil {
+		return x.FontSizePt
+	}
+	return 0
+}
+
+func (x *Watermark) GetFontFamily() string {
+	if x != nil {
+		return x.FontFamily
+	}
+	return ""
+}
+
+func (x *Watermark) GetColor() string {
+	if x != nil {
+		return x.Color
+	}
+	return ""
+}
+
+func (x *Watermark) GetAngleDeg() float64 {
+	if x != nil && x.AngleDeg != nil {
+		return *x.AngleDeg
+	}
+	return 0
+}
+
+func (x *Watermark) GetImageWidthMm() float64 {
+	if x != nil {
+		return x.ImageWidthMm
+	}
+	return 0
+}
+
+func (x *Watermark) GetPlacement() WatermarkPlacement {
+	if x != nil {
+		return x.Placement
+	}
+	return WatermarkPlacement_WATERMARK_PLACEMENT_UNSPECIFIED
+}
+
+func (x *Watermark) GetLayer() WatermarkLayer {
+	if x != nil {
+		return x.Layer
+	}
+	return WatermarkLayer_WATERMARK_LAYER_UNSPECIFIED
+}
+
+func (x *Watermark) GetPages() WatermarkPages {
+	if x != nil {
+		return x.Pages
+	}
+	return WatermarkPages_WATERMARK_PAGES_UNSPECIFIED
+}
+
+type isWatermark_Mark interface {
+	isWatermark_Mark()
+}
+
+type Watermark_Text struct {
+	// Text such as DRAFT, COPY, PAID or CONFIDENTIAL, up to 200 characters.
+	// In a template it may use placeholders, so it can depend on the data.
+	Text string `protobuf:"bytes,1,opt,name=text,proto3,oneof"`
+}
+
+type Watermark_ImageAsset struct {
+	// Path of a PNG or JPEG in the document's assets, stamped instead of text.
+	ImageAsset string `protobuf:"bytes,2,opt,name=image_asset,json=imageAsset,proto3,oneof"`
+}
+
+func (*Watermark_Text) isWatermark_Mark() {}
+
+func (*Watermark_ImageAsset) isWatermark_Mark() {}
+
 // PdfOptions apply only to PDF output.
 type PdfOptions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -916,7 +1247,7 @@ type PdfOptions struct {
 
 func (x *PdfOptions) Reset() {
 	*x = PdfOptions{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[9]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -928,7 +1259,7 @@ func (x *PdfOptions) String() string {
 func (*PdfOptions) ProtoMessage() {}
 
 func (x *PdfOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[9]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -941,7 +1272,7 @@ func (x *PdfOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PdfOptions.ProtoReflect.Descriptor instead.
 func (*PdfOptions) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{9}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *PdfOptions) GetOutline() bool {
@@ -970,7 +1301,7 @@ type ConvertRequest struct {
 
 func (x *ConvertRequest) Reset() {
 	*x = ConvertRequest{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[10]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -982,7 +1313,7 @@ func (x *ConvertRequest) String() string {
 func (*ConvertRequest) ProtoMessage() {}
 
 func (x *ConvertRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[10]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -995,7 +1326,7 @@ func (x *ConvertRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertRequest.ProtoReflect.Descriptor instead.
 func (*ConvertRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{10}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ConvertRequest) GetDocument() *Document {
@@ -1038,7 +1369,7 @@ type ConvertResponse struct {
 
 func (x *ConvertResponse) Reset() {
 	*x = ConvertResponse{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[11]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1050,7 +1381,7 @@ func (x *ConvertResponse) String() string {
 func (*ConvertResponse) ProtoMessage() {}
 
 func (x *ConvertResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[11]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1063,7 +1394,7 @@ func (x *ConvertResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertResponse.ProtoReflect.Descriptor instead.
 func (*ConvertResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{11}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ConvertResponse) GetContent() []byte {
@@ -1123,7 +1454,7 @@ type SubmitJobRequest struct {
 
 func (x *SubmitJobRequest) Reset() {
 	*x = SubmitJobRequest{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[12]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1135,7 +1466,7 @@ func (x *SubmitJobRequest) String() string {
 func (*SubmitJobRequest) ProtoMessage() {}
 
 func (x *SubmitJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[12]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1148,7 +1479,7 @@ func (x *SubmitJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitJobRequest.ProtoReflect.Descriptor instead.
 func (*SubmitJobRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{12}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SubmitJobRequest) GetDocument() *Document {
@@ -1188,7 +1519,7 @@ type SubmitJobResponse struct {
 
 func (x *SubmitJobResponse) Reset() {
 	*x = SubmitJobResponse{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[13]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1200,7 +1531,7 @@ func (x *SubmitJobResponse) String() string {
 func (*SubmitJobResponse) ProtoMessage() {}
 
 func (x *SubmitJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[13]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1213,7 +1544,7 @@ func (x *SubmitJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitJobResponse.ProtoReflect.Descriptor instead.
 func (*SubmitJobResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{13}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SubmitJobResponse) GetJob() *Job {
@@ -1250,7 +1581,7 @@ type Job struct {
 
 func (x *Job) Reset() {
 	*x = Job{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[14]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1262,7 +1593,7 @@ func (x *Job) String() string {
 func (*Job) ProtoMessage() {}
 
 func (x *Job) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[14]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1275,7 +1606,7 @@ func (x *Job) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Job.ProtoReflect.Descriptor instead.
 func (*Job) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{14}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Job) GetId() string {
@@ -1378,7 +1709,7 @@ type GetJobRequest struct {
 
 func (x *GetJobRequest) Reset() {
 	*x = GetJobRequest{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[15]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1390,7 +1721,7 @@ func (x *GetJobRequest) String() string {
 func (*GetJobRequest) ProtoMessage() {}
 
 func (x *GetJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[15]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1403,7 +1734,7 @@ func (x *GetJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobRequest.ProtoReflect.Descriptor instead.
 func (*GetJobRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{15}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetJobRequest) GetId() string {
@@ -1422,7 +1753,7 @@ type GetJobResponse struct {
 
 func (x *GetJobResponse) Reset() {
 	*x = GetJobResponse{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[16]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1434,7 +1765,7 @@ func (x *GetJobResponse) String() string {
 func (*GetJobResponse) ProtoMessage() {}
 
 func (x *GetJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[16]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1447,7 +1778,7 @@ func (x *GetJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobResponse.ProtoReflect.Descriptor instead.
 func (*GetJobResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{16}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetJobResponse) GetJob() *Job {
@@ -1466,7 +1797,7 @@ type DownloadJobResultRequest struct {
 
 func (x *DownloadJobResultRequest) Reset() {
 	*x = DownloadJobResultRequest{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[17]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1478,7 +1809,7 @@ func (x *DownloadJobResultRequest) String() string {
 func (*DownloadJobResultRequest) ProtoMessage() {}
 
 func (x *DownloadJobResultRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[17]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1491,7 +1822,7 @@ func (x *DownloadJobResultRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadJobResultRequest.ProtoReflect.Descriptor instead.
 func (*DownloadJobResultRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{17}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *DownloadJobResultRequest) GetId() string {
@@ -1511,7 +1842,7 @@ type DownloadJobResultResponse struct {
 
 func (x *DownloadJobResultResponse) Reset() {
 	*x = DownloadJobResultResponse{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[18]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1523,7 +1854,7 @@ func (x *DownloadJobResultResponse) String() string {
 func (*DownloadJobResultResponse) ProtoMessage() {}
 
 func (x *DownloadJobResultResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[18]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1536,7 +1867,7 @@ func (x *DownloadJobResultResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadJobResultResponse.ProtoReflect.Descriptor instead.
 func (*DownloadJobResultResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{18}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *DownloadJobResultResponse) GetChunk() []byte {
@@ -1555,7 +1886,7 @@ type DeleteJobRequest struct {
 
 func (x *DeleteJobRequest) Reset() {
 	*x = DeleteJobRequest{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[19]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1567,7 +1898,7 @@ func (x *DeleteJobRequest) String() string {
 func (*DeleteJobRequest) ProtoMessage() {}
 
 func (x *DeleteJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[19]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1580,7 +1911,7 @@ func (x *DeleteJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteJobRequest.ProtoReflect.Descriptor instead.
 func (*DeleteJobRequest) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{19}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DeleteJobRequest) GetId() string {
@@ -1598,7 +1929,7 @@ type DeleteJobResponse struct {
 
 func (x *DeleteJobResponse) Reset() {
 	*x = DeleteJobResponse{}
-	mi := &file_proteus_v1_conversion_proto_msgTypes[20]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1610,7 +1941,7 @@ func (x *DeleteJobResponse) String() string {
 func (*DeleteJobResponse) ProtoMessage() {}
 
 func (x *DeleteJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proteus_v1_conversion_proto_msgTypes[20]
+	mi := &file_proteus_v1_conversion_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1623,7 +1954,7 @@ func (x *DeleteJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteJobResponse.ProtoReflect.Descriptor instead.
 func (*DeleteJobResponse) Descriptor() ([]byte, []int) {
-	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{20}
+	return file_proteus_v1_conversion_proto_rawDescGZIP(), []int{21}
 }
 
 var File_proteus_v1_conversion_proto protoreflect.FileDescriptor
@@ -1670,14 +2001,34 @@ const file_proteus_v1_conversion_proto_rawDesc = "" +
 	"\bmetadata\x18\x03 \x01(\v2\x14.proteus.v1.MetadataR\bmetadata\x12!\n" +
 	"\fallow_remote\x18\x04 \x01(\bR\vallowRemote\x12+\n" +
 	"\x04page\x18\x05 \x01(\v2\x17.proteus.v1.PageOptionsR\x04page\x12(\n" +
-	"\x03pdf\x18\x06 \x01(\v2\x16.proteus.v1.PdfOptionsR\x03pdf\"\xb4\x01\n" +
+	"\x03pdf\x18\x06 \x01(\v2\x16.proteus.v1.PdfOptionsR\x03pdf\"\xe9\x01\n" +
 	"\vPageOptions\x12(\n" +
 	"\x04size\x18\x01 \x01(\x0e2\x14.proteus.v1.PageSizeR\x04size\x12\x1c\n" +
 	"\tlandscape\x18\x02 \x01(\bR\tlandscape\x12 \n" +
 	"\tmargin_mm\x18\x03 \x01(\x01H\x00R\bmarginMm\x88\x01\x01\x12-\n" +
-	"\amargins\x18\x04 \x01(\v2\x13.proteus.v1.MarginsR\amarginsB\f\n" +
+	"\amargins\x18\x04 \x01(\v2\x13.proteus.v1.MarginsR\amargins\x123\n" +
+	"\twatermark\x18\x05 \x01(\v2\x15.proteus.v1.WatermarkR\twatermarkB\f\n" +
 	"\n" +
-	"_margin_mm\"O\n" +
+	"_margin_mm\"\xb7\x03\n" +
+	"\tWatermark\x12\x14\n" +
+	"\x04text\x18\x01 \x01(\tH\x00R\x04text\x12!\n" +
+	"\vimage_asset\x18\x02 \x01(\tH\x00R\n" +
+	"imageAsset\x12\x18\n" +
+	"\aopacity\x18\x03 \x01(\x01R\aopacity\x12 \n" +
+	"\ffont_size_pt\x18\x04 \x01(\x01R\n" +
+	"fontSizePt\x12\x1f\n" +
+	"\vfont_family\x18\x05 \x01(\tR\n" +
+	"fontFamily\x12\x14\n" +
+	"\x05color\x18\x06 \x01(\tR\x05color\x12 \n" +
+	"\tangle_deg\x18\a \x01(\x01H\x01R\bangleDeg\x88\x01\x01\x12$\n" +
+	"\x0eimage_width_mm\x18\b \x01(\x01R\fimageWidthMm\x12<\n" +
+	"\tplacement\x18\t \x01(\x0e2\x1e.proteus.v1.WatermarkPlacementR\tplacement\x120\n" +
+	"\x05layer\x18\n" +
+	" \x01(\x0e2\x1a.proteus.v1.WatermarkLayerR\x05layer\x120\n" +
+	"\x05pages\x18\v \x01(\x0e2\x1a.proteus.v1.WatermarkPagesR\x05pagesB\x06\n" +
+	"\x04markB\f\n" +
+	"\n" +
+	"_angle_deg\"O\n" +
 	"\n" +
 	"PdfOptions\x12\x1d\n" +
 	"\aoutline\x18\x01 \x01(\bH\x00R\aoutline\x88\x01\x01\x12\x16\n" +
@@ -1751,7 +2102,20 @@ const file_proteus_v1_conversion_proto_rawDesc = "" +
 	"\tMediaType\x12\x1a\n" +
 	"\x16MEDIA_TYPE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10MEDIA_TYPE_PRINT\x10\x01\x12\x15\n" +
-	"\x11MEDIA_TYPE_SCREEN\x10\x02*\x87\x01\n" +
+	"\x11MEDIA_TYPE_SCREEN\x10\x02*x\n" +
+	"\x12WatermarkPlacement\x12#\n" +
+	"\x1fWATERMARK_PLACEMENT_UNSPECIFIED\x10\x00\x12\x1e\n" +
+	"\x1aWATERMARK_PLACEMENT_CENTER\x10\x01\x12\x1d\n" +
+	"\x19WATERMARK_PLACEMENT_TILED\x10\x02*g\n" +
+	"\x0eWatermarkLayer\x12\x1f\n" +
+	"\x1bWATERMARK_LAYER_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16WATERMARK_LAYER_BEHIND\x10\x01\x12\x18\n" +
+	"\x14WATERMARK_LAYER_OVER\x10\x02*\x88\x01\n" +
+	"\x0eWatermarkPages\x12\x1f\n" +
+	"\x1bWATERMARK_PAGES_UNSPECIFIED\x10\x00\x12\x17\n" +
+	"\x13WATERMARK_PAGES_ALL\x10\x01\x12\x19\n" +
+	"\x15WATERMARK_PAGES_FIRST\x10\x02\x12!\n" +
+	"\x1dWATERMARK_PAGES_ALL_BUT_FIRST\x10\x03*\x87\x01\n" +
 	"\tJobStatus\x12\x1a\n" +
 	"\x16JOB_STATUS_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11JOB_STATUS_QUEUED\x10\x01\x12\x16\n" +
@@ -1778,82 +2142,90 @@ func file_proteus_v1_conversion_proto_rawDescGZIP() []byte {
 	return file_proteus_v1_conversion_proto_rawDescData
 }
 
-var file_proteus_v1_conversion_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_proteus_v1_conversion_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_proteus_v1_conversion_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
+var file_proteus_v1_conversion_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_proteus_v1_conversion_proto_goTypes = []any{
 	(InputFormat)(0),                  // 0: proteus.v1.InputFormat
 	(OutputFormat)(0),                 // 1: proteus.v1.OutputFormat
 	(PageSize)(0),                     // 2: proteus.v1.PageSize
 	(MediaType)(0),                    // 3: proteus.v1.MediaType
-	(JobStatus)(0),                    // 4: proteus.v1.JobStatus
-	(*Conversion)(nil),                // 5: proteus.v1.Conversion
-	(*ListFormatsRequest)(nil),        // 6: proteus.v1.ListFormatsRequest
-	(*ListFormatsResponse)(nil),       // 7: proteus.v1.ListFormatsResponse
-	(*Asset)(nil),                     // 8: proteus.v1.Asset
-	(*Document)(nil),                  // 9: proteus.v1.Document
-	(*Margins)(nil),                   // 10: proteus.v1.Margins
-	(*Metadata)(nil),                  // 11: proteus.v1.Metadata
-	(*Options)(nil),                   // 12: proteus.v1.Options
-	(*PageOptions)(nil),               // 13: proteus.v1.PageOptions
-	(*PdfOptions)(nil),                // 14: proteus.v1.PdfOptions
-	(*ConvertRequest)(nil),            // 15: proteus.v1.ConvertRequest
-	(*ConvertResponse)(nil),           // 16: proteus.v1.ConvertResponse
-	(*SubmitJobRequest)(nil),          // 17: proteus.v1.SubmitJobRequest
-	(*SubmitJobResponse)(nil),         // 18: proteus.v1.SubmitJobResponse
-	(*Job)(nil),                       // 19: proteus.v1.Job
-	(*GetJobRequest)(nil),             // 20: proteus.v1.GetJobRequest
-	(*GetJobResponse)(nil),            // 21: proteus.v1.GetJobResponse
-	(*DownloadJobResultRequest)(nil),  // 22: proteus.v1.DownloadJobResultRequest
-	(*DownloadJobResultResponse)(nil), // 23: proteus.v1.DownloadJobResultResponse
-	(*DeleteJobRequest)(nil),          // 24: proteus.v1.DeleteJobRequest
-	(*DeleteJobResponse)(nil),         // 25: proteus.v1.DeleteJobResponse
-	(*timestamppb.Timestamp)(nil),     // 26: google.protobuf.Timestamp
+	(WatermarkPlacement)(0),           // 4: proteus.v1.WatermarkPlacement
+	(WatermarkLayer)(0),               // 5: proteus.v1.WatermarkLayer
+	(WatermarkPages)(0),               // 6: proteus.v1.WatermarkPages
+	(JobStatus)(0),                    // 7: proteus.v1.JobStatus
+	(*Conversion)(nil),                // 8: proteus.v1.Conversion
+	(*ListFormatsRequest)(nil),        // 9: proteus.v1.ListFormatsRequest
+	(*ListFormatsResponse)(nil),       // 10: proteus.v1.ListFormatsResponse
+	(*Asset)(nil),                     // 11: proteus.v1.Asset
+	(*Document)(nil),                  // 12: proteus.v1.Document
+	(*Margins)(nil),                   // 13: proteus.v1.Margins
+	(*Metadata)(nil),                  // 14: proteus.v1.Metadata
+	(*Options)(nil),                   // 15: proteus.v1.Options
+	(*PageOptions)(nil),               // 16: proteus.v1.PageOptions
+	(*Watermark)(nil),                 // 17: proteus.v1.Watermark
+	(*PdfOptions)(nil),                // 18: proteus.v1.PdfOptions
+	(*ConvertRequest)(nil),            // 19: proteus.v1.ConvertRequest
+	(*ConvertResponse)(nil),           // 20: proteus.v1.ConvertResponse
+	(*SubmitJobRequest)(nil),          // 21: proteus.v1.SubmitJobRequest
+	(*SubmitJobResponse)(nil),         // 22: proteus.v1.SubmitJobResponse
+	(*Job)(nil),                       // 23: proteus.v1.Job
+	(*GetJobRequest)(nil),             // 24: proteus.v1.GetJobRequest
+	(*GetJobResponse)(nil),            // 25: proteus.v1.GetJobResponse
+	(*DownloadJobResultRequest)(nil),  // 26: proteus.v1.DownloadJobResultRequest
+	(*DownloadJobResultResponse)(nil), // 27: proteus.v1.DownloadJobResultResponse
+	(*DeleteJobRequest)(nil),          // 28: proteus.v1.DeleteJobRequest
+	(*DeleteJobResponse)(nil),         // 29: proteus.v1.DeleteJobResponse
+	(*timestamppb.Timestamp)(nil),     // 30: google.protobuf.Timestamp
 }
 var file_proteus_v1_conversion_proto_depIdxs = []int32{
 	0,  // 0: proteus.v1.Conversion.input_format:type_name -> proteus.v1.InputFormat
 	1,  // 1: proteus.v1.Conversion.output_format:type_name -> proteus.v1.OutputFormat
-	5,  // 2: proteus.v1.ListFormatsResponse.conversions:type_name -> proteus.v1.Conversion
+	8,  // 2: proteus.v1.ListFormatsResponse.conversions:type_name -> proteus.v1.Conversion
 	0,  // 3: proteus.v1.Document.format:type_name -> proteus.v1.InputFormat
-	8,  // 4: proteus.v1.Document.assets:type_name -> proteus.v1.Asset
+	11, // 4: proteus.v1.Document.assets:type_name -> proteus.v1.Asset
 	3,  // 5: proteus.v1.Options.media_type:type_name -> proteus.v1.MediaType
-	11, // 6: proteus.v1.Options.metadata:type_name -> proteus.v1.Metadata
-	13, // 7: proteus.v1.Options.page:type_name -> proteus.v1.PageOptions
-	14, // 8: proteus.v1.Options.pdf:type_name -> proteus.v1.PdfOptions
+	14, // 6: proteus.v1.Options.metadata:type_name -> proteus.v1.Metadata
+	16, // 7: proteus.v1.Options.page:type_name -> proteus.v1.PageOptions
+	18, // 8: proteus.v1.Options.pdf:type_name -> proteus.v1.PdfOptions
 	2,  // 9: proteus.v1.PageOptions.size:type_name -> proteus.v1.PageSize
-	10, // 10: proteus.v1.PageOptions.margins:type_name -> proteus.v1.Margins
-	9,  // 11: proteus.v1.ConvertRequest.document:type_name -> proteus.v1.Document
-	1,  // 12: proteus.v1.ConvertRequest.output_format:type_name -> proteus.v1.OutputFormat
-	12, // 13: proteus.v1.ConvertRequest.options:type_name -> proteus.v1.Options
-	1,  // 14: proteus.v1.ConvertResponse.output_format:type_name -> proteus.v1.OutputFormat
-	9,  // 15: proteus.v1.SubmitJobRequest.document:type_name -> proteus.v1.Document
-	1,  // 16: proteus.v1.SubmitJobRequest.output_format:type_name -> proteus.v1.OutputFormat
-	12, // 17: proteus.v1.SubmitJobRequest.options:type_name -> proteus.v1.Options
-	19, // 18: proteus.v1.SubmitJobResponse.job:type_name -> proteus.v1.Job
-	4,  // 19: proteus.v1.Job.status:type_name -> proteus.v1.JobStatus
-	0,  // 20: proteus.v1.Job.input_format:type_name -> proteus.v1.InputFormat
-	26, // 21: proteus.v1.Job.create_time:type_name -> google.protobuf.Timestamp
-	26, // 22: proteus.v1.Job.start_time:type_name -> google.protobuf.Timestamp
-	26, // 23: proteus.v1.Job.finish_time:type_name -> google.protobuf.Timestamp
-	26, // 24: proteus.v1.Job.expire_time:type_name -> google.protobuf.Timestamp
-	1,  // 25: proteus.v1.Job.output_format:type_name -> proteus.v1.OutputFormat
-	19, // 26: proteus.v1.GetJobResponse.job:type_name -> proteus.v1.Job
-	6,  // 27: proteus.v1.ConversionService.ListFormats:input_type -> proteus.v1.ListFormatsRequest
-	15, // 28: proteus.v1.ConversionService.Convert:input_type -> proteus.v1.ConvertRequest
-	17, // 29: proteus.v1.ConversionService.SubmitJob:input_type -> proteus.v1.SubmitJobRequest
-	20, // 30: proteus.v1.ConversionService.GetJob:input_type -> proteus.v1.GetJobRequest
-	22, // 31: proteus.v1.ConversionService.DownloadJobResult:input_type -> proteus.v1.DownloadJobResultRequest
-	24, // 32: proteus.v1.ConversionService.DeleteJob:input_type -> proteus.v1.DeleteJobRequest
-	7,  // 33: proteus.v1.ConversionService.ListFormats:output_type -> proteus.v1.ListFormatsResponse
-	16, // 34: proteus.v1.ConversionService.Convert:output_type -> proteus.v1.ConvertResponse
-	18, // 35: proteus.v1.ConversionService.SubmitJob:output_type -> proteus.v1.SubmitJobResponse
-	21, // 36: proteus.v1.ConversionService.GetJob:output_type -> proteus.v1.GetJobResponse
-	23, // 37: proteus.v1.ConversionService.DownloadJobResult:output_type -> proteus.v1.DownloadJobResultResponse
-	25, // 38: proteus.v1.ConversionService.DeleteJob:output_type -> proteus.v1.DeleteJobResponse
-	33, // [33:39] is the sub-list for method output_type
-	27, // [27:33] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	13, // 10: proteus.v1.PageOptions.margins:type_name -> proteus.v1.Margins
+	17, // 11: proteus.v1.PageOptions.watermark:type_name -> proteus.v1.Watermark
+	4,  // 12: proteus.v1.Watermark.placement:type_name -> proteus.v1.WatermarkPlacement
+	5,  // 13: proteus.v1.Watermark.layer:type_name -> proteus.v1.WatermarkLayer
+	6,  // 14: proteus.v1.Watermark.pages:type_name -> proteus.v1.WatermarkPages
+	12, // 15: proteus.v1.ConvertRequest.document:type_name -> proteus.v1.Document
+	1,  // 16: proteus.v1.ConvertRequest.output_format:type_name -> proteus.v1.OutputFormat
+	15, // 17: proteus.v1.ConvertRequest.options:type_name -> proteus.v1.Options
+	1,  // 18: proteus.v1.ConvertResponse.output_format:type_name -> proteus.v1.OutputFormat
+	12, // 19: proteus.v1.SubmitJobRequest.document:type_name -> proteus.v1.Document
+	1,  // 20: proteus.v1.SubmitJobRequest.output_format:type_name -> proteus.v1.OutputFormat
+	15, // 21: proteus.v1.SubmitJobRequest.options:type_name -> proteus.v1.Options
+	23, // 22: proteus.v1.SubmitJobResponse.job:type_name -> proteus.v1.Job
+	7,  // 23: proteus.v1.Job.status:type_name -> proteus.v1.JobStatus
+	0,  // 24: proteus.v1.Job.input_format:type_name -> proteus.v1.InputFormat
+	30, // 25: proteus.v1.Job.create_time:type_name -> google.protobuf.Timestamp
+	30, // 26: proteus.v1.Job.start_time:type_name -> google.protobuf.Timestamp
+	30, // 27: proteus.v1.Job.finish_time:type_name -> google.protobuf.Timestamp
+	30, // 28: proteus.v1.Job.expire_time:type_name -> google.protobuf.Timestamp
+	1,  // 29: proteus.v1.Job.output_format:type_name -> proteus.v1.OutputFormat
+	23, // 30: proteus.v1.GetJobResponse.job:type_name -> proteus.v1.Job
+	9,  // 31: proteus.v1.ConversionService.ListFormats:input_type -> proteus.v1.ListFormatsRequest
+	19, // 32: proteus.v1.ConversionService.Convert:input_type -> proteus.v1.ConvertRequest
+	21, // 33: proteus.v1.ConversionService.SubmitJob:input_type -> proteus.v1.SubmitJobRequest
+	24, // 34: proteus.v1.ConversionService.GetJob:input_type -> proteus.v1.GetJobRequest
+	26, // 35: proteus.v1.ConversionService.DownloadJobResult:input_type -> proteus.v1.DownloadJobResultRequest
+	28, // 36: proteus.v1.ConversionService.DeleteJob:input_type -> proteus.v1.DeleteJobRequest
+	10, // 37: proteus.v1.ConversionService.ListFormats:output_type -> proteus.v1.ListFormatsResponse
+	20, // 38: proteus.v1.ConversionService.Convert:output_type -> proteus.v1.ConvertResponse
+	22, // 39: proteus.v1.ConversionService.SubmitJob:output_type -> proteus.v1.SubmitJobResponse
+	25, // 40: proteus.v1.ConversionService.GetJob:output_type -> proteus.v1.GetJobResponse
+	27, // 41: proteus.v1.ConversionService.DownloadJobResult:output_type -> proteus.v1.DownloadJobResultResponse
+	29, // 42: proteus.v1.ConversionService.DeleteJob:output_type -> proteus.v1.DeleteJobResponse
+	37, // [37:43] is the sub-list for method output_type
+	31, // [31:37] is the sub-list for method input_type
+	31, // [31:31] is the sub-list for extension type_name
+	31, // [31:31] is the sub-list for extension extendee
+	0,  // [0:31] is the sub-list for field type_name
 }
 
 func init() { file_proteus_v1_conversion_proto_init() }
@@ -1866,14 +2238,18 @@ func file_proteus_v1_conversion_proto_init() {
 		(*Document_Url)(nil),
 	}
 	file_proteus_v1_conversion_proto_msgTypes[8].OneofWrappers = []any{}
-	file_proteus_v1_conversion_proto_msgTypes[9].OneofWrappers = []any{}
+	file_proteus_v1_conversion_proto_msgTypes[9].OneofWrappers = []any{
+		(*Watermark_Text)(nil),
+		(*Watermark_ImageAsset)(nil),
+	}
+	file_proteus_v1_conversion_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proteus_v1_conversion_proto_rawDesc), len(file_proteus_v1_conversion_proto_rawDesc)),
-			NumEnums:      5,
-			NumMessages:   21,
+			NumEnums:      8,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

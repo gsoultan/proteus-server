@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package loader is the resource loader the server hands to the conversion
 // engine. It replaces the engine's default loader so a document can never read
 // the server's disk: resources come from data URLs, from files uploaded with
@@ -160,6 +162,17 @@ func (l *Loader) load(ctx context.Context, ref string) ([]byte, error) {
 		return data, nil
 	}
 	return nil, fmt.Errorf("proteus-server: resource %q was not uploaded", key)
+}
+
+// Asset returns an uploaded file by path without counting it as a fetched
+// resource, for data the server itself needs (such as a watermark image).
+func (l *Loader) Asset(path string) ([]byte, bool) {
+	key, ok := CleanAssetPath(path)
+	if !ok {
+		return nil, false
+	}
+	data, ok := l.assets[key]
+	return data, ok
 }
 
 func (l *Loader) deny(reason string, err error) error {

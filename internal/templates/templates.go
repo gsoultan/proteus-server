@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gembit Soultan Shirazi <gembit.soultan@gmail.com>
+
 // Package templates stores reusable HTML and Markdown documents with
 // placeholders and fills them with data. Filling produces an ordinary
 // proteusv1.Document in the template's input format, so conversion and jobs
@@ -9,6 +11,9 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
+	"html"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -63,6 +68,7 @@ func bad(msg string) error { return &convert.BadRequestError{Msg: msg} }
 const (
 	maxNameLen        = 200
 	maxDescriptionLen = 2000
+	maxCategoryLen    = 50
 	defaultPageSize   = 50
 	maxPageSize       = 200
 )
@@ -84,6 +90,26 @@ func (s *Service) validate(t *proteusv1.Template) (*Record, error) {
 		return nil, bad("template description is longer than 2000 characters")
 	case !utf8.Valid(t.GetContent()):
 		return nil, bad("template content is not UTF-8")
+	case utf8.RuneCountInString(t.GetCategory()) > maxCategoryLen:
+		return nil, bad("template category is longer than 50 characters")
+	case strings.IndexFunc(t.GetCategory(), func(r rune) bool { return unicode.IsControl(r) || unicode.IsSpace(r) }) >= 0:
+		return nil, bad("template category must not contain spaces or control characters")
+	}
+	if err := ValidateFields(t.GetFields()); err != nil {
+		return nil, err
+	}
+	// A visual template is compiled here; the HTML it yields is checked
+	// below exactly like hand-written content.
+	if t.GetLayout() != nil {
+		if t.GetFormat() == proteusv1.InputFormat_INPUT_FORMAT_MARKDOWN {
+			return nil, bad("a template with a layout must have format HTML")
+		}
+		content, err := Compile(t.GetLayout(), t.GetOptions().GetPage())
+		if err != nil {
+			return nil, bad(err.Error())
+		}
+		t = proto.CloneOf(t)
+		t.Content = content
 	}
 	// The engine-side checks (format, assets, options) are the same as for
 	// an inline document.
@@ -106,7 +132,7 @@ func (s *Service) validate(t *proteusv1.Template) (*Record, error) {
 	// the data and are reported when rendering.
 	ctx, cancel := context.WithTimeout(context.Background(), s.s.RenderTimeout)
 	defer cancel()
-	if _, err := Execute(ctx, t.GetContent(), t.GetSampleData(), s.limits()); err != nil {
+	if _, err := ExecuteWith(ctx, t.GetContent(), ApplyDefaults(t.GetFields(), t.GetSampleData()), s.limits(), FormatOf(t.GetLayout())); err != nil {
 		var te *TemplateError
 		if errors.As(err, &te) && te.Escape {
 			return nil, bad(te.Msg)
@@ -114,12 +140,13 @@ func (s *Service) validate(t *proteusv1.Template) (*Record, error) {
 	}
 	body, err := proto.Marshal(&proteusv1.Template{
 		Content: t.GetContent(), Assets: t.GetAssets(), Options: t.GetOptions(), SampleData: t.GetSampleData(),
+		Layout: t.GetLayout(), Fields: t.GetFields(), StarterId: t.GetStarterId(),
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &Record{
-		Name: name, Description: t.GetDescription(), Format: formatName(t.GetFormat()),
+		Name: name, Description: t.GetDescription(), Format: formatName(t.GetFormat()), Category: t.GetCategory(),
 		SizeBytes: size, Body: body,
 	}, nil
 }
@@ -153,14 +180,38 @@ func ToProto(r *Record) (*proteusv1.Template, error) {
 			return nil, err
 		}
 	}
-	t.Id, t.Name, t.Description, t.Format = r.ID, r.Name, r.Description, formatOf(r.Format)
+	t.Id, t.Name, t.Description, t.Format, t.Category = r.ID, r.Name, r.Description, formatOf(r.Format), r.Category
 	t.Revision, t.SizeBytes = r.Revision, r.SizeBytes
 	t.CreateTime, t.UpdateTime = timestamppb.New(r.CreatedAt), timestamppb.New(r.UpdatedAt)
 	return t, nil
 }
 
-// Create stores a new template for owner.
-func (s *Service) Create(ctx context.Context, owner string, t *proteusv1.Template) (*proteusv1.Template, error) {
+// Create stores a new template for owner. With a starter id the starter is
+// copied and the fields set in t override it.
+func (s *Service) Create(ctx context.Context, owner string, t *proteusv1.Template, starterID string) (*proteusv1.Template, error) {
+	if starterID != "" {
+		st, ok := Starter(starterID)
+		if !ok {
+			return nil, bad("unknown starter " + strconv.Quote(starterID))
+		}
+		merged := proto.CloneOf(st)
+		if t != nil {
+			proto.Merge(merged, t)
+			// A layout or content sent with the template replaces the starter's
+			// rather than merging block lists.
+			if t.GetLayout() != nil {
+				merged.Layout = t.GetLayout()
+			}
+			if len(t.GetFields()) > 0 {
+				merged.Fields = t.GetFields()
+			}
+			if t.GetSampleData() != nil {
+				merged.SampleData = t.GetSampleData()
+			}
+		}
+		merged.StarterId = starterID
+		t = merged
+	}
 	r, err := s.validate(t)
 	if err != nil {
 		return nil, err
@@ -190,7 +241,7 @@ func (s *Service) Get(ctx context.Context, owner, id string) (*proteusv1.Templat
 
 // List returns a page of owner's templates ordered by name. The page token
 // is the last name of the previous page.
-func (s *Service) List(ctx context.Context, owner string, pageSize int32, pageToken string) ([]*proteusv1.Template, string, error) {
+func (s *Service) List(ctx context.Context, owner, category string, pageSize int32, pageToken string) ([]*proteusv1.Template, string, error) {
 	size := int(pageSize)
 	switch {
 	case size < 0:
@@ -208,7 +259,7 @@ func (s *Service) List(ctx context.Context, owner string, pageSize int32, pageTo
 		}
 		after = string(b)
 	}
-	recs, err := s.store.List(ctx, owner, after, size+1)
+	recs, err := s.store.List(ctx, owner, category, after, size+1)
 	if err != nil {
 		return nil, "", err
 	}
@@ -253,6 +304,7 @@ type Rendered struct {
 	Name     string // template name ("" for an unsaved template)
 	Document *proteusv1.Document
 	Options  *proteusv1.Options // template options with the request's merged over them
+	data     *structpb.Struct   // the data the document was rendered with, defaults applied
 }
 
 // Render fills owner's stored template id with data and merges opts over
@@ -270,8 +322,34 @@ func (s *Service) Render(ctx context.Context, owner, id string, data *structpb.S
 	if err != nil {
 		return nil, err
 	}
-	r.Options = mergeOptions(t.GetOptions(), out, opts)
-	return r, nil
+	return r, s.finish(ctx, r, t, out, opts)
+}
+
+// finish merges the request's options over the template's and fills a
+// watermark text that is itself a template, such as one that stamps PAID
+// only on paid invoices; an empty result drops the watermark.
+func (s *Service) finish(ctx context.Context, r *Rendered, t *proteusv1.Template, out proteusv1.OutputFormat, opts *proteusv1.Options) error {
+	r.Options = mergeOptions(layoutOptions(t), out, opts)
+	wm := r.Options.GetPage().GetWatermark()
+	text := wm.GetText()
+	if !strings.Contains(text, "{{") {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, s.s.RenderTimeout)
+	defer cancel()
+	got, err := ExecuteWith(ctx, []byte(text), r.data, Limits{MaxBytes: 1 << 10, MaxSteps: 100}, FormatOf(t.GetLayout()))
+	if err != nil {
+		return bad("watermark text: " + err.Error())
+	}
+	if rendered := strings.TrimSpace(html.UnescapeString(string(got))); rendered != "" {
+		wm.Mark = &proteusv1.Watermark_Text{Text: rendered}
+	} else {
+		r.Options.Page.Watermark = nil
+		if proto.Size(r.Options.Page) == 0 {
+			r.Options.Page = nil
+		}
+	}
+	return nil
 }
 
 // mergeOptions lays the request's options over the template's defaults.
@@ -308,22 +386,93 @@ func outputTarget(out proteusv1.OutputFormat) (convert.Target, bool) {
 // RenderDraft fills an unsaved template, validating it as Create would.
 // With no data it uses the template's sample data.
 func (s *Service) RenderDraft(ctx context.Context, t *proteusv1.Template, data *structpb.Struct) (*Rendered, error) {
-	if _, err := s.validate(t); err != nil {
+	r, err := s.RenderConvert(ctx, t, data, proteusv1.OutputFormat_OUTPUT_FORMAT_UNSPECIFIED, nil)
+	if err != nil {
 		return nil, err
 	}
-	return s.render(ctx, t, data)
+	r.Options = nil
+	return r, nil
 }
 
 func (s *Service) render(ctx context.Context, t *proteusv1.Template, data *structpb.Struct) (*Rendered, error) {
 	if len(data.GetFields()) == 0 {
 		data = t.GetSampleData()
 	}
+	data = ApplyDefaults(t.GetFields(), data)
+	if err := CheckData(t.GetFields(), data); err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, s.s.RenderTimeout)
 	defer cancel()
-	out, err := Execute(ctx, t.GetContent(), data, s.limits())
+	out, err := ExecuteWith(ctx, t.GetContent(), data, s.limits(), FormatOf(t.GetLayout()))
 	if err != nil {
 		// Every render failure is down to the template or the data.
 		return nil, bad(err.Error())
 	}
-	return &Rendered{Name: t.GetName(), Document: document(t, out)}, nil
+	return &Rendered{Name: t.GetName(), Document: document(t, out), data: data}, nil
+}
+
+// layoutOptions returns the options to convert a template with. A compiled
+// layout carries its page size and margins (plus the header and footer
+// bands) in its own @page rule, so those are dropped from the options and
+// only the watermark is kept.
+func layoutOptions(t *proteusv1.Template) *proteusv1.Options {
+	o := t.GetOptions()
+	if t.GetLayout() == nil || o.GetPage() == nil {
+		return o
+	}
+	o = proto.CloneOf(o)
+	o.Page = &proteusv1.PageOptions{Watermark: o.GetPage().GetWatermark()}
+	if o.Page.Watermark == nil {
+		o.Page = nil
+	}
+	return o
+}
+
+// RenderConvert fills an unsaved template, validating it as Create would,
+// and merges opts over its options for conversion to out, for exact
+// previews while editing.
+func (s *Service) RenderConvert(ctx context.Context, t *proteusv1.Template, data *structpb.Struct,
+	out proteusv1.OutputFormat, opts *proteusv1.Options) (*Rendered, error) {
+	rec, err := s.validate(t)
+	if err != nil {
+		return nil, err
+	}
+	compiled, err := ToProto(rec)
+	if err != nil {
+		return nil, err
+	}
+	compiled.Name, compiled.Format = t.GetName(), t.GetFormat()
+	r, err := s.render(ctx, compiled, data)
+	if err != nil {
+		return nil, err
+	}
+	return r, s.finish(ctx, r, compiled, out, opts)
+}
+
+// ConvertToCode turns owner's visual template into a code template: the
+// compiled HTML stays as content and the layout is dropped. expected is
+// the revision the caller saw (0 to skip the check).
+func (s *Service) ConvertToCode(ctx context.Context, owner, id string, expected int64) (*proteusv1.Template, error) {
+	t, err := s.Get(ctx, owner, id)
+	if err != nil {
+		return nil, err
+	}
+	if t.GetLayout() == nil {
+		return nil, bad("template is already a code template")
+	}
+	if expected != 0 && t.GetRevision() != expected {
+		return nil, ErrRevisionMismatch
+	}
+	// Keep the compiled @page geometry working by moving the layout's
+	// locale and currency defaults into the content's reach: the compiled
+	// HTML already formats through the helper functions, which fall back to
+	// en-US and USD without a layout, so a theme with other settings is
+	// written into the template as a comment the editor can see.
+	if f := FormatOf(t.GetLayout()); f.Locale != "" || f.Currency != "" {
+		t.Content = append([]byte(fmt.Sprintf("<!-- proteus: locale=%s currency=%s -->\n", f.Locale, f.Currency)), t.GetContent()...)
+	}
+	t.Layout = nil
+	t.Revision = expected
+	return s.Update(ctx, owner, t)
 }
