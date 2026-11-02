@@ -125,4 +125,12 @@ func TestStarterSpecifics(t *testing.T) {
 	if created.GetName() != "My invoice" || created.GetStarterId() != "invoice" || created.GetCategory() != "invoice" || created.GetLayout() == nil || len(created.GetContent()) == 0 {
 		t.Fatalf("created from starter = %+v", created)
 	}
+	// A theme-only layout, as the web builder sends, keeps the starter's blocks.
+	themed, err := svc.Create(ctx, "o", &proteusv1.Template{Name: "Themed", Layout: &proteusv1.Layout{Theme: &proteusv1.Theme{Locale: "de-DE", Currency: "EUR"}}}, "invoice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if themed.GetLayout().GetTheme().GetCurrency() != "EUR" || len(themed.GetLayout().GetBody().GetBlocks()) == 0 {
+		t.Fatalf("themed starter lost blocks or theme: %+v", themed.GetLayout())
+	}
 }

@@ -340,6 +340,32 @@ Sizes accept `K`, `M`, `G`, `KiB`, `MiB`, `GiB`.
   `NOT_SERVING` on `SIGTERM` before the listener drains. The image's
   `HEALTHCHECK` runs `proteus-server healthcheck`, a gRPC health call.
 
+## Web builder
+
+`web/` holds the template builder, a React single-page app (TypeScript,
+Mantine, TanStack Router and Query, Vite, Bun) that is built into `web/dist/`
+and embedded in the binary, so `proteus-server` serves the UI and the API
+from one origin at `/`. It lists templates, starts new ones from the
+starters, edits the visual layout on a page-shaped canvas with a live PDF
+preview (rendered by the server through `ConvertTemplate` and shown with
+pdf.js), edits page, watermark and sample data, and generates a PDF from a
+form that the field list produces.
+
+```sh
+cd web
+bun install
+bun run dev        # Vite on :5173, API proxied to PROTEUS_URL (default http://localhost:8080)
+bun run check      # tsc
+bun test
+bun run build      # writes web/dist/, then `go build` embeds it
+```
+
+Without a build the binary still runs; `/` then explains how to build the UI.
+The Docker image builds the UI in a Bun stage. The API key is kept in the
+browser only and sent as a bearer token; the server URL is configurable in
+the UI for a build served from elsewhere. TypeScript message types come from
+`buf generate` (protoc-gen-es into `web/src/gen/`), which CI checks.
+
 ## Development
 
 ```sh
@@ -348,7 +374,7 @@ go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.12
 go install connectrpc.com/connect/v2/cmd/protoc-gen-connect-go@v2.0.2
 go install github.com/gsoultan/storm/cmd/storm@v1.11.0
 
-buf lint && buf generate                    # after editing proto/
+buf lint && buf generate                    # after editing proto/ (Go and web/src/gen)
 storm generate internal/storage/store       # after editing internal/storage/model
 go vet ./... && test -z "$(gofmt -l .)" && go test -race ./...
 PROTEUS_TEST_DATABASE_URL=postgres://... go test ./internal/storage/pgstore/   # store suite on real Postgres

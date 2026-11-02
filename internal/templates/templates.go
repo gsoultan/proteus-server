@@ -186,6 +186,10 @@ func ToProto(r *Record) (*proteusv1.Template, error) {
 	return t, nil
 }
 
+func hasBlocks(l *proteusv1.Layout) bool {
+	return len(l.GetHeader().GetBlocks())+len(l.GetBody().GetBlocks())+len(l.GetFooter().GetBlocks()) > 0
+}
+
 // Create stores a new template for owner. With a starter id the starter is
 // copied and the fields set in t override it.
 func (s *Service) Create(ctx context.Context, owner string, t *proteusv1.Template, starterID string) (*proteusv1.Template, error) {
@@ -197,10 +201,12 @@ func (s *Service) Create(ctx context.Context, owner string, t *proteusv1.Templat
 		merged := proto.CloneOf(st)
 		if t != nil {
 			proto.Merge(merged, t)
-			// A layout or content sent with the template replaces the starter's
-			// rather than merging block lists.
-			if t.GetLayout() != nil {
-				merged.Layout = t.GetLayout()
+			// A layout with blocks replaces the starter's rather than merging
+			// block lists; a layout that only sets the theme (locale, currency,
+			// accent) keeps the starter's blocks, which proto.Merge has already
+			// combined with the theme.
+			if l := t.GetLayout(); l != nil && hasBlocks(l) {
+				merged.Layout = l
 			}
 			if len(t.GetFields()) > 0 {
 				merged.Fields = t.GetFields()

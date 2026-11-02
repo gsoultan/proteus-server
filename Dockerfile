@@ -1,11 +1,20 @@
 # syntax=docker/dockerfile:1
 
+# Build the web builder (a static single-page app embedded in the binary).
+FROM oven/bun:1.4.4 AS web
+WORKDIR /web
+COPY web/package.json web/bun.lock ./
+RUN bun install --frozen-lockfile
+COPY web/ ./
+RUN bun run build
+
 # Build a static binary.
 FROM golang:1.27-bookworm AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+COPY --from=web /web/dist ./web/dist
 ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -trimpath \
     -ldflags="-s -w -X github.com/gsoultan/proteus-server/internal/rpc.Version=${VERSION}" \

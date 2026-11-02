@@ -74,3 +74,18 @@ Layout:
 Docker: golang:1.27 build -> distroless static nonroot with fonts; compose.yaml adds postgres:17.
 CI: buf lint + generate, storm verify -stale, git diff on generated code, vet, gofmt,
 go test -race with a postgres service (PROTEUS_TEST_DATABASE_URL), docker build + buf curl smoke.
+
+## Web builder and SDK (2026-11)
+- web/: React 19 + TypeScript 7 + Mantine 9 + TanStack Router/Query + Zustand + Vite 8 + Bun; PWA via
+  vite-plugin-pwa. Built into web/dist (gitignored except .gitkeep, restored by the keep-dist plugin) and
+  embedded by web/embed.go (`//go:embed all:dist`, SPA fallback, non-GET -> 404 so TestNoRESTSurface holds).
+  Mounted last in internal/rpc/server.go. Dockerfile has an oven/bun stage; CI runs bun check/test/build.
+- web/src/gen is produced by buf generate (protoc-gen-es from web/node_modules/.bin); CI diff-checks it.
+- Gotchas: TanStack Query hashes keys with JSON.stringify -> never put a protobuf message (bigint fields)
+  in a queryKey, serialize with toJsonString first. Vite 8 (rolldown) has no manualChunks object.
+  Mantine polymorphic `component={Link}` loses typing; use <Link> or renderRoot.
+- templates.Create merges a theme-only layout into the starter (hasBlocks) so the web "start from starter"
+  flow keeps the starter blocks.
+- Client SDKs live in github.com/gsoultan/proteus-server-sdk (go/ and ts/, proto copied by
+  scripts/sync-proto.sh).
+

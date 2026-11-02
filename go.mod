@@ -7,7 +7,7 @@ require (
 	connectrpc.com/grpchealth/v2 v2.0.0
 	connectrpc.com/grpcreflect/v2 v2.0.0
 	github.com/google/uuid v1.6.0
-	github.com/gsoultan/proteus-converter v0.0.0-20261102055425-07dd116c5735
+	github.com/gsoultan/proteus-converter v0.0.0-20261102063006-1c92ec843e67
 	github.com/gsoultan/storm v1.11.0
 	github.com/jackc/pgx/v5 v5.12.0
 	github.com/prometheus/client_golang v1.25.0
@@ -17,6 +17,7 @@ require (
 )
 
 require (
+	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/andybalholm/cascadia v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
