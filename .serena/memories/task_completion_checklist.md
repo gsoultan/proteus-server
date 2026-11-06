@@ -6,7 +6,9 @@
 3. Before done: `buf lint`, `buf generate` and `storm verify -stale internal/storage/store` leave
    no diff; `gofmt -l .` empty, `go vet ./...`, `go test -race ./...` (with
    PROTEUS_TEST_DATABASE_URL for the Postgres store suite).
-4. Keep README (RPCs, codes, env table) in sync with code changes.
+3b. End to end: `scripts/smoke.sh` (server + every sample over grpc/connect/grpcweb + buf curl);
+   with PROTEUS_DATABASE_URL set it also exercises the Postgres job queue.
+4. Keep README (RPCs, codes, env table) and samples/README.md in sync with code changes.
 5. Finish: update these memories, run `graphify update .`, commit both with the code.
 6. Commits and PRs: author gsoultan <gembit.shirazi@gmail.com>; no Co-Authored-By or any
    Claude/AI credit lines; check what landed on GitHub afterwards.

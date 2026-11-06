@@ -35,6 +35,17 @@ Layout:
   ForUpdateSkipLocked, automigrate via migrate.AutoPool with Schema + DeclaredOnly).
 - internal/auth: API keys "id:sha256hex", per-key rate limiter. internal/metrics: Prometheus.
 
+Dev loop: scripts/dev.sh (builds bin/proteus-server; binds 127.0.0.1:8080/:9090, dev key
+pk_dev_local via PROTEUS_DEV_KEY, text debug logs, rate limit off; --no-auth, --postgres = compose
+postgres on 127.0.0.1:55432 unless PROTEUS_DATABASE_URL set; exported PROTEUS_* win).
+scripts/smoke.sh starts it, runs samples/client over grpc, connect and grpcweb plus
+samples/buf-curl.sh (buf + jq), stops it; CI test job runs it against the Postgres service.
+Makefile wraps these (dev, dev-noauth, dev-pg, samples, curl, smoke, test, lint, generate).
+samples/docs/<name>/: index.html|index.md + assets (relative paths) + optional options.json
+(protojson Options); samples: invoice (HTML+CSS+SVG), report (Markdown+SVG chart+options),
+letter (inline style, ligatures, italic serif). samples/client: Go example client on the
+generated connect client (formats, convert, job, samples). Output in samples/out (gitignored).
+
 Docker: golang:1.27 build -> distroless static nonroot with fonts; compose.yaml adds postgres:17.
 CI: buf lint + generate, storm verify -stale, git diff on generated code, vet, gofmt,
 go test -race with a postgres service (PROTEUS_TEST_DATABASE_URL), docker build + buf curl smoke.

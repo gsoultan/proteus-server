@@ -240,6 +240,24 @@ Sizes accept `K`, `M`, `G`, `KiB`, `MiB`, `GiB`.
 
 ## Development
 
+Run the server locally and try it with the samples:
+
+```sh
+scripts/dev.sh              # make dev: binds 127.0.0.1:8080, dev key pk_dev_local, text debug logs,
+                            # jobs in memory, rate limit off
+scripts/dev.sh --no-auth    # no API key
+scripts/dev.sh --postgres   # jobs in Postgres: the compose service on 127.0.0.1:55432,
+                            # or PROTEUS_DATABASE_URL when set
+scripts/smoke.sh            # make smoke: start the server, run every sample, stop (CI runs this)
+```
+
+Any `PROTEUS_*` variable you export overrides the dev defaults.
+[`samples/`](samples) holds sample HTML and Markdown documents, a Go client
+built on the generated ConnectRPC client, and `buf curl` calls for every RPC;
+see [`samples/README.md`](samples/README.md).
+
+Tooling:
+
 ```sh
 go install github.com/bufbuild/buf/cmd/buf@v1.75.0
 go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.12
