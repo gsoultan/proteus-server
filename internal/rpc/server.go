@@ -1,5 +1,5 @@
-// Package rpc is the transport: the ConnectRPC ConversionService and
-// TemplateService plus gRPC health and reflection, behind interceptors for
+// Package rpc is the transport: the ConnectRPC ConversionService,
+// TemplateService and WebhookService plus gRPC health and reflection, behind interceptors for
 // request ids, logging, metrics, panic recovery and API keys. The same handlers answer gRPC,
 // gRPC-Web and the Connect protocol; there is no REST API.
 package rpc
@@ -27,6 +27,7 @@ import (
 	"github.com/gsoultan/proteus-server/internal/jobs"
 	"github.com/gsoultan/proteus-server/internal/metrics"
 	"github.com/gsoultan/proteus-server/internal/templates"
+	"github.com/gsoultan/proteus-server/internal/webhooks"
 )
 
 // Version is reported in logs; set at build time with -ldflags.
@@ -45,6 +46,7 @@ type API struct {
 	svc       *convert.Service
 	jobs      *jobs.Manager
 	templates *templates.Service
+	webhooks  *webhooks.Service
 	auth      *auth.Authenticator
 	metrics   *metrics.Metrics
 	log       *slog.Logger
@@ -53,7 +55,7 @@ type API struct {
 }
 
 // New builds the API. pingDB, when set, is part of the health check.
-func New(cfg Config, svc *convert.Service, jm *jobs.Manager, ts *templates.Service, a *auth.Authenticator,
+func New(cfg Config, svc *convert.Service, jm *jobs.Manager, ts *templates.Service, wh *webhooks.Service, a *auth.Authenticator,
 	m *metrics.Metrics, log *slog.Logger, pingDB func(context.Context) error) *API {
 	if cfg.MaxRequestBytes <= 0 {
 		cfg.MaxRequestBytes = 20 << 20
@@ -64,20 +66,21 @@ func New(cfg Config, svc *convert.Service, jm *jobs.Manager, ts *templates.Servi
 	if cfg.MaxOutputBytes <= 0 {
 		cfg.MaxOutputBytes = 100 << 20
 	}
-	return &API{cfg: cfg, svc: svc, jobs: jm, templates: ts, auth: a, metrics: m, log: log, pingDB: pingDB}
+	return &API{cfg: cfg, svc: svc, jobs: jm, templates: ts, webhooks: wh, auth: a, metrics: m, log: log, pingDB: pingDB}
 }
 
 // SetReady flips the health status; set false at the start of shutdown so
 // load balancers stop sending traffic before the listener drains.
 func (a *API) SetReady(v bool) { a.ready.Store(v) }
 
-// Handler returns the RPC handler: the conversion and template services, gRPC health
+// Handler returns the RPC handler: the conversion, template and webhook services, gRPC health
 // (grpc.health.v1) and reflection (grpc.reflection.v1 and v1alpha).
 func (a *API) Handler() http.Handler {
 	server := connect.NewServer(a.observe, a.recoverer, a.authenticate)
 	conv := &conversionService{api: a}
 	proteusv1connect.RegisterConversionServiceHandler(server, conv)
 	proteusv1connect.RegisterTemplateServiceHandler(server, &templateService{conv: conv})
+	proteusv1connect.RegisterWebhookServiceHandler(server, &webhookService{conv: conv})
 	grpchealth.Register(server, healthChecker{a})
 	grpcreflect.Register(server)
 	mux := http.NewServeMux()
@@ -95,7 +98,7 @@ type healthChecker struct{ a *API }
 
 func (h healthChecker) Check(ctx context.Context, req *grpchealth.CheckRequest) (*grpchealth.CheckResponse, error) {
 	switch req.Service {
-	case "", proteusv1connect.ConversionServiceName, proteusv1connect.TemplateServiceName:
+	case "", proteusv1connect.ConversionServiceName, proteusv1connect.TemplateServiceName, proteusv1connect.WebhookServiceName:
 	default:
 		return nil, connect.NewError(connect.CodeNotFound, "unknown service")
 	}

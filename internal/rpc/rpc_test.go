@@ -31,6 +31,7 @@ import (
 	"github.com/gsoultan/proteus-server/internal/metrics"
 	"github.com/gsoultan/proteus-server/internal/safefetch"
 	"github.com/gsoultan/proteus-server/internal/templates"
+	"github.com/gsoultan/proteus-server/internal/webhooks"
 )
 
 const (
@@ -42,6 +43,7 @@ type env struct {
 	url string
 	svc *convert.Service
 	api *API
+	wh  *webhooks.Service
 }
 
 type envOpts struct {
@@ -49,6 +51,7 @@ type envOpts struct {
 	allowRemote   bool
 	webhookSecret string
 	maxRequest    int64
+	pauseAfter    int // saved webhook endpoints; default 20
 }
 
 func newEnv(t *testing.T, o envOpts) *env {
@@ -67,18 +70,24 @@ func newEnv(t *testing.T, o envOpts) *env {
 	if o.webhookSecret != "" {
 		secret = []byte(o.webhookSecret)
 	}
+	// Tests deliver webhooks to a loopback server.
+	hooks := safefetch.New(safefetch.Options{AllowPrivate: true})
+	wh := webhooks.New(webhooks.NewMemoryStore(0), webhooks.Settings{
+		Client: hooks, AllowHTTP: true, PauseAfter: o.pauseAfter, RetryBackoff: 20 * time.Millisecond,
+		PollInterval: 10 * time.Millisecond, Timeout: 2 * time.Second, Logger: log, Observer: m,
+	})
+	wh.Start()
 	jm := jobs.NewManager(svc, jobs.NewMemoryStore(0), jobs.Settings{
 		Workers: 1, PollInterval: 10 * time.Millisecond, WebhookSecret: secret,
-		// Tests deliver webhooks to a loopback server.
-		Webhook: safefetch.New(safefetch.Options{AllowPrivate: true}),
-		Logger:  log, Observer: m,
+		Webhook: hooks, Notifier: wh,
+		Logger: log, Observer: m,
 	})
 	keys, err := auth.ParseKeys("a:" + auth.HashKey(keyA) + ",b:" + auth.HashKey(keyB))
 	if err != nil {
 		t.Fatal(err)
 	}
 	ts := templates.NewService(templates.NewMemoryStore(), templates.Settings{MaxPerOwner: 5})
-	api := New(Config{MaxRequestBytes: o.maxRequest}, svc, jm, ts, auth.New(keys, 0, 0), m, log, nil)
+	api := New(Config{MaxRequestBytes: o.maxRequest}, svc, jm, ts, wh, auth.New(keys, 0, 0), m, log, nil)
 	api.SetReady(true)
 	srv := httptest.NewUnstartedServer(api.Handler())
 	p := new(http.Protocols)
@@ -91,8 +100,9 @@ func newEnv(t *testing.T, o envOpts) *env {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		jm.Shutdown(ctx)
+		wh.Shutdown(ctx)
 	})
-	return &env{url: srv.URL, svc: svc, api: api}
+	return &env{url: srv.URL, svc: svc, api: api, wh: wh}
 }
 
 func h2c() *http.Client {

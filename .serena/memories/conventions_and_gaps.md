@@ -8,11 +8,20 @@
   convert/formats.go, register a Converter per input; ListFormats picks it up. Converters must
   load resources only through Input.Loader.
 - Remote fetch needs both PROTEUS_ALLOW_REMOTE=true and per-request allow_remote (or url input).
-- Errors (internal/rpc/service.go toConnect): BadRequestError -> InvalidArgument, ErrBusy /
+- Errors (internal/rpc/service.go toConnect; templates.go and webhooks.go add their own): BadRequestError -> InvalidArgument, ErrBusy /
   ErrQueueFull / rate limit -> ResourceExhausted, ErrTimeout -> DeadlineExceeded, ErrClosed ->
   Unavailable, ErrNotFound -> NotFound, ErrNotFinished or failed job -> FailedPrecondition, else
   Internal with the cause kept server-side only.
-- Jobs and templates are scoped to the API key id that created them; others get NotFound (no IDOR).
+- Jobs, templates, webhook endpoints and deliveries are scoped to the API key id that created
+  them; others get NotFound (no IDOR).
+- Webhooks: two kinds side by side. Per-job webhook_url (internal/jobs, Job JSON, server-wide
+  PROTEUS_WEBHOOK_SECRET) must keep working. Saved endpoints (internal/webhooks) get a
+  WebhookEvent envelope {id,type,create_time,job|template}, headers X-Proteus-Event/-Delivery/
+  -Timestamp/-Signature; during the 24h rotation grace the signature header is
+  "sha256=<new>,sha256=<old>". 3 attempts, pause after 20 failed deliveries in a row, log kept
+  7 days (PROTEUS_WEBHOOK_LOG_TTL). Manual (test/redeliver) deliveries do not touch endpoint
+  health. Publishing never fails the action that caused the event (errors are logged). Events
+  while disabled are dropped, not queued. Delivery metric outcomes: ok, error, skipped.
 - Templates: a filled template is an ordinary Document in the template's input format, then the
   normal convert path / jobs.Submit (so every registry route works; jobs store the rendered doc).
   Render sandbox (internal/templates/render.go), because key holders run code on the shared
