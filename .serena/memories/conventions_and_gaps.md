@@ -24,6 +24,13 @@
 - Tests: go test -race ./...; internal/rpc/rpc_test.go runs the real engine over gRPC (h2c) and
   Connect, incl. SSRF and job lifecycle; pgstore tests need PROTEUS_TEST_DATABASE_URL.
 
+- Engine version matters for output: proteus-converter before 2026-11-02 (gpdf 0.2.x) dropped
+  ligature glyphs (fi, st, ffi) for DejaVu fonts, losing text; the server now pins converter
+  115ecae (gpdf v0.4.0). Run scripts/smoke.sh and look at samples/out after bumping the engine.
+- Extra CSS (Options.stylesheet) for Markdown must target .markdown-body: the engine's Markdown
+  theme sets font and colour there, so body rules do not override it.
+- Dev defaults turn the rate limit off because the samples burst past 10 rps / burst 20.
+
 Known gaps / next steps:
 - No CORS yet for browser clients (frontend rules from the user: TypeScript 7, Mantine 9.7.4,
   React 19, TanStack Query/Router, zustand, PWA, web + service worker, connect-es v2, buf, bun,

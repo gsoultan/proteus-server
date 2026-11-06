@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="230" height="60" viewBox="0 0 230 60">
+  <circle cx="30" cy="30" r="26" fill="#1d4e89"/>
+  <path d="M18 42 L30 14 L42 42 Z" fill="#ffffff"/>
+  <text x="66" y="38" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="22" font-weight="bold" fill="#1d4e89">Northwind</text>
+</svg>

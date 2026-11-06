@@ -1,0 +1,9 @@
+{
+  "metadata": {
+    "title": "Invoice INV-2026-0042",
+    "author": "Northwind Studio",
+    "subject": "Invoice for Acme Corporation",
+    "language": "en"
+  },
+  "pdf": { "tagged": true }
+}
