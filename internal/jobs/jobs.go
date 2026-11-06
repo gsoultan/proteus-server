@@ -60,6 +60,21 @@ type Settings struct {
 	Webhook       *safefetch.Client
 	Logger        *slog.Logger
 	Observer      Observer
+	// Notifier, when set, hears about every job that is queued or finishes
+	// (saved webhook endpoints). It must not block for long.
+	Notifier Notifier
+}
+
+// Job event names passed to a Notifier.
+const (
+	EventQueued    = "job.queued"
+	EventSucceeded = "job.succeeded"
+	EventFailed    = "job.failed"
+)
+
+// Notifier receives job events for the job's owner.
+type Notifier interface {
+	NotifyJob(ctx context.Context, owner, event string, job *proteusv1.Job)
 }
 
 // Observer receives queue telemetry.
@@ -176,6 +191,9 @@ func (m *Manager) Submit(ctx context.Context, owner string, req *proteusv1.Submi
 	select {
 	case m.wake <- struct{}{}:
 	default:
+	}
+	if m.s.Notifier != nil {
+		m.s.Notifier.NotifyJob(ctx, owner, EventQueued, ToProto(r))
 	}
 	return r, nil
 }
@@ -295,9 +313,17 @@ func (m *Manager) runOne() (bool, error) {
 	if err := m.store.Finish(ctx, rec.ID, o); err != nil {
 		return true, err
 	}
+	rec.Status, rec.Error, rec.Warnings = o.Status, o.Error, o.Warnings
+	rec.FinishedAt, rec.ExpiresAt, rec.ResultBytes = o.FinishedAt, o.ExpiresAt, int64(len(o.Result))
+	rec.Payload = nil
+	if m.s.Notifier != nil {
+		event := EventSucceeded
+		if o.Status == Failed {
+			event = EventFailed
+		}
+		m.s.Notifier.NotifyJob(ctx, rec.Owner, event, ToProto(rec))
+	}
 	if rec.WebhookURL != "" {
-		rec.Status, rec.Error, rec.Warnings = o.Status, o.Error, o.Warnings
-		rec.FinishedAt, rec.ExpiresAt, rec.ResultBytes = o.FinishedAt, o.ExpiresAt, int64(len(o.Result))
 		m.deliver(rec.WebhookURL, rec)
 	}
 	return true, nil

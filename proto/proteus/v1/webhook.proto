@@ -1,0 +1,294 @@
+syntax = "proto3";
+
+package proteus.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proteus/v1/conversion.proto";
+import "proteus/v1/template.proto";
+
+option go_package = "github.com/gsoultan/proteus-server/gen/proteus/v1;proteusv1";
+
+// WebhookService manages saved webhook endpoints. An endpoint receives a
+// signed POST for every event it subscribes to that happens under the API
+// key that owns it: jobs submitted with the key and templates it owns.
+// Endpoints belong to the API key that created them; other keys get
+// NOT_FOUND.
+//
+// Every delivery is a JSON WebhookEvent (protobuf JSON) with the headers
+// X-Proteus-Event (the event type), X-Proteus-Delivery (the delivery id),
+// X-Proteus-Timestamp (Unix seconds) and X-Proteus-Signature:
+// "sha256=" + hex(HMAC-SHA256(secret, timestamp + "." + body)). For 24 hours
+// after RotateWebhookSecret the header carries two signatures separated by
+// a comma, the new secret's first; accept the delivery when any matches.
+//
+// A delivery is tried up to three times. An endpoint whose deliveries fail
+// 20 times in a row is paused (disabled with pause_time set) until
+// EnableWebhookEndpoint. Deliveries are kept for 7 days.
+//
+// The per-job SubmitJobRequest.webhook_url keeps working alongside saved
+// endpoints and is signed with the server-wide secret.
+service WebhookService {
+  // CreateWebhookEndpoint saves an endpoint and returns it with its signing
+  // secret. The URL must be public https.
+  rpc CreateWebhookEndpoint(CreateWebhookEndpointRequest) returns (CreateWebhookEndpointResponse) {}
+
+  // GetWebhookEndpoint returns an endpoint without its secret.
+  rpc GetWebhookEndpoint(GetWebhookEndpointRequest) returns (GetWebhookEndpointResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // ListWebhookEndpoints returns the caller's endpoints, oldest first.
+  rpc ListWebhookEndpoints(ListWebhookEndpointsRequest) returns (ListWebhookEndpointsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // UpdateWebhookEndpoint changes the URL, description and events.
+  rpc UpdateWebhookEndpoint(UpdateWebhookEndpointRequest) returns (UpdateWebhookEndpointResponse) {}
+
+  // DeleteWebhookEndpoint removes an endpoint and its delivery log.
+  rpc DeleteWebhookEndpoint(DeleteWebhookEndpointRequest) returns (DeleteWebhookEndpointResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // EnableWebhookEndpoint turns deliveries on again, also for a paused
+  // endpoint, and resets its failure count.
+  rpc EnableWebhookEndpoint(EnableWebhookEndpointRequest) returns (EnableWebhookEndpointResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // DisableWebhookEndpoint stops deliveries. Events that happen while an
+  // endpoint is disabled are not delivered later.
+  rpc DisableWebhookEndpoint(DisableWebhookEndpointRequest) returns (DisableWebhookEndpointResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // RevealWebhookSecret returns the endpoint's current signing secret.
+  rpc RevealWebhookSecret(RevealWebhookSecretRequest) returns (RevealWebhookSecretResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // RotateWebhookSecret replaces the signing secret. The old one keeps
+  // signing too for 24 hours so receivers can switch without dropping
+  // deliveries.
+  rpc RotateWebhookSecret(RotateWebhookSecretRequest) returns (RotateWebhookSecretResponse) {}
+
+  // SendTestWebhookEvent sends a "test" event to the endpoint now, once,
+  // and returns the delivery with the response. Works on disabled endpoints
+  // too and does not count towards pausing.
+  rpc SendTestWebhookEvent(SendTestWebhookEventRequest) returns (SendTestWebhookEventResponse) {}
+
+  // ListWebhookDeliveries returns an endpoint's deliveries, newest first.
+  rpc ListWebhookDeliveries(ListWebhookDeliveriesRequest) returns (ListWebhookDeliveriesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // RedeliverWebhookDelivery sends a logged delivery's event again, now,
+  // once, as a new delivery that names the original in redelivery_of.
+  rpc RedeliverWebhookDelivery(RedeliverWebhookDeliveryRequest) returns (RedeliverWebhookDeliveryResponse) {}
+}
+
+// WebhookEventType is what happened. The JSON payload names it with the
+// strings in the comments.
+enum WebhookEventType {
+  WEBHOOK_EVENT_TYPE_UNSPECIFIED = 0;
+  // "job.queued": a job was accepted.
+  WEBHOOK_EVENT_TYPE_JOB_QUEUED = 1;
+  // "job.succeeded": a job's result is ready to download.
+  WEBHOOK_EVENT_TYPE_JOB_SUCCEEDED = 2;
+  // "job.failed": a job failed; Job.error says why.
+  WEBHOOK_EVENT_TYPE_JOB_FAILED = 3;
+  // "template.updated": a template was changed with UpdateTemplate.
+  WEBHOOK_EVENT_TYPE_TEMPLATE_UPDATED = 4;
+  // "test": sent by SendTestWebhookEvent. Cannot be subscribed to.
+  WEBHOOK_EVENT_TYPE_TEST = 5;
+}
+
+// WebhookEndpoint is a saved receiver of events.
+message WebhookEndpoint {
+  // Assigned by the server.
+  string id = 1;
+  // A public https URL.
+  string url = 2;
+  // Up to 500 characters.
+  string description = 3;
+  // The events to deliver; at least one. TEST is not allowed.
+  repeated WebhookEventType events = 4;
+  // False when disabled by DisableWebhookEndpoint or paused after failures.
+  bool enabled = 5;
+  // Set when the server paused the endpoint after consecutive failures.
+  google.protobuf.Timestamp pause_time = 6;
+  // Failed deliveries since the last successful one.
+  int32 consecutive_failures = 7;
+  // Until when the previous secret still signs, after a rotation.
+  google.protobuf.Timestamp previous_secret_expire_time = 8;
+  google.protobuf.Timestamp create_time = 9;
+  google.protobuf.Timestamp update_time = 10;
+  // The last finished delivery, for a health summary.
+  google.protobuf.Timestamp last_delivery_time = 11;
+  // Status code of the last finished delivery; 0 when it got no response.
+  int32 last_status_code = 12;
+}
+
+// WebhookEvent is the JSON body of every delivery.
+message WebhookEvent {
+  // Unique per event; a redelivery repeats it, so use it to drop duplicates.
+  string id = 1;
+  // "job.queued", "job.succeeded", "job.failed", "template.updated" or "test".
+  string type = 2;
+  google.protobuf.Timestamp create_time = 3;
+  oneof data {
+    // For job events.
+    Job job = 4;
+    // For template events: the template without content, assets or sample data.
+    Template template = 5;
+  }
+}
+
+// WebhookDeliveryStatus is where a delivery stands.
+enum WebhookDeliveryStatus {
+  WEBHOOK_DELIVERY_STATUS_UNSPECIFIED = 0;
+  // Waiting for its first or next attempt.
+  WEBHOOK_DELIVERY_STATUS_PENDING = 1;
+  // The endpoint answered with a 2xx status.
+  WEBHOOK_DELIVERY_STATUS_SUCCEEDED = 2;
+  // Every attempt failed, or the endpoint was disabled or deleted first.
+  WEBHOOK_DELIVERY_STATUS_FAILED = 3;
+}
+
+// WebhookDelivery is one event sent to one endpoint, with its attempts.
+message WebhookDelivery {
+  string id = 1;
+  string endpoint_id = 2;
+  string event_id = 3;
+  WebhookEventType event_type = 4;
+  // The job or template the event is about; empty for test events.
+  string subject_id = 5;
+  WebhookDeliveryStatus status = 6;
+  int32 attempts = 7;
+  int32 max_attempts = 8;
+  // HTTP status of the last attempt; 0 when it got no response.
+  int32 status_code = 9;
+  // Duration of the last attempt in milliseconds.
+  int64 latency_ms = 10;
+  // Why the last attempt failed.
+  string error = 11;
+  google.protobuf.Timestamp create_time = 12;
+  google.protobuf.Timestamp last_attempt_time = 13;
+  // When a pending delivery is tried next.
+  google.protobuf.Timestamp next_attempt_time = 14;
+  // For a redelivery, the delivery it repeats.
+  string redelivery_of = 15;
+  // True for SendTestWebhookEvent and RedeliverWebhookDelivery deliveries.
+  bool manual = 16;
+}
+
+message CreateWebhookEndpointRequest {
+  string url = 1;
+  string description = 2;
+  repeated WebhookEventType events = 3;
+  // Start disabled.
+  bool disabled = 4;
+}
+
+message CreateWebhookEndpointResponse {
+  WebhookEndpoint endpoint = 1;
+  // "whsec_" followed by 43 base64url characters.
+  string secret = 2;
+}
+
+message GetWebhookEndpointRequest {
+  string id = 1;
+}
+
+message GetWebhookEndpointResponse {
+  WebhookEndpoint endpoint = 1;
+}
+
+message ListWebhookEndpointsRequest {}
+
+message ListWebhookEndpointsResponse {
+  repeated WebhookEndpoint endpoints = 1;
+}
+
+message UpdateWebhookEndpointRequest {
+  string id = 1;
+  string url = 2;
+  string description = 3;
+  repeated WebhookEventType events = 4;
+}
+
+message UpdateWebhookEndpointResponse {
+  WebhookEndpoint endpoint = 1;
+}
+
+message DeleteWebhookEndpointRequest {
+  string id = 1;
+}
+
+message DeleteWebhookEndpointResponse {}
+
+message EnableWebhookEndpointRequest {
+  string id = 1;
+}
+
+message EnableWebhookEndpointResponse {
+  WebhookEndpoint endpoint = 1;
+}
+
+message DisableWebhookEndpointRequest {
+  string id = 1;
+}
+
+message DisableWebhookEndpointResponse {
+  WebhookEndpoint endpoint = 1;
+}
+
+message RevealWebhookSecretRequest {
+  string id = 1;
+}
+
+message RevealWebhookSecretResponse {
+  string secret = 1;
+  // Set while a rotated-out secret still signs.
+  google.protobuf.Timestamp previous_secret_expire_time = 2;
+}
+
+message RotateWebhookSecretRequest {
+  string id = 1;
+}
+
+message RotateWebhookSecretResponse {
+  WebhookEndpoint endpoint = 1;
+  // The new secret.
+  string secret = 2;
+}
+
+message SendTestWebhookEventRequest {
+  string id = 1;
+}
+
+message SendTestWebhookEventResponse {
+  WebhookDelivery delivery = 1;
+}
+
+message ListWebhookDeliveriesRequest {
+  string endpoint_id = 1;
+  // At most 100; default 50.
+  int32 page_size = 2;
+  string page_token = 3;
+  // Only deliveries in this status; UNSPECIFIED for all.
+  WebhookDeliveryStatus status = 4;
+}
+
+message ListWebhookDeliveriesResponse {
+  repeated WebhookDelivery deliveries = 1;
+  string next_page_token = 2;
+}
+
+message RedeliverWebhookDeliveryRequest {
+  string id = 1;
+}
+
+message RedeliverWebhookDeliveryResponse {
+  WebhookDelivery delivery = 1;
+}

@@ -40,7 +40,12 @@ type Config struct {
 	JobQueue      int
 	JobTTL        time.Duration
 	MaxJobs       int
-	WebhookSecret string
+	WebhookSecret string // signs per-job webhook_url callbacks
+
+	WebhookKey          string        // encrypts saved endpoints' signing secrets at rest; empty stores them as they are
+	MaxWebhookEndpoints int           // saved endpoints per API key
+	WebhookWorkers      int           // concurrent saved-endpoint deliveries
+	WebhookLogTTL       time.Duration // how long deliveries are logged
 
 	MaxTemplates          int           // templates per API key
 	MaxTemplateBytes      int64         // template content plus assets
@@ -85,6 +90,10 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		JobTTL:                p.dur("PROTEUS_JOB_TTL", time.Hour),
 		MaxJobs:               p.int("PROTEUS_MAX_JOBS", 1000),
 		WebhookSecret:         p.str("PROTEUS_WEBHOOK_SECRET", ""),
+		WebhookKey:            p.str("PROTEUS_WEBHOOK_KEY", ""),
+		MaxWebhookEndpoints:   p.int("PROTEUS_MAX_WEBHOOK_ENDPOINTS", 20),
+		WebhookWorkers:        p.int("PROTEUS_WEBHOOK_WORKERS", 2),
+		WebhookLogTTL:         p.dur("PROTEUS_WEBHOOK_LOG_TTL", 7*24*time.Hour),
 		MaxTemplates:          p.int("PROTEUS_MAX_TEMPLATES", 500),
 		MaxTemplateBytes:      p.bytes("PROTEUS_MAX_TEMPLATE_BYTES", 10<<20),
 		TemplateRenderTimeout: p.dur("PROTEUS_TEMPLATE_RENDER_TIMEOUT", 5*time.Second),
@@ -108,6 +117,9 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	}
 	if c.WebhookSecret != "" && len(c.WebhookSecret) < 32 {
 		return c, errors.New("PROTEUS_WEBHOOK_SECRET must be at least 32 characters")
+	}
+	if c.WebhookKey != "" && len(c.WebhookKey) < 32 {
+		return c, errors.New("PROTEUS_WEBHOOK_KEY must be at least 32 characters")
 	}
 	return c, nil
 }

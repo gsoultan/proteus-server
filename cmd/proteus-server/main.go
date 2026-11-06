@@ -35,6 +35,7 @@ import (
 	"github.com/gsoultan/proteus-server/internal/safefetch"
 	"github.com/gsoultan/proteus-server/internal/storage/pgstore"
 	"github.com/gsoultan/proteus-server/internal/templates"
+	"github.com/gsoultan/proteus-server/internal/webhooks"
 )
 
 func main() {
@@ -137,6 +138,7 @@ func run() error {
 	var (
 		store    jobs.Store
 		tplStore templates.Store
+		whStore  webhooks.Store
 		pingDB   func(context.Context) error
 	)
 	if cfg.DatabaseURL != "" {
@@ -149,11 +151,11 @@ func run() error {
 			return err
 		}
 		defer pg.Close()
-		store, tplStore, pingDB = pg, pg.Templates(), pg.Ping
-		log.Info("job and template store: postgres", "auto_migrate", cfg.AutoMigrate)
+		store, tplStore, whStore, pingDB = pg, pg.Templates(), pg.Webhooks(), pg.Ping
+		log.Info("job, template and webhook store: postgres", "auto_migrate", cfg.AutoMigrate)
 	} else {
-		store, tplStore = jobs.NewMemoryStore(cfg.MaxJobs), templates.NewMemoryStore()
-		log.Warn("job and template store: memory; templates are lost on restart " +
+		store, tplStore, whStore = jobs.NewMemoryStore(cfg.MaxJobs), templates.NewMemoryStore(), webhooks.NewMemoryStore(0)
+		log.Warn("job, template and webhook store: memory; templates and webhook endpoints are lost on restart " +
 			"(set PROTEUS_DATABASE_URL to keep them and share jobs across instances)")
 	}
 
@@ -178,18 +180,30 @@ func run() error {
 	if cfg.WebhookSecret != "" {
 		secret = []byte(cfg.WebhookSecret)
 	}
+	hookClient := safefetch.New(safefetch.Options{Timeout: 10 * time.Second, MaxBytes: 1 << 20, UserAgent: "proteus-server/" + rpc.Version})
+	sealer, err := webhooks.NewSealer([]byte(cfg.WebhookKey))
+	if err != nil {
+		return err
+	}
+	if !sealer.Encrypted() {
+		log.Warn("webhook signing secrets are stored unencrypted; set PROTEUS_WEBHOOK_KEY to encrypt them")
+	}
+	wh := webhooks.New(whStore, webhooks.Settings{
+		Client: hookClient, Sealer: sealer, MaxEndpoints: cfg.MaxWebhookEndpoints,
+		Workers: cfg.WebhookWorkers, Retention: cfg.WebhookLogTTL, Logger: log, Observer: m,
+	})
+	wh.Start()
 	jm := jobs.NewManager(svc, store, jobs.Settings{
 		Workers: jobWorkers, QueueSize: int64(cfg.JobQueue), ResultTTL: cfg.JobTTL, MaxAssets: cfg.MaxAssets,
-		WebhookSecret: secret,
-		Webhook:       safefetch.New(safefetch.Options{Timeout: 10 * time.Second, MaxBytes: 1 << 20, UserAgent: "proteus-server/" + rpc.Version}),
-		Logger:        log, Observer: m,
+		WebhookSecret: secret, Webhook: hookClient, Notifier: wh,
+		Logger: log, Observer: m,
 	})
 	ts := templates.NewService(tplStore, templates.Settings{
 		MaxPerOwner: cfg.MaxTemplates, MaxAssets: cfg.MaxAssets, MaxBytes: cfg.MaxTemplateBytes,
 		MaxOutput: cfg.MaxRequestBytes, RenderTimeout: cfg.TemplateRenderTimeout,
 	})
 	api := rpc.New(rpc.Config{MaxRequestBytes: cfg.MaxRequestBytes, MaxAssets: cfg.MaxAssets, MaxOutputBytes: cfg.MaxOutput},
-		svc, jm, ts, auth.New(keys, cfg.RateLimit, cfg.RateBurst), m, log, pingDB)
+		svc, jm, ts, wh, auth.New(keys, cfg.RateLimit, cfg.RateBurst), m, log, pingDB)
 
 	protocols := new(http.Protocols)
 	protocols.SetHTTP1(true)            // Connect and gRPC-Web from browsers
@@ -245,11 +259,12 @@ func run() error {
 	defer cancel()
 	httpErr := srv.Shutdown(sctx)
 	jobErr := jm.Shutdown(sctx)
+	hookErr := wh.Shutdown(sctx)
 	var adminErr error
 	if admin != nil {
 		adminErr = admin.Shutdown(sctx)
 	}
-	if err := errors.Join(httpErr, jobErr, adminErr); err != nil {
+	if err := errors.Join(httpErr, jobErr, hookErr, adminErr); err != nil {
 		return fmt.Errorf("shutdown: %w", err)
 	}
 	log.Info("stopped")

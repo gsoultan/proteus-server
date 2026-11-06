@@ -14,7 +14,8 @@ proteus-server     this repo: gRPC API, auth, limits, jobs, metrics
 ```
 
 The API is defined in Protocol Buffers ([`proto/proteus/v1/conversion.proto`](proto/proteus/v1/conversion.proto),
-[`proto/proteus/v1/template.proto`](proto/proteus/v1/template.proto)) and served with [ConnectRPC](https://connectrpc.com) (connect-go v2). One
+[`proto/proteus/v1/template.proto`](proto/proteus/v1/template.proto),
+[`proto/proteus/v1/webhook.proto`](proto/proteus/v1/webhook.proto)) and served with [ConnectRPC](https://connectrpc.com) (connect-go v2). One
 listener answers native **gRPC** (HTTP/2, h2c), **gRPC-Web** and the
 **Connect** protocol, so the same service works from Go/Java/Python gRPC
 clients and from browsers through `@connectrpc/connect-web`. There is no REST
@@ -76,9 +77,24 @@ Neither needs a key. Prometheus metrics are on a separate admin listener
 | `ConvertTemplate` | Fill a template with data and convert it synchronously, like `Convert`. |
 | `SubmitTemplateJob` | Fill a template with data and queue the conversion; follow it with the job RPCs. |
 
-Send the key as `authorization: Bearer <key>` or `x-api-key: <key>`. Jobs and
-templates are visible only to the key that created them; any other key gets
-`NOT_FOUND`.
+`proteus.v1.WebhookService` (see [Webhooks](#webhooks)):
+
+| RPC | Use |
+| --- | --- |
+| `CreateWebhookEndpoint` | Save an https endpoint with the events it wants; returns its signing secret. |
+| `GetWebhookEndpoint` / `ListWebhookEndpoints` | Endpoints with their health (enabled, pause time, failures in a row, last status). |
+| `UpdateWebhookEndpoint` | Change the URL, description and events. |
+| `DeleteWebhookEndpoint` | Remove an endpoint and its delivery log. |
+| `EnableWebhookEndpoint` / `DisableWebhookEndpoint` | Turn deliveries on or off; enabling also resumes a paused endpoint. |
+| `RevealWebhookSecret` | The current signing secret. |
+| `RotateWebhookSecret` | A new secret; the old one keeps signing for 24 hours. |
+| `SendTestWebhookEvent` | Send a `test` event now and return the response. |
+| `ListWebhookDeliveries` | An endpoint's deliveries, newest first, with attempts, status code and latency; filter by status, paged. |
+| `RedeliverWebhookDelivery` | Send a logged event again now, as a new delivery. |
+
+Send the key as `authorization: Bearer <key>` or `x-api-key: <key>`. Jobs,
+templates and webhook endpoints are visible only to the key that created them;
+any other key gets `NOT_FOUND`.
 
 ### Requests
 
@@ -151,9 +167,9 @@ the document it was given even if the template changes later.
 | --- | --- |
 | `UNAUTHENTICATED` | Missing or unknown API key. |
 | `INVALID_ARGUMENT` | Invalid input, a blocked resource, output over the size limit, or a template that does not parse or render with the data. |
-| `RESOURCE_EXHAUSTED` | Rate limit hit, every conversion slot busy, the job queue full, the key's template limit reached, or a message over the size limit. Retry with backoff. |
+| `RESOURCE_EXHAUSTED` | Rate limit hit, every conversion slot busy, the job queue full, the key's template or webhook endpoint limit reached, or a message over the size limit. Retry with backoff. |
 | `DEADLINE_EXCEEDED` | Conversion exceeded `PROTEUS_TIMEOUT`. |
-| `NOT_FOUND` | Unknown, expired or someone else's job or template. |
+| `NOT_FOUND` | Unknown, expired or someone else's job, template, webhook endpoint or delivery. |
 | `ALREADY_EXISTS` | The key already has a template with that name. |
 | `ABORTED` | `UpdateTemplate` with a stale `revision`; reload and retry. |
 | `FAILED_PRECONDITION` | Result or delete asked for before the job finished, or the job failed. |
@@ -167,23 +183,61 @@ and `DownloadJobResult`.
 
 ### Webhooks
 
-When `PROTEUS_WEBHOOK_SECRET` is set, a job with `webhook_url` gets a `POST`
-of the finished `Job` as protobuf JSON. Verify it with:
+There are two kinds, and they work side by side.
+
+**Saved endpoints** (`WebhookService`) belong to an API key and receive every
+event they subscribe to that happens under that key: `job.queued`,
+`job.succeeded`, `job.failed` (jobs submitted with the key, including
+template jobs) and `template.updated` (`UpdateTemplate` on the key's
+templates). Each delivery is a `POST` of a `WebhookEvent` as protobuf JSON:
+
+```json
+{"id": "…", "type": "job.succeeded", "createTime": "…", "job": {"id": "…", "status": "JOB_STATUS_SUCCEEDED", …}}
+```
+
+with these headers:
 
 ```
+X-Proteus-Event:     job.succeeded
+X-Proteus-Delivery:  <delivery id>
 X-Proteus-Timestamp: 1793444400
 X-Proteus-Signature: sha256=hex(HMAC_SHA256(secret, timestamp + "." + body))
 ```
 
-Reject stale timestamps on your side. Delivery makes up to three attempts,
-retrying on network errors, `429` and `5xx`. Webhook URLs pass the same SSRF
-checks as resources.
+Each endpoint has its own secret (`whsec_…`). For 24 hours after
+`RotateWebhookSecret` the signature header carries two comma-separated
+signatures, the new secret's first; accept the delivery when any of them
+matches, and reject stale timestamps. Redeliveries repeat the event `id`, so
+use it to drop duplicates.
+
+A delivery makes up to three attempts (10 s, then 60 s apart), retrying on
+network errors, timeouts, `408`, `429` and `5xx`. Every attempt's status code,
+latency and error is logged; the log is kept for `PROTEUS_WEBHOOK_LOG_TTL`
+(7 days). An endpoint whose deliveries fail 20 times in a row is paused:
+disabled with `pause_time` set until `EnableWebhookEndpoint`. Test events
+and redeliveries are sent at once, a single attempt, and never pause an
+endpoint. Events that happen while an endpoint is disabled are not queued.
+
+With Postgres the pending deliveries are a shared queue (claimed with
+`FOR UPDATE SKIP LOCKED`, like jobs), so they survive restarts and any instance
+can send them. Signing secrets have to be readable to sign and to reveal, so
+set `PROTEUS_WEBHOOK_KEY` to store them encrypted (AES-256-GCM, key derived
+with HKDF); without it they are stored as they are and the server warns at
+startup. Secrets saved before a key was set keep working after you set one.
+
+**Per-job URLs** keep working unchanged: when `PROTEUS_WEBHOOK_SECRET` is set,
+a job with `webhook_url` gets a `POST` of the finished `Job` as protobuf JSON,
+signed the same way with that server-wide secret, up to three attempts.
+
+All webhook URLs pass the same SSRF checks as resources, at save time and on
+every connection; saved endpoints must be `https`.
 
 ## Jobs, templates and Postgres
 
-Without a database, jobs and templates live in memory on the instance that
-accepted them and are lost on restart. With `PROTEUS_DATABASE_URL`, every
-instance shares a `jobs` and a `templates` table (in `PROTEUS_DATABASE_SCHEMA`,
+Without a database, jobs, templates and webhook endpoints live in memory on the
+instance that accepted them and are lost on restart. With `PROTEUS_DATABASE_URL`, every
+instance shares the `jobs`, `templates`, `webhook_endpoints` and
+`webhook_deliveries` tables (in `PROTEUS_DATABASE_SCHEMA`,
 default `public`). Templates are unique on key and name, listing reads a
 projection without the template body, and an update only applies if the
 revision it read is still current. Any instance can answer any job:
@@ -262,14 +316,18 @@ has no page-count or memory budget yet.
 | `PROTEUS_MAX_TOTAL_RESOURCE_BYTES` | `50MiB` | All resources of one document. |
 | `PROTEUS_SYSTEM_FONTS` | `true` | Use the OS font directories (scanned once per process). |
 | `PROTEUS_FONT_DIRS` | | Extra font directories. The engine rescans these on every conversion, so prefer a system directory. |
-| `PROTEUS_DATABASE_URL` | | Postgres URL for jobs and templates; empty keeps both in memory. |
-| `PROTEUS_DATABASE_SCHEMA` | `public` | Schema holding the `jobs` and `templates` tables. |
+| `PROTEUS_DATABASE_URL` | | Postgres URL for jobs, templates and webhooks; empty keeps them in memory. |
+| `PROTEUS_DATABASE_SCHEMA` | `public` | Schema holding the `jobs`, `templates`, `webhook_endpoints` and `webhook_deliveries` tables. |
 | `PROTEUS_AUTO_MIGRATE` | `true` | Create or update the tables at startup. |
 | `PROTEUS_JOB_WORKERS` | half of workers | Async workers per instance. |
 | `PROTEUS_JOB_QUEUE` | `100` | Queued jobs before `SubmitJob` answers `RESOURCE_EXHAUSTED`. |
 | `PROTEUS_JOB_TTL` | `1h` | How long finished jobs and results are kept. |
 | `PROTEUS_MAX_JOBS` | `1000` | Jobs held by the memory store. |
-| `PROTEUS_WEBHOOK_SECRET` | | HMAC key (32+ characters); enables webhooks. |
+| `PROTEUS_WEBHOOK_SECRET` | | HMAC key (32+ characters); enables per-job `webhook_url`. |
+| `PROTEUS_WEBHOOK_KEY` | | Key material (32+ characters) that encrypts saved endpoints' signing secrets at rest. |
+| `PROTEUS_MAX_WEBHOOK_ENDPOINTS` | `20` | Saved webhook endpoints per API key. |
+| `PROTEUS_WEBHOOK_WORKERS` | `2` | Concurrent saved-endpoint deliveries per instance. |
+| `PROTEUS_WEBHOOK_LOG_TTL` | `168h` | How long webhook deliveries are logged. |
 | `PROTEUS_MAX_TEMPLATES` | `500` | Templates per API key. |
 | `PROTEUS_MAX_TEMPLATE_BYTES` | `10MiB` | Content plus assets of one template. |
 | `PROTEUS_TEMPLATE_RENDER_TIMEOUT` | `5s` | Filling one template with data. |
@@ -290,7 +348,8 @@ Sizes accept `K`, `M`, `G`, `KiB`, `MiB`, `GiB`.
   `proteus_conversion_duration_seconds{input,output}`, `proteus_output_bytes`,
   `proteus_resource_blocked_total{reason}`, `proteus_conversion_slots` and
   `proteus_conversion_slots_in_use` (saturation), `proteus_job_queue_depth`,
-  `proteus_webhook_deliveries_total`, plus Go and process metrics.
+  `proteus_webhook_deliveries_total{outcome}` (per-job and saved endpoints:
+  `ok`, `error`, `skipped`), plus Go and process metrics.
 - Suggested alerts: p99 of `proteus_rpc_duration_seconds` for `Convert`, the
   rate of `internal`/`unknown` codes, slots in use near capacity, and a
   growing job queue.
@@ -320,8 +379,9 @@ it is stale.
 
 1. Done: gRPC API (ConnectRPC v2), safe resource loader, limits, API keys
    with rate limits, metrics, Docker, Postgres job queue on storm, a
-   converter registry keyed by input and output format, and stored document
-   templates filled from JSON data.
+   converter registry keyed by input and output format, stored document
+   templates filled from JSON data, and saved webhook endpoints with event
+   filters, per-endpoint secrets, a delivery log and auto-pause.
 2. Results in object storage behind presigned URLs instead of `bytea`, and
    CORS for browser clients.
 3. Header and footer templates, PDF/A, batch merging.

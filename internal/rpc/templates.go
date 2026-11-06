@@ -66,6 +66,9 @@ func (s *templateService) UpdateTemplate(ctx context.Context, req *proteusv1.Upd
 	if err != nil {
 		return nil, s.toConnect(ctx, err)
 	}
+	if wh := s.conv.api.webhooks; wh != nil {
+		wh.NotifyTemplateUpdated(ctx, auth.Caller(ctx), t)
+	}
 	return &proteusv1.UpdateTemplateResponse{Template: t}, nil
 }
 

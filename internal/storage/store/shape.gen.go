@@ -48,3 +48,49 @@ func _assertTemplateShape(m m0.Template) {
 		m.Body,
 	}
 }
+
+// _assertWebhookDeliveryShape fails to compile if m0.WebhookDelivery gains, loses, renames or
+// reorders a field. Regenerate: `storm generate`.
+func _assertWebhookDeliveryShape(m m0.WebhookDelivery) {
+	type shape m0.WebhookDelivery
+	_ = shape{
+		m.Model,
+		m.Owner,
+		m.EndpointID,
+		m.EventID,
+		m.EventType,
+		m.SubjectID,
+		m.Status,
+		m.Payload,
+		m.Attempts,
+		m.MaxAttempts,
+		m.StatusCode,
+		m.LatencyMs,
+		m.Error,
+		m.LastAttemptAt,
+		m.NextAttemptAt,
+		m.RedeliveryOf,
+		m.Manual,
+	}
+}
+
+// _assertWebhookEndpointShape fails to compile if m0.WebhookEndpoint gains, loses, renames or
+// reorders a field. Regenerate: `storm generate`.
+func _assertWebhookEndpointShape(m m0.WebhookEndpoint) {
+	type shape m0.WebhookEndpoint
+	_ = shape{
+		m.Model,
+		m.Owner,
+		m.URL,
+		m.Description,
+		m.Events,
+		m.Enabled,
+		m.PausedAt,
+		m.ConsecutiveFailures,
+		m.Secret,
+		m.PreviousSecret,
+		m.PreviousExpiresAt,
+		m.LastDeliveryAt,
+		m.LastStatusCode,
+	}
+}

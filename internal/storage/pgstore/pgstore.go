@@ -57,9 +57,9 @@ func Open(ctx context.Context, dsn, schema string, autoMigrate bool, logf func(s
 	return New(pool), nil
 }
 
-// Migrate brings the jobs and templates tables in schema up to date with the models.
+// Migrate brings the jobs, templates and webhook tables in schema up to date with the models.
 func Migrate(ctx context.Context, pool *pgxpool.Pool, schema string, logf func(string, ...any)) error {
-	s, err := storm.Build(&model.Job{}, &model.Template{})
+	s, err := storm.Build(&model.Job{}, &model.Template{}, &model.WebhookEndpoint{}, &model.WebhookDelivery{})
 	if err != nil {
 		return fmt.Errorf("pgstore: build schema: %w", err)
 	}

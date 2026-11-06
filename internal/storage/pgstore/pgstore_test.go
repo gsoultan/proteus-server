@@ -13,9 +13,10 @@ import (
 	"github.com/gsoultan/proteus-server/internal/jobs/storetest"
 	"github.com/gsoultan/proteus-server/internal/storage/pgstore"
 	tplstoretest "github.com/gsoultan/proteus-server/internal/templates/storetest"
+	whstoretest "github.com/gsoultan/proteus-server/internal/webhooks/storetest"
 )
 
-// TestStore runs the job and template store conformance suites against a real PostgreSQL in a
+// TestStore runs the job, template and webhook store conformance suites against a real PostgreSQL in a
 // schema of its own. Set PROTEUS_TEST_DATABASE_URL to run it.
 func TestStore(t *testing.T) {
 	dsn := os.Getenv("PROTEUS_TEST_DATABASE_URL")
@@ -54,4 +55,5 @@ func TestStore(t *testing.T) {
 	store := pgstore.New(pool)
 	t.Run("Jobs", func(t *testing.T) { storetest.Run(t, store) })
 	t.Run("Templates", func(t *testing.T) { tplstoretest.Run(t, store.Templates()) })
+	t.Run("Webhooks", func(t *testing.T) { whstoretest.Run(t, store.Webhooks()) })
 }
