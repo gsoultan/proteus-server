@@ -40,6 +40,13 @@ pk_dev_local via PROTEUS_DEV_KEY, text debug logs, rate limit off; --no-auth, --
 postgres on 127.0.0.1:55432 unless PROTEUS_DATABASE_URL set; exported PROTEUS_* win).
 scripts/smoke.sh starts it, runs samples/client over grpc, connect and grpcweb plus
 samples/buf-curl.sh (buf + jq), stops it; CI test job runs it against the Postgres service.
+scripts/container-dev.sh (macOS, Apple `container` CLI): up [--no-db --no-auth --no-build] builds
+proteus-server:dev from the Dockerfile, runs postgres:17 (container proteus-dev-postgres, volume
+proteus-dev-pgdata with PGDATA in a subdir because the volume root has lost+found) and the server
+(proteus-dev) on the default network; the server gets Postgres by its container IP (bare-name DNS
+does not work on Apple container networks); readiness via `container exec` pg_isready and
+`/proteus-server healthcheck`; also logs, status, smoke, down, reset. Verified only against a fake
+`container` shim in the Linux dev container (no macOS there).
 Makefile wraps these (dev, dev-noauth, dev-pg, samples, curl, smoke, test, lint, generate).
 samples/docs/<name>/: index.html|index.md + assets (relative paths) + optional options.json
 (protojson Options); samples: invoice (HTML+CSS+SVG), report (Markdown+SVG chart+options),

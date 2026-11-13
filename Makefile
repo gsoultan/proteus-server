@@ -1,5 +1,5 @@
 # Developer shortcuts; each target wraps a script in scripts/ or samples/.
-.PHONY: build dev dev-noauth dev-pg samples curl smoke test lint generate
+.PHONY: build dev dev-noauth dev-pg container-up container-down container-logs container-smoke samples curl smoke test lint generate
 
 DEV_KEY ?= pk_dev_local
 
@@ -18,6 +18,19 @@ dev-noauth:
 # Run the server with jobs in Postgres (compose service, or PROTEUS_DATABASE_URL).
 dev-pg:
 	PROTEUS_DEV_KEY=$(DEV_KEY) scripts/dev.sh --postgres
+
+# Apple container (macOS): Postgres and the server image in containers.
+container-up:
+	PROTEUS_DEV_KEY=$(DEV_KEY) scripts/container-dev.sh up
+
+container-down:
+	scripts/container-dev.sh down
+
+container-logs:
+	scripts/container-dev.sh logs
+
+container-smoke:
+	PROTEUS_DEV_KEY=$(DEV_KEY) scripts/container-dev.sh smoke
 
 # Convert every sample against a running dev server.
 samples:

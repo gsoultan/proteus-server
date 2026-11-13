@@ -252,6 +252,21 @@ scripts/smoke.sh            # make smoke: start the server, run every sample, st
 ```
 
 Any `PROTEUS_*` variable you export overrides the dev defaults.
+
+On a Mac with [Apple container](https://github.com/apple/container) (no Docker
+needed), run the real image and Postgres in containers:
+
+```sh
+scripts/container-dev.sh          # make container-up: build proteus-server:dev, start Postgres and the
+                                  # server on 127.0.0.1:8080 / :9090 / :55432, wait until healthy
+scripts/container-dev.sh smoke    # make container-smoke: every sample over gRPC, Connect, gRPC-Web
+scripts/container-dev.sh logs     # follow the server log
+scripts/container-dev.sh down     # stop and delete the containers; reset also drops the database volume
+```
+
+Options for `up`: `--no-db` (jobs in memory), `--no-auth`, `--no-build`. It
+uses the default network and reaches Postgres by its container IP, so it needs
+no `container network create` (macOS 26 only).
 [`samples/`](samples) holds sample HTML and Markdown documents, a Go client
 built on the generated ConnectRPC client, and `buf curl` calls for every RPC;
 see [`samples/README.md`](samples/README.md).
