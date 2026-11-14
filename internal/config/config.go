@@ -2,6 +2,7 @@
 package config
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -41,6 +42,11 @@ type Config struct {
 	JobTTL        time.Duration
 	MaxJobs       int
 	WebhookSecret string
+	// SecretKey (32 bytes, from 64 hex characters) seals stored job requests
+	// and generated result passwords. Empty: a random key per process,
+	// which is enough for the in-memory queue; a shared Postgres queue needs
+	// the same key on every instance.
+	SecretKey []byte
 
 	MaxTemplates          int           // templates per API key
 	MaxTemplateBytes      int64         // template content plus assets
@@ -85,6 +91,7 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		JobTTL:                p.dur("PROTEUS_JOB_TTL", time.Hour),
 		MaxJobs:               p.int("PROTEUS_MAX_JOBS", 1000),
 		WebhookSecret:         p.str("PROTEUS_WEBHOOK_SECRET", ""),
+		SecretKey:             p.hexKey("PROTEUS_SECRET_KEY", 32),
 		MaxTemplates:          p.int("PROTEUS_MAX_TEMPLATES", 500),
 		MaxTemplateBytes:      p.bytes("PROTEUS_MAX_TEMPLATE_BYTES", 10<<20),
 		TemplateRenderTimeout: p.dur("PROTEUS_TEMPLATE_RENDER_TIMEOUT", 5*time.Second),
@@ -109,7 +116,24 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	if c.WebhookSecret != "" && len(c.WebhookSecret) < 32 {
 		return c, errors.New("PROTEUS_WEBHOOK_SECRET must be at least 32 characters")
 	}
+	if c.DatabaseURL != "" && len(c.SecretKey) == 0 {
+		return c, errors.New("PROTEUS_SECRET_KEY (64 hex characters) is required with PROTEUS_DATABASE_URL, so every instance can open stored jobs")
+	}
 	return c, nil
+}
+
+// hexKey reads a key of n bytes given as 2n hex characters; empty stays nil.
+func (p *parser) hexKey(name string, n int) []byte {
+	v := strings.TrimSpace(p.get(name))
+	if v == "" {
+		return nil
+	}
+	b, err := hex.DecodeString(v)
+	if err != nil || len(b) != n {
+		p.errs = append(p.errs, fmt.Errorf("%s must be %d hex characters (%d random bytes)", name, 2*n, n))
+		return nil
+	}
+	return b
 }
 
 type parser struct {

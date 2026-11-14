@@ -183,11 +183,42 @@ func (s *Store) Finish(ctx context.Context, id string, o jobs.Outcome) error {
 	if o.Status == jobs.Succeeded {
 		m.SetResult(o.Result)
 		m.SetResultBytes(int64(len(o.Result)))
+		m.SetPasswordProtected(o.PasswordProtected)
+		if len(o.PasswordEnc) > 0 {
+			m.SetPasswordEnc(o.PasswordEnc)
+		}
 	}
 	if err := m.Update(ctx, s.ex); err != nil {
 		return fmt.Errorf("pgstore: finish job: %w", err)
 	}
 	return nil
+}
+
+// TakePassword implements jobs.Store. The read and the clearing update are
+// separate statements, so the update is conditioned on the password still
+// being there: of two concurrent callers only one gets it.
+func (s *Store) TakePassword(ctx context.Context, owner, id string) ([]byte, error) {
+	key, ok := parseID(id)
+	if !ok {
+		return nil, jobs.ErrNotFound
+	}
+	row, found, err := job.New().Where(job.ID.Eq(key), job.Owner.Eq(owner), job.PasswordEnc.IsNotNull()).OneMeta(ctx, s.ex)
+	if err != nil {
+		return nil, fmt.Errorf("pgstore: read password: %w", err)
+	}
+	if !found || len(row.PasswordEnc) == 0 {
+		return nil, jobs.ErrNotFound
+	}
+	var m job.Mut
+	m.SetPasswordEnc(nil)
+	n, err := job.New().Where(job.ID.Eq(key), job.Owner.Eq(owner), job.PasswordEnc.IsNotNull()).UpdateAll(ctx, s.ex, m)
+	if err != nil {
+		return nil, fmt.Errorf("pgstore: clear password: %w", err)
+	}
+	if n == 0 {
+		return nil, jobs.ErrNotFound
+	}
+	return row.PasswordEnc, nil
 }
 
 // Release implements jobs.Store.
@@ -276,6 +307,7 @@ func fromRow(r job.Row) *jobs.Record {
 		WebhookURL: r.WebhookURL.V, Attempts: int(r.Attempts), CreatedAt: r.CreatedAt,
 		StartedAt: r.StartedAt.V, FinishedAt: r.FinishedAt.V, ExpiresAt: r.ExpiresAt.V,
 		Error: r.Error.V, Warnings: r.Warnings, ResultBytes: r.ResultBytes,
+		PasswordProtected: r.PasswordProtected, PasswordAvailable: len(r.PasswordEnc) > 0,
 	}
 }
 
@@ -286,6 +318,7 @@ func fromMeta(r job.MetaRow) *jobs.Record {
 		WebhookURL: r.WebhookURL.V, Attempts: int(r.Attempts), CreatedAt: r.CreatedAt,
 		StartedAt: r.StartedAt.V, FinishedAt: r.FinishedAt.V, ExpiresAt: r.ExpiresAt.V,
 		Error: r.Error.V, Warnings: r.Warnings, ResultBytes: r.ResultBytes,
+		PasswordProtected: r.PasswordProtected, PasswordAvailable: len(r.PasswordEnc) > 0,
 	}
 }
 

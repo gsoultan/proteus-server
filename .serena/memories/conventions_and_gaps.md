@@ -2,8 +2,9 @@
 
 - Every engine call goes through convert.Service.Run with the server loader
   (WithResourceLoader + WithLocalFiles(false)); never let a request reach the default engine loader.
-- Output formats: proto OutputFormat + InputFormat enums; Options split into common fields,
-  options.page (paged formats) and options.pdf (PDF only). Responses and jobs carry
+- Output formats: proto OutputFormat (PDF, XLSX) + InputFormat enums; Options split into common
+  fields, options.page (paged formats), options.pdf (PDF only) and options.spreadsheet (XLSX
+  only); validateOptions refuses options that do not fit the target. Responses and jobs carry
   output_format, mime_type and file_name. To add a format: proto enum, target in
   convert/formats.go, register a Converter per input; ListFormats picks it up. Converters must
   load resources only through Input.Loader.
@@ -24,6 +25,17 @@
   ranges are rewritten to pipe through `pairs`, objects max 500 keys, output capped
   (PROTEUS_MAX_REQUEST_BYTES), render timeout PROTEUS_TEMPLATE_RENDER_TIMEOUT. Template is
   re-parsed per render (funcs are bound to the render; html/template can't Clone after Execute).
+- Passwords (user rule): never in webhook payloads, server logs, webhook history or stored in plain
+  text. Job records only carry password_protected / password_available; the generated password is
+  sealed (AES-GCM) in jobs.password_enc, handed out once by GetJobPassword to the submitting key,
+  then deleted (ErrNoPassword -> NotFound). Convert returns it in the response once. Logs record
+  only the bool "protected". validateOptions: password xor generate, <= 127 chars, owner_password
+  PDF only.
+- PROTEUS_SECRET_KEY (64 hex) is mandatory with PROTEUS_DATABASE_URL so every instance can open
+  sealed payloads/passwords; config.hexKey parses it.
+- Storage: the payload is dropped at finish in both stores; results live until PROTEUS_JOB_TTL or
+  DeleteJob (callers should delete after download). Encrypted XLSX output is a CFB container, so the
+  XLSX output check accepts the CFB magic too.
 - Metric labels: procedure, protocol, code; conversions by input, output, outcome (never raw ids).
 - Sync and async share the slot pool; job workers default to half the slots. A worker takes a
   slot before claiming so it never holds a lease while waiting.
@@ -42,7 +54,8 @@ Known gaps / next steps:
 - Results in bytea; plan object storage with presigned URLs.
 - Engine checks ctx only between stages; no page-count or memory budget.
 - Engine rescans Config.FontDirs on every conversion (prefer system font dirs).
-- Not yet: header/footer, PDF/A, batch merge, DOCX, tracing.
+- Not yet: header/footer, PDF/A, batch merge, DOCX, tracing. XLSX file names still come only from
+  options.metadata.title (FileName), not from the document <title>.
 - Templates: no versions history (only a revision counter), no sharing between keys, no
   per-template JSON schema for data; Markdown values inside code blocks show HTML entities.
 - Docker image build is verified in CI only (no Docker daemon in the dev container).

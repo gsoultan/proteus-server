@@ -19,8 +19,9 @@ type MemoryStore struct {
 
 type memJob struct {
 	Record
-	lease  time.Time
-	result []byte
+	lease       time.Time
+	result      []byte
+	passwordEnc []byte
 }
 
 // NewMemoryStore returns a store holding at most maxJobs jobs (default 1000).
@@ -100,7 +101,26 @@ func (s *MemoryStore) Finish(_ context.Context, id string, o Outcome) error {
 	j.Status, j.Error, j.Warnings = o.Status, o.Error, append([]string(nil), o.Warnings...)
 	j.FinishedAt, j.ExpiresAt = o.FinishedAt, o.ExpiresAt
 	j.result, j.ResultBytes, j.Payload = o.Result, int64(len(o.Result)), nil
+	j.PasswordProtected = o.PasswordProtected
+	j.passwordEnc = append([]byte(nil), o.PasswordEnc...)
+	j.PasswordAvailable = len(j.passwordEnc) > 0
 	return nil
+}
+
+// TakePassword implements Store.
+func (s *MemoryStore) TakePassword(_ context.Context, owner, id string) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	j, err := s.owned(owner, id)
+	if err != nil {
+		return nil, err
+	}
+	if len(j.passwordEnc) == 0 {
+		return nil, ErrNotFound
+	}
+	enc := j.passwordEnc
+	j.passwordEnc, j.PasswordAvailable = nil, false
+	return enc, nil
 }
 
 // Release implements Store.

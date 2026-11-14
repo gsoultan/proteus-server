@@ -107,6 +107,9 @@ func validateOptions(o *proteusv1.Options, t Target) error {
 	if o.GetPdf() != nil && t.Format != PDF {
 		return badf("pdf options need output_format PDF")
 	}
+	if o.GetSpreadsheet() != nil && t.Format != XLSX {
+		return badf("spreadsheet options need output_format XLSX")
+	}
 	if p := o.GetPage(); p != nil {
 		if !t.Paged {
 			return badf("page options do not apply to %s output", t.Format)
@@ -141,8 +144,32 @@ func validateOptions(o *proteusv1.Options, t Target) error {
 	if len(o.GetStylesheet()) > 1<<20 {
 		return badf("stylesheet is larger than 1 MiB")
 	}
+	if pr := o.GetProtection(); pr != nil {
+		if pr.GetPassword() == "" && !pr.GetGenerate() {
+			return badf("protection needs a password or generate")
+		}
+		if pr.GetPassword() != "" && pr.GetGenerate() {
+			return badf("protection: give a password or set generate, not both")
+		}
+		if len(pr.GetPassword()) > MaxPasswordLen || len(pr.GetOwnerPassword()) > MaxPasswordLen {
+			return badf("protection: passwords are limited to %d bytes", MaxPasswordLen)
+		}
+		if pr.GetOwnerPassword() != "" && t.Format != PDF {
+			return badf("protection.owner_password applies only to PDF output")
+		}
+	}
 	return nil
 }
+
+// MaxPasswordLen bounds the passwords a caller may set; PDF limits them to
+// 127 bytes of UTF-8 (ISO 32000-2) and Excel to 255 characters.
+const MaxPasswordLen = 127
+
+// Protected reports whether the request asks for a password-protected result.
+func (r *Request) Protected() bool { return r.Options.GetProtection() != nil }
+
+// GeneratePassword reports whether the server must make up the password.
+func (r *Request) GeneratePassword() bool { return r.Options.GetProtection().GetGenerate() }
 
 var pageSizes = map[proteusv1.PageSize]proteus.PageSize{
 	proteusv1.PageSize_PAGE_SIZE_A3:     proteus.A3,

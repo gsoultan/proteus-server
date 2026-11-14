@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/hmac"
@@ -323,18 +324,89 @@ func TestListFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := map[proteusv1.InputFormat]*proteusv1.Conversion{}
+	got := map[[2]int32]*proteusv1.Conversion{}
 	for _, c := range res.GetConversions() {
-		got[c.GetInputFormat()] = c
+		got[[2]int32{int32(c.GetInputFormat()), int32(c.GetOutputFormat())}] = c
 	}
 	for _, in := range []proteusv1.InputFormat{proteusv1.InputFormat_INPUT_FORMAT_HTML, proteusv1.InputFormat_INPUT_FORMAT_MARKDOWN} {
-		c := got[in]
+		c := got[[2]int32{int32(in), int32(proteusv1.OutputFormat_OUTPUT_FORMAT_PDF)}]
 		if c.GetOutputFormat() != proteusv1.OutputFormat_OUTPUT_FORMAT_PDF || c.GetMimeType() != "application/pdf" || c.GetFileExtension() != ".pdf" {
 			t.Errorf("%v: %v", in, c)
 		}
 	}
-	if len(res.GetConversions()) != 2 {
+	if len(res.GetConversions()) != 4 {
 		t.Errorf("conversions %v", res.GetConversions())
+	}
+	var xlsx int
+	for _, c := range res.GetConversions() {
+		if c.GetOutputFormat() == proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX {
+			xlsx++
+			if c.GetMimeType() != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || c.GetFileExtension() != ".xlsx" {
+				t.Errorf("xlsx conversion %v", c)
+			}
+		}
+	}
+	if xlsx != 2 {
+		t.Errorf("%d xlsx conversions", xlsx)
+	}
+}
+
+func TestConvertToXLSX(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	ctx := context.Background()
+	c := e.grpcClient(keyA)
+	res, err := c.Convert(ctx, &proteusv1.ConvertRequest{
+		Document:     html("<title>Sales 2026</title><table><tr><th>Item</th><th>Qty</th></tr><tr><td>Bolt</td><td>1,200</td></tr></table>"),
+		OutputFormat: proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX,
+		Options:      &proteusv1.Options{Metadata: &proteusv1.Metadata{Title: "Sales 2026", Author: "Gembit"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(res.GetContent(), []byte("PK\x03\x04")) {
+		t.Fatalf("content is not a zip package")
+	}
+	zr, err := zip.NewReader(bytes.NewReader(res.GetContent()), int64(len(res.GetContent())))
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]bool{}
+	for _, f := range zr.File {
+		names[f.Name] = true
+	}
+	for _, want := range []string{"[Content_Types].xml", "xl/workbook.xml", "xl/worksheets/sheet1.xml", "xl/sharedStrings.xml", "xl/styles.xml"} {
+		if !names[want] {
+			t.Errorf("missing %s in workbook", want)
+		}
+	}
+	if res.GetFileName() != "Sales-2026.xlsx" || res.GetMimeType() != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+		res.GetOutputFormat() != proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX {
+		t.Errorf("file name %q, mime type %q, format %v", res.GetFileName(), res.GetMimeType(), res.GetOutputFormat())
+	}
+	// Options of other formats are refused for XLSX, and spreadsheet options for PDF.
+	_, err = c.Convert(ctx, &proteusv1.ConvertRequest{Document: html("x"), OutputFormat: proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX,
+		Options: &proteusv1.Options{Page: &proteusv1.PageOptions{Landscape: true}}})
+	expectCode(t, err, connect.CodeInvalidArgument)
+	_, err = c.Convert(ctx, &proteusv1.ConvertRequest{Document: html("x"),
+		Options: &proteusv1.Options{Spreadsheet: &proteusv1.SpreadsheetOptions{}}})
+	expectCode(t, err, connect.CodeInvalidArgument)
+	// Async jobs carry the format too.
+	sub, err := c.SubmitJob(ctx, &proteusv1.SubmitJobRequest{Document: md("| a |\n|---|\n| 1 |\n"), OutputFormat: proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX})
+	if err != nil {
+		t.Fatal(err)
+	}
+	job := sub.GetJob()
+	for i := 0; i < 200 && job.GetStatus() != proteusv1.JobStatus_JOB_STATUS_SUCCEEDED && job.GetStatus() != proteusv1.JobStatus_JOB_STATUS_FAILED; i++ {
+		time.Sleep(20 * time.Millisecond)
+		got, err := c.GetJob(ctx, &proteusv1.GetJobRequest{Id: job.GetId()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		job = got.GetJob()
+	}
+	if job.GetStatus() != proteusv1.JobStatus_JOB_STATUS_SUCCEEDED || job.GetOutputFormat() != proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX ||
+		!strings.HasSuffix(job.GetFileName(), ".xlsx") {
+		t.Errorf("job = %v", job)
 	}
 }
 
@@ -461,5 +533,148 @@ func TestJobValidation(t *testing.T) {
 	_, err := c.SubmitJob(ctx, &proteusv1.SubmitJobRequest{Document: html("<p>x</p>"), WebhookUrl: "file:///tmp/x"})
 	expectCode(t, err, connect.CodeInvalidArgument)
 	_, err = c.GetJob(ctx, &proteusv1.GetJobRequest{Id: "doesnotexist"})
+	expectCode(t, err, connect.CodeNotFound)
+}
+
+func TestConvertWithPassword(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	c := e.grpcClient(keyA)
+	ctx := context.Background()
+
+	t.Run("CallerPassword", func(t *testing.T) {
+		for _, out := range []proteusv1.OutputFormat{proteusv1.OutputFormat_OUTPUT_FORMAT_PDF, proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX} {
+			res, err := c.Convert(ctx, &proteusv1.ConvertRequest{
+				Document: html("<table><tr><td>Secret</td></tr></table>"), OutputFormat: out,
+				Options: &proteusv1.Options{Protection: &proteusv1.Protection{Password: "hunter2!"}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !res.GetPasswordProtected() || res.GetPassword() != "" {
+				t.Fatalf("%v: protected=%v password=%q", out, res.GetPasswordProtected(), res.GetPassword())
+			}
+			if bytes.Contains(res.GetContent(), []byte("Secret")) {
+				t.Fatalf("%v: plain text leaked into protected output", out)
+			}
+			if out == proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX && bytes.HasPrefix(res.GetContent(), []byte("PK")) {
+				t.Fatal("protected workbook is still a plain zip")
+			}
+		}
+	})
+
+	t.Run("Generated", func(t *testing.T) {
+		res, err := c.Convert(ctx, &proteusv1.ConvertRequest{
+			Document: html("<p>Secret</p>"),
+			Options:  &proteusv1.Options{Protection: &proteusv1.Protection{Generate: true}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !res.GetPasswordProtected() || len(res.GetPassword()) < 20 {
+			t.Fatalf("protected=%v password=%q", res.GetPasswordProtected(), res.GetPassword())
+		}
+		if !bytes.Contains(res.GetContent(), []byte("/Encrypt")) {
+			t.Fatal("generated password did not encrypt the PDF")
+		}
+	})
+
+	t.Run("Invalid", func(t *testing.T) {
+		for _, pr := range []*proteusv1.Protection{
+			{Password: "x", Generate: true},
+			{Password: strings.Repeat("p", 128)},
+			{OwnerPassword: "only-owner"},
+		} {
+			_, err := c.Convert(ctx, &proteusv1.ConvertRequest{Document: html("<p>x</p>"), Options: &proteusv1.Options{Protection: pr}})
+			expectCode(t, err, connect.CodeInvalidArgument)
+		}
+		_, err := c.Convert(ctx, &proteusv1.ConvertRequest{Document: html("<p>x</p>"), OutputFormat: proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX,
+			Options: &proteusv1.Options{Protection: &proteusv1.Protection{Password: "p", OwnerPassword: "o"}}})
+		expectCode(t, err, connect.CodeInvalidArgument)
+	})
+}
+
+func TestJobPassword(t *testing.T) {
+	got := make(chan []byte, 1)
+	receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		got <- b
+	}))
+	defer receiver.Close()
+	e := newEnv(t, envOpts{webhookSecret: "0123456789abcdef0123456789abcdef"})
+	a, b := e.grpcClient(keyA), e.grpcClient(keyB)
+	ctx := context.Background()
+
+	sub, err := a.SubmitJob(ctx, &proteusv1.SubmitJobRequest{
+		Document:   html("<p>Secret</p>"),
+		Options:    &proteusv1.Options{Protection: &proteusv1.Protection{Generate: true}},
+		WebhookUrl: receiver.URL,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := sub.GetJob().GetId()
+	if !sub.GetJob().GetPasswordProtected() || sub.GetJob().GetPasswordAvailable() {
+		t.Fatalf("submitted %v", sub.GetJob())
+	}
+
+	job := waitJob(t, a, id)
+	if job.GetStatus() != proteusv1.JobStatus_JOB_STATUS_SUCCEEDED || !job.GetPasswordProtected() || !job.GetPasswordAvailable() {
+		t.Fatalf("job %v", job)
+	}
+
+	// The webhook announces protection but never carries the password.
+	select {
+	case body := <-got:
+		var j proteusv1.Job
+		if err := protojson.Unmarshal(body, &j); err != nil || j.GetId() != id || !j.GetPasswordProtected() || !j.GetPasswordAvailable() {
+			t.Fatalf("webhook body %s: %v", body, err)
+		}
+		if bytes.Contains(bytes.ToLower(body), []byte(`"password"`)) {
+			t.Fatalf("webhook body carries a password field: %s", body)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("no webhook")
+	}
+
+	// Only the submitting key may take it, and only once.
+	_, err = b.GetJobPassword(ctx, &proteusv1.GetJobPasswordRequest{Id: id})
+	expectCode(t, err, connect.CodeNotFound)
+	pw, err := a.GetJobPassword(ctx, &proteusv1.GetJobPasswordRequest{Id: id})
+	if err != nil || len(pw.GetPassword()) < 20 {
+		t.Fatalf("GetJobPassword = %v, %v", pw, err)
+	}
+	_, err = a.GetJobPassword(ctx, &proteusv1.GetJobPasswordRequest{Id: id})
+	expectCode(t, err, connect.CodeNotFound)
+	if job := waitJob(t, a, id); job.GetPasswordAvailable() {
+		t.Fatal("password still reported available after it was taken")
+	}
+
+	// The result opens with the password we were given.
+	stream, err := a.DownloadJobResult(ctx, &proteusv1.DownloadJobResultRequest{Id: id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pdf []byte
+	for {
+		msg, err := stream.Receive()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		pdf = append(pdf, msg.GetChunk()...)
+	}
+	if !bytes.Contains(pdf, []byte("/Encrypt")) || bytes.Contains(pdf, []byte("Secret")) {
+		t.Fatal("downloaded result is not encrypted")
+	}
+
+	// A job without protection has no password to give.
+	plain, err := a.SubmitJob(ctx, &proteusv1.SubmitJobRequest{Document: html("<p>x</p>")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitJob(t, a, plain.GetJob().GetId())
+	_, err = a.GetJobPassword(ctx, &proteusv1.GetJobPasswordRequest{Id: plain.GetJob().GetId()})
 	expectCode(t, err, connect.CodeNotFound)
 }

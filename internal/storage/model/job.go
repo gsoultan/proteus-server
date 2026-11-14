@@ -33,6 +33,12 @@ type Job struct {
 	Warnings    []string
 	ResultBytes int64
 	Result      []byte
+
+	// PasswordProtected is set when the result opens only with a password.
+	PasswordProtected bool
+	// PasswordEnc holds the server-generated password, sealed with the
+	// server's secret key, until the owner fetches it once; nil otherwise.
+	PasswordEnc []byte
 }
 
 func (j *Job) Schema(t *storm.Table) {
@@ -40,6 +46,8 @@ func (j *Job) Schema(t *storm.Table) {
 	t.Col(&j.Attempts).Default("0")
 	t.Col(&j.ResultBytes).Default("0")
 	t.Col(&j.Result).Nullable()
+	t.Col(&j.PasswordProtected).Default("false")
+	t.Col(&j.PasswordEnc).Nullable()
 	t.Col(&j.Warnings).Nullable()
 	t.Check(storm.RawSQL(`status IN ('queued', 'running', 'succeeded', 'failed')`))
 	// The claim scans queued and leased rows oldest first.
@@ -52,5 +60,6 @@ func (j *Job) Schema(t *storm.Table) {
 // reads never pull the result bytes.
 func (j *Job) Projections(p *storm.Projections) {
 	p.Named("Meta", &j.ID, &j.Owner, &j.Status, &j.InputFormat, &j.OutputFormat, &j.FileName, &j.WebhookURL, &j.Attempts,
-		&j.CreatedAt, &j.StartedAt, &j.FinishedAt, &j.ExpiresAt, &j.Error, &j.Warnings, &j.ResultBytes)
+		&j.CreatedAt, &j.StartedAt, &j.FinishedAt, &j.ExpiresAt, &j.Error, &j.Warnings, &j.ResultBytes,
+		&j.PasswordProtected, &j.PasswordEnc)
 }

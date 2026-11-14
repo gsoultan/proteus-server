@@ -117,6 +117,7 @@ func (s *templateService) ConvertTemplate(ctx context.Context, req *proteusv1.Co
 	return &proteusv1.ConvertTemplateResponse{
 		Content: res.GetContent(), OutputFormat: res.GetOutputFormat(), MimeType: res.GetMimeType(),
 		FileName: fileName, Warnings: res.GetWarnings(), DurationMs: res.GetDurationMs(),
+		PasswordProtected: res.GetPasswordProtected(), Password: res.GetPassword(),
 	}, nil
 }
 

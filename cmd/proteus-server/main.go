@@ -180,9 +180,9 @@ func run() error {
 	}
 	jm := jobs.NewManager(svc, store, jobs.Settings{
 		Workers: jobWorkers, QueueSize: int64(cfg.JobQueue), ResultTTL: cfg.JobTTL, MaxAssets: cfg.MaxAssets,
-		WebhookSecret: secret,
-		Webhook:       safefetch.New(safefetch.Options{Timeout: 10 * time.Second, MaxBytes: 1 << 20, UserAgent: "proteus-server/" + rpc.Version}),
-		Logger:        log, Observer: m,
+		WebhookSecret: secret, SecretKey: cfg.SecretKey,
+		Webhook: safefetch.New(safefetch.Options{Timeout: 10 * time.Second, MaxBytes: 1 << 20, UserAgent: "proteus-server/" + rpc.Version}),
+		Logger:  log, Observer: m,
 	})
 	ts := templates.NewService(tplStore, templates.Settings{
 		MaxPerOwner: cfg.MaxTemplates, MaxAssets: cfg.MaxAssets, MaxBytes: cfg.MaxTemplateBytes,

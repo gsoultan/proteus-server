@@ -848,9 +848,14 @@ type ConvertTemplateResponse struct {
 	OutputFormat OutputFormat           `protobuf:"varint,2,opt,name=output_format,json=outputFormat,proto3,enum=proteus.v1.OutputFormat" json:"output_format,omitempty"`
 	MimeType     string                 `protobuf:"bytes,3,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
 	// Derived from the metadata title, else the template name.
-	FileName      string   `protobuf:"bytes,4,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
-	Warnings      []string `protobuf:"bytes,5,rep,name=warnings,proto3" json:"warnings,omitempty"`
-	DurationMs    int64    `protobuf:"varint,6,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	FileName   string   `protobuf:"bytes,4,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	Warnings   []string `protobuf:"bytes,5,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	DurationMs int64    `protobuf:"varint,6,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	// The result opens only with a password (options.protection was set).
+	PasswordProtected bool `protobuf:"varint,7,opt,name=password_protected,json=passwordProtected,proto3" json:"password_protected,omitempty"`
+	// The password the server generated when options.protection.generate was
+	// set; empty otherwise. Keep it out of logs.
+	Password      string `protobuf:"bytes,8,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -925,6 +930,20 @@ func (x *ConvertTemplateResponse) GetDurationMs() int64 {
 		return x.DurationMs
 	}
 	return 0
+}
+
+func (x *ConvertTemplateResponse) GetPasswordProtected() bool {
+	if x != nil {
+		return x.PasswordProtected
+	}
+	return false
+}
+
+func (x *ConvertTemplateResponse) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
 }
 
 type SubmitTemplateJobRequest struct {
@@ -1109,7 +1128,7 @@ const file_proteus_v1_template_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12+\n" +
 	"\x04data\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04data\x12=\n" +
 	"\routput_format\x18\x03 \x01(\x0e2\x18.proteus.v1.OutputFormatR\foutputFormat\x12-\n" +
-	"\aoptions\x18\x04 \x01(\v2\x13.proteus.v1.OptionsR\aoptions\"\xe9\x01\n" +
+	"\aoptions\x18\x04 \x01(\v2\x13.proteus.v1.OptionsR\aoptions\"\xb4\x02\n" +
 	"\x17ConvertTemplateResponse\x12\x18\n" +
 	"\acontent\x18\x01 \x01(\fR\acontent\x12=\n" +
 	"\routput_format\x18\x02 \x01(\x0e2\x18.proteus.v1.OutputFormatR\foutputFormat\x12\x1b\n" +
@@ -1117,7 +1136,9 @@ const file_proteus_v1_template_proto_rawDesc = "" +
 	"\tfile_name\x18\x04 \x01(\tR\bfileName\x12\x1a\n" +
 	"\bwarnings\x18\x05 \x03(\tR\bwarnings\x12\x1f\n" +
 	"\vduration_ms\x18\x06 \x01(\x03R\n" +
-	"durationMs\"\xe6\x01\n" +
+	"durationMs\x12-\n" +
+	"\x12password_protected\x18\a \x01(\bR\x11passwordProtected\x12\x1a\n" +
+	"\bpassword\x18\b \x01(\tR\bpassword\"\xe6\x01\n" +
 	"\x18SubmitTemplateJobRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12+\n" +
 	"\x04data\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04data\x12=\n" +

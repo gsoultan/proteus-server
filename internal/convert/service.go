@@ -2,9 +2,13 @@ package convert
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
+	proteusv1 "github.com/gsoultan/proteus-server/gen/proteus/v1"
+	"google.golang.org/protobuf/proto"
 	"log/slog"
+	"math/big"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -129,6 +133,11 @@ type Result struct {
 	Target   Target
 	Warnings []string
 	Duration time.Duration
+	// PasswordProtected is set when the content opens only with a password.
+	PasswordProtected bool
+	// Password is the password the server generated (protection.generate);
+	// empty when the caller supplied one. Never log it.
+	Password string
 }
 
 // Run converts req. The caller must hold a slot (TryAcquire or Acquire) and
@@ -189,6 +198,18 @@ func (s *Service) run(ctx context.Context, req *Request) (*Result, error) {
 		return nil, s.Check(req)
 	}
 	target := targets[req.Output]
+	var generated string
+	if req.GeneratePassword() {
+		var err error
+		if generated, err = NewPassword(); err != nil {
+			return nil, err
+		}
+		// Hand the engine a copy of the options that carries the password;
+		// the caller's request stays as it was (and is what gets stored).
+		o := proto.Clone(req.Options).(*proteusv1.Options)
+		o.Protection = &proteusv1.Protection{Password: generated, OwnerPassword: o.GetProtection().GetOwnerPassword()}
+		req = &Request{Format: req.Format, Output: req.Output, Source: req.Source, URL: req.URL, Assets: req.Assets, Options: o}
+	}
 	ld := loader.New(req.Assets, remote, s.s.LoaderLimits)
 	ld.OnBlocked = s.s.Metrics.ResourceBlocked
 
@@ -197,7 +218,7 @@ func (s *Service) run(ctx context.Context, req *Request) (*Result, error) {
 		warnings []string
 	)
 	in := &Input{
-		Format: req.Format, Source: src, BaseURL: base, Loader: ld, AllowRemote: allowRemote, Options: req.Options,
+		Format: req.Format, Output: req.Output, Source: src, BaseURL: base, Loader: ld, AllowRemote: allowRemote, Options: req.Options,
 		Warn: func(msg string) {
 			mu.Lock()
 			defer mu.Unlock()
@@ -226,7 +247,24 @@ func (s *Service) run(ctx context.Context, req *Request) (*Result, error) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	return &Result{Content: out, Target: target, Warnings: dedupe(warnings)}, nil
+	return &Result{Content: out, Target: target, Warnings: dedupe(warnings), PasswordProtected: req.Protected(), Password: generated}, nil
+}
+
+// passwordAlphabet leaves out characters that are easy to confuse when a
+// password is read out or typed (0/O, 1/l/I).
+const passwordAlphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+// NewPassword returns a random 24-character password (about 140 bits).
+func NewPassword() (string, error) {
+	out := make([]byte, 24)
+	for i := range out {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(passwordAlphabet))))
+		if err != nil {
+			return "", fmt.Errorf("generate password: %w", err)
+		}
+		out[i] = passwordAlphabet[n.Int64()]
+	}
+	return string(out), nil
 }
 
 // safeConvert calls the converter and turns a panic into an error so one bad

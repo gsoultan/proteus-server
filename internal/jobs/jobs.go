@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -45,6 +46,9 @@ var (
 	ErrClosed = errors.New("server is shutting down")
 	// ErrNotFinished is returned when a job's result or deletion is asked for too early.
 	ErrNotFinished = errors.New("job has not finished")
+	// ErrNoPassword: the job has no generated password to hand out (the
+	// caller gave the password, none was generated, or it was fetched already).
+	ErrNoPassword = errors.New("job has no generated password to fetch")
 )
 
 // Settings configure a Manager.
@@ -57,9 +61,13 @@ type Settings struct {
 	PollInterval  time.Duration // how often idle workers look for work; default 1s
 	MaxAssets     int
 	WebhookSecret []byte // HMAC-SHA256 key for webhook signatures; empty disables webhooks
-	Webhook       *safefetch.Client
-	Logger        *slog.Logger
-	Observer      Observer
+	// SecretKey (32 bytes) seals stored requests and generated passwords.
+	// Empty picks a random key for this process, which is fine for the
+	// memory store; a shared Postgres queue needs the same key everywhere.
+	SecretKey []byte
+	Webhook   *safefetch.Client
+	Logger    *slog.Logger
+	Observer  Observer
 }
 
 // Observer receives queue telemetry.
@@ -78,6 +86,7 @@ type Manager struct {
 	s     Settings
 	svc   *convert.Service
 	store Store
+	seal  *sealer
 
 	wake    chan struct{}
 	mu      sync.Mutex
@@ -116,7 +125,11 @@ func NewManager(svc *convert.Service, store Store, s Settings) *Manager {
 	if s.Observer == nil {
 		s.Observer = nopObserver{}
 	}
-	m := &Manager{s: s, svc: svc, store: store, wake: make(chan struct{}, s.Workers)}
+	seal, err := newSealer(s.SecretKey)
+	if err != nil {
+		panic("jobs: " + err.Error()) // the config validates the key before this point
+	}
+	m := &Manager{s: s, svc: svc, store: store, seal: seal, wake: make(chan struct{}, s.Workers)}
 	m.stopCtx, m.stop = context.WithCancel(context.Background())
 	m.killCtx, m.kill = context.WithCancel(context.Background())
 	for range s.Workers {
@@ -160,14 +173,19 @@ func (m *Manager) Submit(ctx context.Context, owner string, req *proteusv1.Submi
 	if n >= m.s.QueueSize {
 		return nil, ErrQueueFull
 	}
-	payload, err := proto.Marshal(req)
+	plain, err := proto.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	// The request may carry a password: it is sealed before it is stored.
+	payload, err := m.seal.seal(plain)
 	if err != nil {
 		return nil, err
 	}
 	r := &Record{
 		Owner: owner, InputFormat: string(parsed.Format), OutputFormat: string(parsed.Output),
 		FileName: convert.FileName(req.GetOptions().GetMetadata().GetTitle(), parsed.Output),
-		Payload:  payload, WebhookURL: req.GetWebhookUrl(),
+		Payload:  payload, WebhookURL: req.GetWebhookUrl(), PasswordProtected: parsed.Protected(),
 	}
 	if err := m.store.Create(ctx, r); err != nil {
 		return nil, err
@@ -196,6 +214,31 @@ func (m *Manager) Result(ctx context.Context, owner, id string) (*Record, []byte
 	}
 	out, err := m.store.Result(ctx, owner, id)
 	return r, out, err
+}
+
+// Password returns the password generated for owner's succeeded job and
+// makes the server forget it. ErrNotFinished while the job runs,
+// ErrNoPassword when there is none (left).
+func (m *Manager) Password(ctx context.Context, owner, id string) (string, error) {
+	r, err := m.store.Get(ctx, owner, id)
+	if err != nil {
+		return "", err
+	}
+	if r.Status == Queued || r.Status == Running {
+		return "", ErrNotFinished
+	}
+	enc, err := m.store.TakePassword(ctx, owner, id)
+	if errors.Is(err, ErrNotFound) {
+		return "", ErrNoPassword
+	}
+	if err != nil {
+		return "", err
+	}
+	pw, err := m.seal.open(enc)
+	if err != nil {
+		return "", err
+	}
+	return string(pw), nil
 }
 
 // Delete removes owner's finished job.
@@ -287,8 +330,13 @@ func (m *Manager) runOne() (bool, error) {
 		o.Status, o.Error = Failed, publicError(runErr)
 		m.s.Logger.Warn("job failed", "job_id", rec.ID, "error", runErr)
 	} else {
-		o.Status, o.Result, o.Warnings = Succeeded, res.Content, res.Warnings
-		m.s.Logger.Info("job succeeded", "job_id", rec.ID, "output", rec.OutputFormat, "bytes", len(res.Content))
+		o.Status, o.Result, o.Warnings, o.PasswordProtected = Succeeded, res.Content, res.Warnings, res.PasswordProtected
+		if res.Password != "" {
+			if o.PasswordEnc, err = m.seal.seal([]byte(res.Password)); err != nil {
+				return true, err
+			}
+		}
+		m.s.Logger.Info("job succeeded", "job_id", rec.ID, "output", rec.OutputFormat, "bytes", len(res.Content), "protected", res.PasswordProtected)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -298,14 +346,19 @@ func (m *Manager) runOne() (bool, error) {
 	if rec.WebhookURL != "" {
 		rec.Status, rec.Error, rec.Warnings = o.Status, o.Error, o.Warnings
 		rec.FinishedAt, rec.ExpiresAt, rec.ResultBytes = o.FinishedAt, o.ExpiresAt, int64(len(o.Result))
+		rec.PasswordProtected, rec.PasswordAvailable = o.PasswordProtected, len(o.PasswordEnc) > 0
 		m.deliver(rec.WebhookURL, rec)
 	}
 	return true, nil
 }
 
 func (m *Manager) convert(rec *Record) (*convert.Result, error) {
+	plain, err := m.seal.open(rec.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("stored job cannot be opened (is PROTEUS_SECRET_KEY the same on every instance?): %w", err)
+	}
 	var req proteusv1.SubmitJobRequest
-	if err := proto.Unmarshal(rec.Payload, &req); err != nil {
+	if err := proto.Unmarshal(plain, &req); err != nil {
 		return nil, &convert.BadRequestError{Msg: "stored job is unreadable"}
 	}
 	parsed, err := convert.FromProto(req.GetDocument(), req.GetOutputFormat(), req.GetOptions(), convert.Limits{MaxAssets: m.s.MaxAssets})
@@ -349,6 +402,7 @@ func ToProto(r *Record) *proteusv1.Job {
 		j.MimeType = t.MIMEType
 	}
 	j.FileName = r.FileName
+	j.PasswordProtected, j.PasswordAvailable = r.PasswordProtected, r.PasswordAvailable
 	return j
 }
 

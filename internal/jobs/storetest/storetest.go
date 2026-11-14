@@ -176,4 +176,48 @@ func Run(t *testing.T, s jobs.Store) {
 			t.Fatalf("Sweep = %d, %v (the released job expired)", n, err)
 		}
 	})
+
+	t.Run("TakePassword", func(t *testing.T) {
+		p := &jobs.Record{Owner: "alice", InputFormat: "html", OutputFormat: "pdf", FileName: "p.pdf", Payload: []byte("payload-p"), PasswordProtected: true}
+		if err := s.Create(ctx, p); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s.TakePassword(ctx, "alice", p.ID); !errors.Is(err, jobs.ErrNotFound) {
+			t.Fatalf("TakePassword before finish = %v", err)
+		}
+		// Earlier sub-tests may have left other queued jobs; claim until ours comes up.
+		var r *jobs.Record
+		for i := 0; i < 10 && (r == nil || r.ID != p.ID); i++ {
+			var err error
+			if r, err = s.Claim(ctx, now, time.Minute, 3); err != nil || r == nil {
+				t.Fatalf("Claim = %+v, %v", r, err)
+			}
+		}
+		if r.ID != p.ID {
+			t.Fatalf("claimed %s, want %s", r.ID, p.ID)
+		}
+		fin := now.Add(time.Second)
+		if err := s.Finish(ctx, p.ID, jobs.Outcome{Status: jobs.Succeeded, Result: []byte("%PDF"), FinishedAt: fin, ExpiresAt: fin.Add(time.Hour),
+			PasswordProtected: true, PasswordEnc: []byte("sealed-pw")}); err != nil {
+			t.Fatal(err)
+		}
+		got, err := s.Get(ctx, "alice", p.ID)
+		if err != nil || !got.PasswordProtected || !got.PasswordAvailable {
+			t.Fatalf("Get after finish = %+v, %v", got, err)
+		}
+		if _, err := s.TakePassword(ctx, "bob", p.ID); !errors.Is(err, jobs.ErrNotFound) {
+			t.Fatalf("bob TakePassword = %v", err)
+		}
+		enc, err := s.TakePassword(ctx, "alice", p.ID)
+		if err != nil || string(enc) != "sealed-pw" {
+			t.Fatalf("TakePassword = %q, %v", enc, err)
+		}
+		if _, err := s.TakePassword(ctx, "alice", p.ID); !errors.Is(err, jobs.ErrNotFound) {
+			t.Fatalf("second TakePassword = %v", err)
+		}
+		got, err = s.Get(ctx, "alice", p.ID)
+		if err != nil || !got.PasswordProtected || got.PasswordAvailable {
+			t.Fatalf("Get after take = %+v, %v", got, err)
+		}
+	})
 }

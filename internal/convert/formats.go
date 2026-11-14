@@ -22,7 +22,8 @@ const (
 	HTML     InputFormat = "html"
 	Markdown InputFormat = "markdown"
 
-	PDF OutputFormat = "pdf"
+	PDF  OutputFormat = "pdf"
+	XLSX OutputFormat = "xlsx"
 )
 
 // Target describes an output format: how it is served and how its bytes are
@@ -35,12 +36,23 @@ type Target struct {
 	Check     func([]byte) error
 }
 
+// cfbMagic is the signature of a Compound File Binary (OLE2) container.
+var cfbMagic = []byte{0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1}
+
 // targets lists every output format the API knows. Adding a format means
 // adding it here and in the proto, then registering a Converter for it.
 var targets = map[OutputFormat]Target{
 	PDF: {Format: PDF, MIMEType: "application/pdf", Extension: ".pdf", Paged: true, Check: func(b []byte) error {
 		if !bytes.HasPrefix(b, []byte("%PDF-")) {
 			return errors.New("engine returned invalid PDF output")
+		}
+		return nil
+	}},
+	XLSX: {Format: XLSX, MIMEType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Extension: ".xlsx", Check: func(b []byte) error {
+		// A password-protected workbook is an OLE2 (CFB) container around the
+		// encrypted package rather than a plain zip.
+		if !bytes.HasPrefix(b, []byte("PK\x03\x04")) && !bytes.HasPrefix(b, cfbMagic) {
+			return errors.New("engine returned invalid XLSX output")
 		}
 		return nil
 	}},
@@ -60,9 +72,10 @@ var (
 	outputFromProto = map[proteusv1.OutputFormat]OutputFormat{
 		proteusv1.OutputFormat_OUTPUT_FORMAT_UNSPECIFIED: PDF,
 		proteusv1.OutputFormat_OUTPUT_FORMAT_PDF:         PDF,
+		proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX:        XLSX,
 	}
 	inputToProto  = map[InputFormat]proteusv1.InputFormat{HTML: proteusv1.InputFormat_INPUT_FORMAT_HTML, Markdown: proteusv1.InputFormat_INPUT_FORMAT_MARKDOWN}
-	outputToProto = map[OutputFormat]proteusv1.OutputFormat{PDF: proteusv1.OutputFormat_OUTPUT_FORMAT_PDF}
+	outputToProto = map[OutputFormat]proteusv1.OutputFormat{PDF: proteusv1.OutputFormat_OUTPUT_FORMAT_PDF, XLSX: proteusv1.OutputFormat_OUTPUT_FORMAT_XLSX}
 )
 
 // InputToProto maps an input format to its API enum.
@@ -84,6 +97,7 @@ func OutputToProto(f OutputFormat) proteusv1.OutputFormat { return outputToProto
 // touch the local disk or network itself.
 type Input struct {
 	Format      InputFormat
+	Output      OutputFormat
 	Source      []byte
 	BaseURL     string // set when the document came from a URL
 	Loader      *loader.Loader

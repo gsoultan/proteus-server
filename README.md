@@ -1,15 +1,15 @@
 # proteus-server
 
 A gRPC server that converts documents between formats. Today it converts HTML
-and Markdown to PDF; the API and the server are built so that more output (and
-input) formats plug in without breaking clients. Conversions run on
+and Markdown to PDF and to Excel (XLSX); the API and the server are built so
+that more output (and input) formats plug in without breaking clients. Conversions run on
 [proteus-converter](https://github.com/gsoultan/proteus-converter), the pure-Go
 conversion engine: this repo holds transport, authentication, limits, jobs and
 metrics, and no conversion logic. There is no browser or LibreOffice at runtime.
 
 ```
 gpdf               PDF object model and writer
-proteus-converter  the engine: HTML / Markdown in, PDF out
+proteus-converter  the engine: HTML / Markdown in, PDF or XLSX out
 proteus-server     this repo: gRPC API, auth, limits, jobs, metrics
 ```
 
@@ -88,12 +88,39 @@ needs remote resources enabled). `assets` carries files the document references
 by relative path: an asset with path `img/logo.png` serves
 `<img src="img/logo.png">`.
 
-`output_format` picks the target and defaults to `OUTPUT_FORMAT_PDF`, the
-only one today. `Options` holds settings for every format (extra CSS, media
-type, metadata, `allow_remote`), `options.page` for paged formats (size,
-orientation, margins in millimetres) and `options.pdf` for PDF only
-(bookmarks, tagging); options that do not fit the output format are refused
-with `INVALID_ARGUMENT`. Every field is documented in the proto file.
+`output_format` picks the target and defaults to `OUTPUT_FORMAT_PDF`;
+`OUTPUT_FORMAT_XLSX` writes an Excel workbook in which every table of the
+document is a worksheet (styles, merged cells, typed numbers and dates,
+links and images; see the engine's README for the mapping). `Options` holds
+settings for every format (extra CSS, media type, metadata, `allow_remote`),
+`options.page` for paged formats (size, orientation, margins in
+millimetres), `options.pdf` for PDF only (bookmarks, tagging) and
+`options.spreadsheet` for XLSX only (`detect_numbers`, `images_in_cells`);
+options that do not fit the output format are refused with `INVALID_ARGUMENT`.
+Every field is documented in the proto file.
+
+### Password-protected results
+
+`options.protection` encrypts the result with AES-256 (PDF and XLSX alike).
+Give a `password`, or set `generate: true` and let the server make a strong
+random one; `owner_password` (PDF only) unlocks editing and printing
+restrictions and defaults to the open password. Responses and jobs report
+`password_protected`.
+
+A generated password is handled so that it never reaches anyone but the
+caller:
+
+- `Convert` returns it once in `password` on the response.
+- For a job, the webhook payload and `GetJob` say only `password_protected`
+  and `password_available`. The API key that submitted the job calls
+  `GetJobPassword` to receive the password **once**; the server then forgets
+  it, so a second call (or any other key) gets `NOT_FOUND`, and
+  `FAILED_PRECONDITION` while the job has not succeeded yet.
+- Passwords are never written to server logs or webhook history. While the
+  server holds a generated password it is encrypted with `PROTEUS_SECRET_KEY`
+  (AES-256-GCM), as is the queued document itself; without the key the server
+  uses a random per-process key, which is fine for the in-memory store but
+  required when several instances share Postgres.
 
 ### Adding a format
 
@@ -153,10 +180,10 @@ the document it was given even if the template changes later.
 | `INVALID_ARGUMENT` | Invalid input, a blocked resource, output over the size limit, or a template that does not parse or render with the data. |
 | `RESOURCE_EXHAUSTED` | Rate limit hit, every conversion slot busy, the job queue full, the key's template limit reached, or a message over the size limit. Retry with backoff. |
 | `DEADLINE_EXCEEDED` | Conversion exceeded `PROTEUS_TIMEOUT`. |
-| `NOT_FOUND` | Unknown, expired or someone else's job or template. |
+| `NOT_FOUND` | Unknown, expired or someone else's job or template; a job password already fetched or never generated. |
 | `ALREADY_EXISTS` | The key already has a template with that name. |
 | `ABORTED` | `UpdateTemplate` with a stale `revision`; reload and retry. |
-| `FAILED_PRECONDITION` | Result or delete asked for before the job finished, or the job failed. |
+| `FAILED_PRECONDITION` | Result, password or delete asked for before the job finished, or the job failed. |
 | `UNAVAILABLE` | The server is shutting down. |
 
 Error messages are written for callers; internal causes stay in the server log.
@@ -270,6 +297,7 @@ has no page-count or memory budget yet.
 | `PROTEUS_JOB_TTL` | `1h` | How long finished jobs and results are kept. |
 | `PROTEUS_MAX_JOBS` | `1000` | Jobs held by the memory store. |
 | `PROTEUS_WEBHOOK_SECRET` | | HMAC key (32+ characters); enables webhooks. |
+| `PROTEUS_SECRET_KEY` | | 64 hex characters (32 bytes); encrypts queued documents and generated passwords at rest. Required with `PROTEUS_DATABASE_URL`; make one with `openssl rand -hex 32`. |
 | `PROTEUS_MAX_TEMPLATES` | `500` | Templates per API key. |
 | `PROTEUS_MAX_TEMPLATE_BYTES` | `10MiB` | Content plus assets of one template. |
 | `PROTEUS_TEMPLATE_RENDER_TIMEOUT` | `5s` | Filling one template with data. |

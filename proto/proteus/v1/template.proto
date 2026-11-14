@@ -175,6 +175,11 @@ message ConvertTemplateResponse {
   string file_name = 4;
   repeated string warnings = 5;
   int64 duration_ms = 6;
+  // The result opens only with a password (options.protection was set).
+  bool password_protected = 7;
+  // The password the server generated when options.protection.generate was
+  // set; empty otherwise. Keep it out of logs.
+  string password = 8;
 }
 
 message SubmitTemplateJobRequest {
