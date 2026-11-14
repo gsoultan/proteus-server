@@ -257,3 +257,12 @@ func dedupe(in []string) []string {
 
 // Timeout returns the per-conversion time limit.
 func (s *Service) Timeout() time.Duration { return s.s.Timeout }
+
+// RemoteClient returns the client for fetching public URLs, or nil when the
+// server does not allow remote access.
+func (s *Service) RemoteClient() *safefetch.Client {
+	if !s.s.AllowRemote {
+		return nil
+	}
+	return s.s.Remote
+}

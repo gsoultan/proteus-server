@@ -42,7 +42,9 @@ Known gaps / next steps:
 - Results in bytea; plan object storage with presigned URLs.
 - Engine checks ctx only between stages; no page-count or memory budget.
 - Engine rescans Config.FontDirs on every conversion (prefer system font dirs).
-- Not yet: header/footer, PDF/A, batch merge, DOCX, tracing.
+- Not yet: header/footer, PDF/A, DOCX, tracing. PDF merge/split is sync only (no jobs, no
+  webhooks); outputs drop AcroForm, outlines, structure tree (gpdf MergeTo limits).
+- Passwords (pdf inputs, Protection) must never reach logs, errors, storage or webhooks.
 - Templates: no versions history (only a revision counter), no sharing between keys, no
   per-template JSON schema for data; Markdown values inside code blocks show HTML entities.
 - Docker image build is verified in CI only (no Docker daemon in the dev container).

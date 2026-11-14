@@ -1,5 +1,5 @@
-// Package rpc is the transport: the ConnectRPC ConversionService and
-// TemplateService plus gRPC health and reflection, behind interceptors for
+// Package rpc is the transport: the ConnectRPC ConversionService,
+// TemplateService and PdfService plus gRPC health and reflection, behind interceptors for
 // request ids, logging, metrics, panic recovery and API keys. The same handlers answer gRPC,
 // gRPC-Web and the Connect protocol; there is no REST API.
 package rpc
@@ -26,6 +26,7 @@ import (
 	"github.com/gsoultan/proteus-server/internal/convert"
 	"github.com/gsoultan/proteus-server/internal/jobs"
 	"github.com/gsoultan/proteus-server/internal/metrics"
+	"github.com/gsoultan/proteus-server/internal/pdfops"
 	"github.com/gsoultan/proteus-server/internal/templates"
 )
 
@@ -45,6 +46,7 @@ type API struct {
 	svc       *convert.Service
 	jobs      *jobs.Manager
 	templates *templates.Service
+	pdf       *pdfops.Service
 	auth      *auth.Authenticator
 	metrics   *metrics.Metrics
 	log       *slog.Logger
@@ -64,7 +66,8 @@ func New(cfg Config, svc *convert.Service, jm *jobs.Manager, ts *templates.Servi
 	if cfg.MaxOutputBytes <= 0 {
 		cfg.MaxOutputBytes = 100 << 20
 	}
-	return &API{cfg: cfg, svc: svc, jobs: jm, templates: ts, auth: a, metrics: m, log: log, pingDB: pingDB}
+	pdf := pdfops.New(pdfops.Settings{Remote: svc.RemoteClient(), MaxOutputBytes: cfg.MaxOutputBytes, Logger: log})
+	return &API{cfg: cfg, svc: svc, jobs: jm, templates: ts, pdf: pdf, auth: a, metrics: m, log: log, pingDB: pingDB}
 }
 
 // SetReady flips the health status; set false at the start of shutdown so
@@ -78,6 +81,7 @@ func (a *API) Handler() http.Handler {
 	conv := &conversionService{api: a}
 	proteusv1connect.RegisterConversionServiceHandler(server, conv)
 	proteusv1connect.RegisterTemplateServiceHandler(server, &templateService{conv: conv})
+	proteusv1connect.RegisterPdfServiceHandler(server, &pdfService{conv: conv, ops: a.pdf})
 	grpchealth.Register(server, healthChecker{a})
 	grpcreflect.Register(server)
 	mux := http.NewServeMux()
@@ -95,7 +99,7 @@ type healthChecker struct{ a *API }
 
 func (h healthChecker) Check(ctx context.Context, req *grpchealth.CheckRequest) (*grpchealth.CheckResponse, error) {
 	switch req.Service {
-	case "", proteusv1connect.ConversionServiceName, proteusv1connect.TemplateServiceName:
+	case "", proteusv1connect.ConversionServiceName, proteusv1connect.TemplateServiceName, proteusv1connect.PdfServiceName:
 	default:
 		return nil, connect.NewError(connect.CodeNotFound, "unknown service")
 	}

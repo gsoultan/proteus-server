@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package proteus.v1;
+
+import "proteus/v1/protection.proto";
+
+option go_package = "github.com/gsoultan/proteus-server/gen/proteus/v1;proteusv1";
+
+// PdfService edits existing PDF files: it merges several into one and splits
+// one into parts. Pages are copied as they are stored (no re-rendering or
+// recompression), streams shared between inputs are written once, and output
+// is written as it is produced, so large files stay fast and small.
+//
+// Merged and split files keep each page's content, resources, annotations and
+// links between copied pages. Forms (AcroForm), bookmarks and the structure
+// tree are not carried over, and the document information (title, author)
+// comes from the first input.
+//
+// Every RPC needs an API key in the "authorization: Bearer <key>" or
+// "x-api-key" request header, and takes a conversion slot: a server with
+// every slot busy answers RESOURCE_EXHAUSTED.
+service PdfService {
+  // MergePdfs joins the selected pages of every input, in order, into one PDF.
+  rpc MergePdfs(MergePdfsRequest) returns (MergePdfsResponse) {}
+
+  // SplitPdf splits one PDF into parts, by page ranges or every n pages.
+  rpc SplitPdf(SplitPdfRequest) returns (SplitPdfResponse) {}
+}
+
+// PdfInput is one PDF file to read.
+message PdfInput {
+  oneof source {
+    // The PDF file itself.
+    bytes content = 1;
+    // Fetch the PDF from this public http(s) URL. Needs remote resources
+    // enabled on the server.
+    string url = 2;
+  }
+  // Pages to take, numbered from 1, in the order written: "1-3,5,8-",
+  // "3-1" (reversed), "-2" (first two), "last". Pages may repeat. Empty
+  // takes every page. Ignored by SplitPdf, which selects pages per part.
+  string pages = 3;
+  // Opens an encrypted input. Never logged, stored or returned.
+  string password = 4;
+}
+
+// PdfFile is one output file.
+message PdfFile {
+  bytes content = 1;
+  // "application/pdf".
+  string mime_type = 2;
+  string file_name = 3;
+  int32 page_count = 4;
+  // Whether the file is encrypted with a password (AES-256).
+  bool password_protected = 5;
+}
+
+message MergePdfsRequest {
+  // Files to merge, in order; at least one. The same file may be listed more
+  // than once with different pages.
+  repeated PdfInput inputs = 1;
+  // Name of the output file; ".pdf" is added when missing. Defaults to
+  // "merged.pdf".
+  string file_name = 2;
+  // Password-protects the output with AES-256 when set.
+  Protection protection = 3;
+}
+
+message MergePdfsResponse {
+  PdfFile file = 1;
+  // The password the server generated (protection.generate); empty
+  // otherwise. Shown only in this response: it is never stored or logged.
+  string password = 2;
+}
+
+// PageRanges lists the parts of a split, one page selection per part, in the
+// PdfInput.pages syntax: ["1-3", "4-", "2,5"].
+message PageRanges {
+  repeated string ranges = 1;
+}
+
+message SplitPdfRequest {
+  PdfInput input = 1;
+  oneof mode {
+    // One part per selection.
+    PageRanges ranges = 2;
+    // Parts of at most this many pages each; 1 makes one file per page.
+    int32 every = 3;
+  }
+  // Base name of the parts: "report" gives "report-1.pdf", "report-2.pdf"...
+  // Defaults to "part".
+  string file_name = 4;
+  // Password-protects every part with AES-256 when set; all parts share
+  // one password.
+  Protection protection = 5;
+}
+
+message SplitPdfResponse {
+  // The parts, in order.
+  repeated PdfFile parts = 1;
+  // The password the server generated (protection.generate); empty
+  // otherwise. Shown only in this response: it is never stored or logged.
+  string password = 2;
+}
