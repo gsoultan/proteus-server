@@ -34,6 +34,7 @@ import (
 	"github.com/gsoultan/proteus-server/internal/rpc"
 	"github.com/gsoultan/proteus-server/internal/safefetch"
 	"github.com/gsoultan/proteus-server/internal/storage/pgstore"
+	"github.com/gsoultan/proteus-server/internal/templates"
 )
 
 func main() {
@@ -134,8 +135,9 @@ func run() error {
 	defer stop()
 
 	var (
-		store  jobs.Store
-		pingDB func(context.Context) error
+		store    jobs.Store
+		tplStore templates.Store
+		pingDB   func(context.Context) error
 	)
 	if cfg.DatabaseURL != "" {
 		octx, cancel := context.WithTimeout(ctx, 60*time.Second)
@@ -147,11 +149,12 @@ func run() error {
 			return err
 		}
 		defer pg.Close()
-		store, pingDB = pg, pg.Ping
-		log.Info("job store: postgres", "auto_migrate", cfg.AutoMigrate)
+		store, tplStore, pingDB = pg, pg.Templates(), pg.Ping
+		log.Info("job and template store: postgres", "auto_migrate", cfg.AutoMigrate)
 	} else {
-		store = jobs.NewMemoryStore(cfg.MaxJobs)
-		log.Info("job store: memory (set PROTEUS_DATABASE_URL to share jobs across instances)")
+		store, tplStore = jobs.NewMemoryStore(cfg.MaxJobs), templates.NewMemoryStore()
+		log.Warn("job and template store: memory; templates are lost on restart " +
+			"(set PROTEUS_DATABASE_URL to keep them and share jobs across instances)")
 	}
 
 	m := metrics.New(workers)
@@ -181,8 +184,12 @@ func run() error {
 		Webhook:       safefetch.New(safefetch.Options{Timeout: 10 * time.Second, MaxBytes: 1 << 20, UserAgent: "proteus-server/" + rpc.Version}),
 		Logger:        log, Observer: m,
 	})
+	ts := templates.NewService(tplStore, templates.Settings{
+		MaxPerOwner: cfg.MaxTemplates, MaxAssets: cfg.MaxAssets, MaxBytes: cfg.MaxTemplateBytes,
+		MaxOutput: cfg.MaxRequestBytes, RenderTimeout: cfg.TemplateRenderTimeout,
+	})
 	api := rpc.New(rpc.Config{MaxRequestBytes: cfg.MaxRequestBytes, MaxAssets: cfg.MaxAssets, MaxOutputBytes: cfg.MaxOutput},
-		svc, jm, auth.New(keys, cfg.RateLimit, cfg.RateBurst), m, log, pingDB)
+		svc, jm, ts, auth.New(keys, cfg.RateLimit, cfg.RateBurst), m, log, pingDB)
 
 	protocols := new(http.Protocols)
 	protocols.SetHTTP1(true)            // Connect and gRPC-Web from browsers

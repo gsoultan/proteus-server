@@ -32,3 +32,19 @@ func _assertJobShape(m m0.Job) {
 		m.Result,
 	}
 }
+
+// _assertTemplateShape fails to compile if m0.Template gains, loses, renames or
+// reorders a field. Regenerate: `storm generate`.
+func _assertTemplateShape(m m0.Template) {
+	type shape m0.Template
+	_ = shape{
+		m.Model,
+		m.Owner,
+		m.Name,
+		m.Description,
+		m.Format,
+		m.Revision,
+		m.SizeBytes,
+		m.Body,
+	}
+}

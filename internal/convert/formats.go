@@ -68,6 +68,13 @@ var (
 // InputToProto maps an input format to its API enum.
 func InputToProto(f InputFormat) proteusv1.InputFormat { return inputToProto[f] }
 
+// OutputFromProto maps an API output format (UNSPECIFIED is PDF) to the
+// server's; false for values the server does not know.
+func OutputFromProto(f proteusv1.OutputFormat) (OutputFormat, bool) {
+	o, ok := outputFromProto[f]
+	return o, ok
+}
+
 // OutputToProto maps an output format to its API enum.
 func OutputToProto(f OutputFormat) proteusv1.OutputFormat { return outputToProto[f] }
 
