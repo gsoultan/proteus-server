@@ -14,6 +14,17 @@
   Unavailable, ErrNotFound -> NotFound, ErrNotFinished or failed job -> FailedPrecondition, else
   Internal with the cause kept server-side only.
 - Jobs are scoped to the API key id that created them; others get NotFound (no IDOR).
+- Passwords (user rule): never in webhook payloads, server logs, webhook history or stored in plain
+  text. Job records only carry password_protected / password_available; the generated password is
+  sealed (AES-GCM) in jobs.password_enc, handed out once by GetJobPassword to the submitting key,
+  then deleted (ErrNoPassword -> NotFound). Convert returns it in the response once. Logs record
+  only the bool "protected". validateOptions: password xor generate, <= 127 chars, owner_password
+  PDF only.
+- PROTEUS_SECRET_KEY (64 hex) is mandatory with PROTEUS_DATABASE_URL so every instance can open
+  sealed payloads/passwords; config.hexKey parses it.
+- Storage: the payload is dropped at finish in both stores; results live until PROTEUS_JOB_TTL or
+  DeleteJob (callers should delete after download). Encrypted XLSX output is a CFB container, so the
+  XLSX output check accepts the CFB magic too.
 - Metric labels: procedure, protocol, code; conversions by input, output, outcome (never raw ids).
 - Sync and async share the slot pool; job workers default to half the slots. A worker takes a
   slot before claiming so it never holds a lease while waiting.

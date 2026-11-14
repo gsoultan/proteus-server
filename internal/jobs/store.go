@@ -23,6 +23,10 @@ type Record struct {
 	Error        string
 	Warnings     []string
 	ResultBytes  int64
+	// PasswordProtected: the result opens only with a password.
+	PasswordProtected bool
+	// PasswordAvailable: the server still holds the generated password.
+	PasswordAvailable bool
 }
 
 // Outcome is how a job ended.
@@ -33,6 +37,11 @@ type Outcome struct {
 	Result     []byte
 	FinishedAt time.Time
 	ExpiresAt  time.Time
+	// PasswordProtected marks a result that opens only with a password;
+	// PasswordEnc is the sealed generated password, nil when the caller
+	// supplied the password.
+	PasswordProtected bool
+	PasswordEnc       []byte
 }
 
 // Store persists jobs. The memory store serves one instance; the Postgres
@@ -60,4 +69,8 @@ type Store interface {
 	Delete(ctx context.Context, owner, id string) error
 	// Sweep deletes jobs whose ExpiresAt is before now.
 	Sweep(ctx context.Context, now time.Time) (int64, error)
+	// TakePassword returns the sealed generated password of owner's job and
+	// forgets it, so that a second call (from anyone) finds nothing:
+	// ErrNotFound when the job is not the owner's or holds no password.
+	TakePassword(ctx context.Context, owner, id string) ([]byte, error)
 }

@@ -3,6 +3,7 @@ syntax = "proto3";
 package proteus.v1;
 
 import "google/protobuf/timestamp.proto";
+import "proteus/v1/protection.proto";
 
 option go_package = "github.com/gsoultan/proteus-server/gen/proteus/v1;proteusv1";
 
@@ -42,6 +43,12 @@ service ConversionService {
   rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+  // GetJobPassword returns the password the server generated for a job
+  // submitted with protection.generate, once: the server forgets it after
+  // this call. Only the API key that submitted the job may ask. NOT_FOUND
+  // after the password was fetched, FAILED_PRECONDITION while the job has
+  // not succeeded yet.
+  rpc GetJobPassword(GetJobPasswordRequest) returns (GetJobPasswordResponse) {}
 }
 
 // InputFormat is the format of the document to convert.
@@ -151,6 +158,8 @@ message Options {
   PageOptions page = 5;
   PdfOptions pdf = 6;
   SpreadsheetOptions spreadsheet = 7;
+  // Password protect the result file.
+  Protection protection = 8;
 }
 
 // PageOptions set the page box of paged output formats.
@@ -176,6 +185,12 @@ message SpreadsheetOptions {
   // ISO dates) as typed cells with a matching number format; on by default.
   // Off, every cell is text unless a data-type attribute says otherwise.
   optional bool detect_numbers = 1;
+  // Store the picture of a table cell that holds one image and no text as
+  // the value of that cell (Excel 365 "Place in Cell"), so that it sorts and
+  // filters with its row. Excel 2019 and earlier and LibreOffice show
+  // #VALUE! in such cells; off by default, pictures then float over their
+  // cell.
+  bool images_in_cells = 2;
 }
 
 message ConvertRequest {
@@ -197,6 +212,11 @@ message ConvertResponse {
   // Non-fatal problems, such as an image that could not be loaded.
   repeated string warnings = 5;
   int64 duration_ms = 6;
+  // The result opens only with a password (options.protection was set).
+  bool password_protected = 7;
+  // The password the server generated when options.protection.generate was
+  // set; empty otherwise. Keep it out of logs.
+  string password = 8;
 }
 
 message SubmitJobRequest {
@@ -242,6 +262,11 @@ message Job {
   string mime_type = 12;
   // A suggested download name for the result.
   string file_name = 13;
+  // The result opens only with a password (options.protection was set).
+  bool password_protected = 14;
+  // The server generated the password and still holds it; fetch it with
+  // GetJobPassword. False once fetched, or when the caller gave the password.
+  bool password_available = 15;
 }
 
 message GetJobRequest {
@@ -266,3 +291,12 @@ message DeleteJobRequest {
 }
 
 message DeleteJobResponse {}
+
+message GetJobPasswordRequest {
+  string id = 1;
+}
+
+message GetJobPasswordResponse {
+  // The generated password. The server deletes it after this response.
+  string password = 1;
+}

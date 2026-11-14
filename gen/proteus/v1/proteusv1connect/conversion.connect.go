@@ -40,6 +40,9 @@ const (
 	// ConversionServiceDeleteJobProcedure is the procedure name of the ConversionService's DeleteJob
 	// RPC.
 	ConversionServiceDeleteJobProcedure = "/proteus.v1.ConversionService/DeleteJob"
+	// ConversionServiceGetJobPasswordProcedure is the procedure name of the ConversionService's
+	// GetJobPassword RPC.
+	ConversionServiceGetJobPasswordProcedure = "/proteus.v1.ConversionService/GetJobPassword"
 )
 
 var (
@@ -89,6 +92,13 @@ var (
 			IdempotencyLevel: connect.IdempotencyIdempotent,
 		}
 	})
+	conversionServiceGetJobPasswordSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_proteus_v1_conversion_proto.Services().ByName("ConversionService").Methods().ByName("GetJobPassword"),
+			Procedure:  ConversionServiceGetJobPasswordProcedure,
+		}
+	})
 )
 
 // ConversionServiceClient is a client for the proteus.v1.ConversionService service.
@@ -107,6 +117,12 @@ type ConversionServiceClient interface {
 	DownloadJobResult(context.Context, *v1.DownloadJobResultRequest) (ConversionServiceDownloadJobResultClientStream, error)
 	// DeleteJob removes a finished job and its result.
 	DeleteJob(context.Context, *v1.DeleteJobRequest) (*v1.DeleteJobResponse, error)
+	// GetJobPassword returns the password the server generated for a job
+	// submitted with protection.generate, once: the server forgets it after
+	// this call. Only the API key that submitted the job may ask. NOT_FOUND
+	// after the password was fetched, FAILED_PRECONDITION while the job has
+	// not succeeded yet.
+	GetJobPassword(context.Context, *v1.GetJobPasswordRequest) (*v1.GetJobPasswordResponse, error)
 }
 
 // NewConversionServiceClient constructs a client for the proteus.v1.ConversionService service.
@@ -152,6 +168,12 @@ type ConversionServiceHandler interface {
 	DownloadJobResult(context.Context, *v1.DownloadJobResultRequest, ConversionServiceDownloadJobResultServerStream) error
 	// DeleteJob removes a finished job and its result.
 	DeleteJob(context.Context, *v1.DeleteJobRequest) (*v1.DeleteJobResponse, error)
+	// GetJobPassword returns the password the server generated for a job
+	// submitted with protection.generate, once: the server forgets it after
+	// this call. Only the API key that submitted the job may ask. NOT_FOUND
+	// after the password was fetched, FAILED_PRECONDITION while the job has
+	// not succeeded yet.
+	GetJobPassword(context.Context, *v1.GetJobPasswordRequest) (*v1.GetJobPasswordResponse, error)
 }
 
 // RegisterConversionServiceHandler registers svc as the proteus.v1.ConversionService implementation
@@ -165,6 +187,7 @@ func RegisterConversionServiceHandler(server *connect.Server, svc ConversionServ
 		connect.Method{Spec: conversionServiceGetJobSpec(), Handler: adapter.getJob},
 		connect.Method{Spec: conversionServiceDownloadJobResultSpec(), Handler: adapter.downloadJobResult},
 		connect.Method{Spec: conversionServiceDeleteJobSpec(), Handler: adapter.deleteJob},
+		connect.Method{Spec: conversionServiceGetJobPasswordSpec(), Handler: adapter.getJobPassword},
 	)
 }
 
@@ -209,6 +232,10 @@ func (UnimplementedConversionServiceHandler) DownloadJobResult(context.Context, 
 
 func (UnimplementedConversionServiceHandler) DeleteJob(context.Context, *v1.DeleteJobRequest) (*v1.DeleteJobResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "proteus.v1.ConversionService.DeleteJob is not implemented")
+}
+
+func (UnimplementedConversionServiceHandler) GetJobPassword(context.Context, *v1.GetJobPasswordRequest) (*v1.GetJobPasswordResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "proteus.v1.ConversionService.GetJobPassword is not implemented")
 }
 
 type conversionServiceClient struct {
@@ -258,6 +285,14 @@ func (c *conversionServiceClient) DownloadJobResult(ctx context.Context, req *v1
 func (c *conversionServiceClient) DeleteJob(ctx context.Context, req *v1.DeleteJobRequest) (*v1.DeleteJobResponse, error) {
 	var res v1.DeleteJobResponse
 	if err := c.client.CallUnary(ctx, conversionServiceDeleteJobSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *conversionServiceClient) GetJobPassword(ctx context.Context, req *v1.GetJobPasswordRequest) (*v1.GetJobPasswordResponse, error) {
+	var res v1.GetJobPasswordResponse
+	if err := c.client.CallUnary(ctx, conversionServiceGetJobPasswordSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -327,6 +362,18 @@ func (h conversionServiceHandler) deleteJob(ctx context.Context, _ connect.Spec,
 		return err
 	}
 	res, err := h.svc.DeleteJob(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h conversionServiceHandler) getJobPassword(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetJobPasswordRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetJobPassword(ctx, &req)
 	if err != nil {
 		return err
 	}

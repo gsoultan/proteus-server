@@ -112,8 +112,16 @@ func engineOptions(o *proteusv1.Options) []proteus.Option {
 			opts = append(opts, proteus.WithTagged(true))
 		}
 	}
-	if sp := o.GetSpreadsheet(); sp != nil && sp.DetectNumbers != nil {
-		opts = append(opts, proteus.WithNumberDetection(sp.GetDetectNumbers()))
+	if sp := o.GetSpreadsheet(); sp != nil {
+		if sp.DetectNumbers != nil {
+			opts = append(opts, proteus.WithNumberDetection(sp.GetDetectNumbers()))
+		}
+		if sp.GetImagesInCells() {
+			opts = append(opts, proteus.WithImagesInCells(true))
+		}
+	}
+	if pr := o.GetProtection(); pr != nil && pr.GetPassword() != "" {
+		opts = append(opts, proteus.WithPassword(pr.GetPassword(), pr.GetOwnerPassword()))
 	}
 	if m := o.GetMetadata(); m != nil {
 		opts = append(opts, proteus.WithMetadata(proteus.Metadata{

@@ -36,6 +36,9 @@ type Target struct {
 	Check     func([]byte) error
 }
 
+// cfbMagic is the signature of a Compound File Binary (OLE2) container.
+var cfbMagic = []byte{0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1}
+
 // targets lists every output format the API knows. Adding a format means
 // adding it here and in the proto, then registering a Converter for it.
 var targets = map[OutputFormat]Target{
@@ -46,7 +49,9 @@ var targets = map[OutputFormat]Target{
 		return nil
 	}},
 	XLSX: {Format: XLSX, MIMEType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Extension: ".xlsx", Check: func(b []byte) error {
-		if !bytes.HasPrefix(b, []byte("PK\x03\x04")) {
+		// A password-protected workbook is an OLE2 (CFB) container around the
+		// encrypted package rather than a plain zip.
+		if !bytes.HasPrefix(b, []byte("PK\x03\x04")) && !bytes.HasPrefix(b, cfbMagic) {
 			return errors.New("engine returned invalid XLSX output")
 		}
 		return nil

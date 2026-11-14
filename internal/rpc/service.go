@@ -37,7 +37,7 @@ func (s *conversionService) toConnect(ctx context.Context, err error) error {
 		return connect.NewError(connect.CodeDeadlineExceeded, err.Error())
 	case errors.Is(err, jobs.ErrClosed):
 		return connect.NewError(connect.CodeUnavailable, err.Error())
-	case errors.Is(err, jobs.ErrNotFound):
+	case errors.Is(err, jobs.ErrNotFound), errors.Is(err, jobs.ErrNoPassword):
 		return connect.NewError(connect.CodeNotFound, err.Error())
 	case errors.Is(err, jobs.ErrNotFinished):
 		return connect.NewError(connect.CodeFailedPrecondition, err.Error())
@@ -76,6 +76,9 @@ func (s *conversionService) Convert(ctx context.Context, req *proteusv1.ConvertR
 		FileName:     convert.FileName(req.GetOptions().GetMetadata().GetTitle(), res.Target.Format),
 		Warnings:     res.Warnings,
 		DurationMs:   res.Duration.Milliseconds(),
+		// A generated password goes only to the caller, in this response.
+		PasswordProtected: res.PasswordProtected,
+		Password:          res.Password,
 	}, nil
 }
 
@@ -128,6 +131,15 @@ func (s *conversionService) DownloadJobResult(ctx context.Context, req *proteusv
 		out = out[n:]
 	}
 	return nil
+}
+
+// GetJobPassword hands out a generated password once.
+func (s *conversionService) GetJobPassword(ctx context.Context, req *proteusv1.GetJobPasswordRequest) (*proteusv1.GetJobPasswordResponse, error) {
+	pw, err := s.api.jobs.Password(ctx, auth.Caller(ctx), req.GetId())
+	if err != nil {
+		return nil, s.toConnect(ctx, err)
+	}
+	return &proteusv1.GetJobPasswordResponse{Password: pw}, nil
 }
 
 // DeleteJob removes a finished job.

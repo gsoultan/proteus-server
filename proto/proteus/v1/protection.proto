@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package proteus.v1;
+
+option go_package = "github.com/gsoultan/proteus-server/gen/proteus/v1;proteusv1";
+
+// Protection asks for the result file to be password protected (AES-256 for
+// both PDF and XLSX). Passwords are never logged, never stored in plain text
+// and never sent in webhook payloads.
+message Protection {
+  // Password the recipient types to open the file. Leave empty and set
+  // generate to let the server make one.
+  string password = 1;
+  // The server generates a random password. A synchronous Convert returns it
+  // in the response; for a job it is fetched once with GetJobPassword by the
+  // API key that submitted the job, after which the server forgets it.
+  bool generate = 2;
+  // PDF only: owner password that unlocks editing and printing restrictions;
+  // defaults to the open password.
+  string owner_password = 3;
+}

@@ -30,5 +30,7 @@ func _assertJobShape(m m0.Job) {
 		m.Warnings,
 		m.ResultBytes,
 		m.Result,
+		m.PasswordProtected,
+		m.PasswordEnc,
 	}
 }

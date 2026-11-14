@@ -21,25 +21,27 @@ var (
 // Row is what a full read returns: the model struct with relations
 // replaced by their scalar foreign keys and *T rewritten to Null[T].
 type Row struct {
-	ID           [16]byte
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	Owner        string
-	Status       string
-	InputFormat  string
-	OutputFormat string
-	FileName     string
-	Payload      []byte
-	WebhookURL   runtime.Null[string]
-	Attempts     int32
-	LeaseExpires runtime.Null[time.Time]
-	StartedAt    runtime.Null[time.Time]
-	FinishedAt   runtime.Null[time.Time]
-	ExpiresAt    runtime.Null[time.Time]
-	Error        runtime.Null[string]
-	Warnings     []string
-	ResultBytes  int64
-	Result       []byte
+	ID                [16]byte
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	Owner             string
+	Status            string
+	InputFormat       string
+	OutputFormat      string
+	FileName          string
+	Payload           []byte
+	WebhookURL        runtime.Null[string]
+	Attempts          int32
+	LeaseExpires      runtime.Null[time.Time]
+	StartedAt         runtime.Null[time.Time]
+	FinishedAt        runtime.Null[time.Time]
+	ExpiresAt         runtime.Null[time.Time]
+	Error             runtime.Null[string]
+	Warnings          []string
+	ResultBytes       int64
+	Result            []byte
+	PasswordProtected bool
+	PasswordEnc       []byte
 }
 
 // Operator ids. Argument-taking operators are numbered first, so the
@@ -84,7 +86,7 @@ const (
 	opNotExists runtime.Op = 33
 )
 
-const nCols = 19
+const nCols = 21
 
 // Query is a value type: composing one allocates nothing. Predicates
 // are a postfix token stream, so disjunction and negation are
@@ -94,12 +96,13 @@ type Query struct {
 	nt   uint8
 	top  uint8 // top-level conjuncts, ANDed at compile time
 
-	strs                 [6]string
-	nums                 [6]int64
-	raws                 [4][16]byte
-	tims                 [4]time.Time
-	byts                 [2][]byte
-	ns, nn, nr, ntm, nby uint8
+	strs                      [6]string
+	nums                      [6]int64
+	raws                      [4][16]byte
+	tims                      [4]time.Time
+	bools                     [4]bool
+	byts                      [2][]byte
+	ns, nn, nr, ntm, nbo, nby uint8
 
 	anyRaw                 [3][][16]byte
 	anyStr                 [3][]string
@@ -308,6 +311,20 @@ func (q *Query) cursor(col uint32, r Row) {
 		}
 		q.byts[q.nby] = r.Result
 		q.nby++
+	case 19:
+		if int(q.nbo) >= len(q.bools) {
+			q.over = true
+			return
+		}
+		q.bools[q.nbo] = r.PasswordProtected
+		q.nbo++
+	case 20:
+		if int(q.nby) >= len(q.byts) {
+			q.over = true
+			return
+		}
+		q.byts[q.nby] = r.PasswordEnc
+		q.nby++
 	}
 }
 
@@ -453,6 +470,7 @@ type Pred struct {
 	str    string
 	raw    [16]byte
 	tim    time.Time
+	bol    bool
 	byt    []byte
 	anyRaw [][16]byte
 	anyStr []string
@@ -460,28 +478,38 @@ type Pred struct {
 	anyI64 []int64
 }
 
+// b2i lets a bool ride in the numeric slot of a Pred.
+func b2i(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
+}
+
 // Typed column handles. The type of the handle is what makes
 // Age.Like(...) fail to compile.
 var (
-	ID           = UUIDCol{0}
-	CreatedAt    = TimeCol{1}
-	UpdatedAt    = TimeCol{2}
-	Owner        = TextCol{3}
-	Status       = TextCol{4}
-	InputFormat  = TextCol{5}
-	OutputFormat = TextCol{6}
-	FileName     = TextCol{7}
-	Payload      = NullBytesCol{8}
-	WebhookURL   = NullTextCol{9}
-	Attempts     = Int32Col{10}
-	LeaseExpires = NullTimeCol{11}
-	StartedAt    = NullTimeCol{12}
-	FinishedAt   = NullTimeCol{13}
-	ExpiresAt    = NullTimeCol{14}
-	Error        = NullTextCol{15}
-	Warnings     = NullTextArrayCol{16}
-	ResultBytes  = Int64Col{17}
-	Result       = NullBytesCol{18}
+	ID                = UUIDCol{0}
+	CreatedAt         = TimeCol{1}
+	UpdatedAt         = TimeCol{2}
+	Owner             = TextCol{3}
+	Status            = TextCol{4}
+	InputFormat       = TextCol{5}
+	OutputFormat      = TextCol{6}
+	FileName          = TextCol{7}
+	Payload           = NullBytesCol{8}
+	WebhookURL        = NullTextCol{9}
+	Attempts          = Int32Col{10}
+	LeaseExpires      = NullTimeCol{11}
+	StartedAt         = NullTimeCol{12}
+	FinishedAt        = NullTimeCol{13}
+	ExpiresAt         = NullTimeCol{14}
+	Error             = NullTextCol{15}
+	Warnings          = NullTextArrayCol{16}
+	ResultBytes       = Int64Col{17}
+	Result            = NullBytesCol{18}
+	PasswordProtected = BoolCol{19}
+	PasswordEnc       = NullBytesCol{20}
 )
 
 // UUIDCol addresses a uuid column.
@@ -720,6 +748,21 @@ func (h Int64Col) In(v ...int64) Pred { return Pred{col: h.c, op: opIn, anyI64: 
 // NotIn is `<> ALL($1)`: a NULL in v matches no row, as NOT IN does.
 func (h Int64Col) NotIn(v ...int64) Pred { return Pred{col: h.c, op: opNotIn, anyI64: runtime.List(v)} }
 
+// BoolCol addresses a bool column.
+type BoolCol struct{ c uint8 }
+
+func (h BoolCol) Asc() Sort  { return Sort(runtime.MakeOrder(runtime.Asc, uint32(h.c))) }
+func (h BoolCol) Desc() Sort { return Sort(runtime.MakeOrder(runtime.Desc, uint32(h.c))) }
+func (h BoolCol) AscNullsFirst() Sort {
+	return Sort(runtime.MakeOrder(runtime.AscNullsFirst, uint32(h.c)))
+}
+func (h BoolCol) DescNullsLast() Sort {
+	return Sort(runtime.MakeOrder(runtime.DescNullsLast, uint32(h.c)))
+}
+
+func (h BoolCol) Eq(v bool) Pred    { return Pred{col: h.c, op: opEq, bol: v} }
+func (h BoolCol) NotEq(v bool) Pred { return Pred{col: h.c, op: opNotEq, bol: v} }
+
 // Where applies predicates, ANDed together.
 func (q Query) Where(ps ...Pred) Query {
 	for i := range ps {
@@ -894,7 +937,7 @@ func (q *Query) leaf(p Pred) {
 		}
 		q.strs[q.ns] = p.str
 		q.ns++
-	case 8, 18:
+	case 8, 18, 20:
 		if int(q.nby) >= 2 {
 			q.over = true
 			return
@@ -908,6 +951,13 @@ func (q *Query) leaf(p Pred) {
 		}
 		q.nums[q.nn] = p.num
 		q.nn++
+	case 19:
+		if int(q.nbo) >= 4 {
+			q.over = true
+			return
+		}
+		q.bools[q.nbo] = p.bol
+		q.nbo++
 	}
 	q.push(runtime.MakeLeaf(uint32(p.op), uint32(p.col)))
 }
@@ -1094,8 +1144,14 @@ func (q Query) ResultEq(v []byte) Query               { return q.Where(Result.Eq
 func (q Query) ResultNotEq(v []byte) Query            { return q.Where(Result.NotEq(v)) }
 func (q Query) ResultIsNull() Query                   { return q.Where(Result.IsNull()) }
 func (q Query) ResultIsNotNull() Query                { return q.Where(Result.IsNotNull()) }
+func (q Query) PasswordProtectedEq(v bool) Query      { return q.Where(PasswordProtected.Eq(v)) }
+func (q Query) PasswordProtectedNotEq(v bool) Query   { return q.Where(PasswordProtected.NotEq(v)) }
+func (q Query) PasswordEncEq(v []byte) Query          { return q.Where(PasswordEnc.Eq(v)) }
+func (q Query) PasswordEncNotEq(v []byte) Query       { return q.Where(PasswordEnc.NotEq(v)) }
+func (q Query) PasswordEncIsNull() Query              { return q.Where(PasswordEnc.IsNull()) }
+func (q Query) PasswordEncIsNotNull() Query           { return q.Where(PasswordEnc.IsNotNull()) }
 
-const selectPrefix = `SELECT "id", "created_at", "updated_at", "owner", "status", "input_format", "output_format", "file_name", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result" FROM "jobs"`
+const selectPrefix = `SELECT "id", "created_at", "updated_at", "owner", "status", "input_format", "output_format", "file_name", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result", "password_protected", "password_enc" FROM "jobs"`
 const countPrefix = `SELECT count(*) FROM "jobs"`
 const existsPrefix = `SELECT 1 FROM "jobs"`
 const existsSuffix = ` LIMIT 1`
@@ -1149,6 +1205,8 @@ var orderTable = [nCols][4]string{
 	{"\"warnings\"", "\"warnings\" DESC", "\"warnings\" ASC NULLS FIRST", "\"warnings\" DESC NULLS LAST"},
 	{"\"result_bytes\"", "\"result_bytes\" DESC", "\"result_bytes\" ASC NULLS FIRST", "\"result_bytes\" DESC NULLS LAST"},
 	{"\"result\"", "\"result\" DESC", "\"result\" ASC NULLS FIRST", "\"result\" DESC NULLS LAST"},
+	{"\"password_protected\"", "\"password_protected\" DESC", "\"password_protected\" ASC NULLS FIRST", "\"password_protected\" DESC NULLS LAST"},
+	{"\"password_enc\"", "\"password_enc\" DESC", "\"password_enc\" ASC NULLS FIRST", "\"password_enc\" DESC NULLS LAST"},
 }
 
 // identTable is each column's bare quoted name, for the left side of a
@@ -1173,6 +1231,8 @@ var identTable = [nCols]string{
 	"\"warnings\"",
 	"\"result_bytes\"",
 	"\"result\"",
+	"\"password_protected\"",
+	"\"password_enc\"",
 }
 
 var lowering = runtime.Lowering{
@@ -1205,7 +1265,7 @@ func orderOf(dir, col uint32) string {
 
 // fragTable is every predicate this table can produce, lowered at build
 // time. Runtime splices; it never formats.
-var fragTable = [19][34]runtime.Frag{
+var fragTable = [21][34]runtime.Frag{
 	{ // id
 		opEq:    {A: "\"id\" = $"},
 		opNotEq: {A: "\"id\" <> $"},
@@ -1425,6 +1485,16 @@ var fragTable = [19][34]runtime.Frag{
 		opIsNull:    {A: "\"result\" IS NULL"},
 		opIsNotNull: {A: "\"result\" IS NOT NULL"},
 	},
+	{ // password_protected
+		opEq:    {A: "\"password_protected\" = $"},
+		opNotEq: {A: "\"password_protected\" <> $"},
+	},
+	{ // password_enc
+		opEq:        {A: "\"password_enc\" = $"},
+		opNotEq:     {A: "\"password_enc\" <> $"},
+		opIsNull:    {A: "\"password_enc\" IS NULL"},
+		opIsNotNull: {A: "\"password_enc\" IS NOT NULL"},
+	},
 }
 
 func fragOf(op, col uint32) runtime.Frag {
@@ -1507,7 +1577,7 @@ func (q Query) existsStmt(toks []runtime.Tok) *runtime.Stmt { return existsStmtF
 const (
 	distinctOpen = "SELECT DISTINCT ON ("
 	distinctSep  = ", "
-	distinctTail = ") \"id\", \"created_at\", \"updated_at\", \"owner\", \"status\", \"input_format\", \"output_format\", \"file_name\", \"payload\", \"webhook_url\", \"attempts\", \"lease_expires\", \"started_at\", \"finished_at\", \"expires_at\", \"error\", \"warnings\", \"result_bytes\", \"result\" FROM \"jobs\""
+	distinctTail = ") \"id\", \"created_at\", \"updated_at\", \"owner\", \"status\", \"input_format\", \"output_format\", \"file_name\", \"payload\", \"webhook_url\", \"attempts\", \"lease_expires\", \"started_at\", \"finished_at\", \"expires_at\", \"error\", \"warnings\", \"result_bytes\", \"result\", \"password_protected\", \"password_enc\" FROM \"jobs\""
 )
 
 // distinctCaches are AllDistinctOn's, without and with an offset. The
@@ -1711,6 +1781,11 @@ func scan(rv [][]byte, r *Row, sl *runtime.Slab) error {
 	}
 	r.ResultBytes = runtime.Int8(rv[17])
 	r.Result = runtime.Bytes(rv[18])
+	if len(rv[19]) != 1 {
+		return runtime.ShapeErr("password_protected", "bool", 1, rv[19])
+	}
+	r.PasswordProtected = runtime.Bool(rv[19])
+	r.PasswordEnc = runtime.Bytes(rv[20])
 	return decErr
 }
 
@@ -1720,6 +1795,7 @@ type binder struct {
 	nums   [6]int64
 	raws   [4][16]byte
 	tims   [4]time.Time
+	bools  [4]bool
 	byts   [2][]byte
 	anyRaw [3][][16]byte
 	anyStr [3][]string
@@ -1765,7 +1841,7 @@ func putBinder(b *binder) {
 // Count and Exists stop here: their statements carry no LIMIT or OFFSET.
 func (q Query) bindPreds(b *binder) []any {
 	v := b.vals[:0]
-	var ns, nn, nr, ntm, nby, nar, nas, nai32, nai64 uint8
+	var ns, nn, nr, ntm, nbo, nby, nar, nas, nai32, nai64 uint8
 	for i := uint8(0); i < q.nt; i++ {
 		t := q.toks[i]
 		// KLeaf binds a predicate's value, KCol a keyset cursor's; both
@@ -1810,7 +1886,7 @@ func (q Query) bindPreds(b *binder) []any {
 			b.strs[ns] = q.strs[ns]
 			v = append(v, &b.strs[ns])
 			ns++
-		case 8, 18:
+		case 8, 18, 20:
 			b.byts[nby] = q.byts[nby]
 			v = append(v, &b.byts[nby])
 			nby++
@@ -1818,6 +1894,10 @@ func (q Query) bindPreds(b *binder) []any {
 			b.nums[nn] = q.nums[nn]
 			v = append(v, &b.nums[nn])
 			nn++
+		case 19:
+			b.bools[nbo] = q.bools[nbo]
+			v = append(v, &b.bools[nbo])
+			nbo++
 		}
 	}
 	b.vals = v
@@ -2005,29 +2085,31 @@ func (q Query) Prepare(b *Binder) (string, []any) {
 	return q.readStmt(q.stream(&buf)).SQL, q.bind(b)
 }
 
-// MetaRow is the "Meta" projection: the same read, 15 column(s) instead of
+// MetaRow is the "Meta" projection: the same read, 17 column(s) instead of
 // the whole row. Narrower tuples, no TOAST fetch for what nobody asked,
 // and an index-only scan becomes POSSIBLE — the full-row read forecloses
 // it by construction.
 type MetaRow struct {
-	ID           [16]byte
-	Owner        string
-	Status       string
-	InputFormat  string
-	OutputFormat string
-	FileName     string
-	WebhookURL   runtime.Null[string]
-	Attempts     int32
-	CreatedAt    time.Time
-	StartedAt    runtime.Null[time.Time]
-	FinishedAt   runtime.Null[time.Time]
-	ExpiresAt    runtime.Null[time.Time]
-	Error        runtime.Null[string]
-	Warnings     []string
-	ResultBytes  int64
+	ID                [16]byte
+	Owner             string
+	Status            string
+	InputFormat       string
+	OutputFormat      string
+	FileName          string
+	WebhookURL        runtime.Null[string]
+	Attempts          int32
+	CreatedAt         time.Time
+	StartedAt         runtime.Null[time.Time]
+	FinishedAt        runtime.Null[time.Time]
+	ExpiresAt         runtime.Null[time.Time]
+	Error             runtime.Null[string]
+	Warnings          []string
+	ResultBytes       int64
+	PasswordProtected bool
+	PasswordEnc       []byte
 }
 
-const metaPrefix = `SELECT "id", "owner", "status", "input_format", "output_format", "file_name", "webhook_url", "attempts", "created_at", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes" FROM "jobs"`
+const metaPrefix = `SELECT "id", "owner", "status", "input_format", "output_format", "file_name", "webhook_url", "attempts", "created_at", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "password_protected", "password_enc" FROM "jobs"`
 
 var (
 	metaCache       = runtime.NewTreeCache()
@@ -2086,6 +2168,11 @@ func scanMeta(rv [][]byte, r *MetaRow, sl *runtime.Slab) error {
 		return runtime.ShapeErr("result_bytes", "int8", 8, rv[14])
 	}
 	r.ResultBytes = runtime.Int8(rv[14])
+	if len(rv[15]) != 1 {
+		return runtime.ShapeErr("password_protected", "bool", 1, rv[15])
+	}
+	r.PasswordProtected = runtime.Bool(rv[15])
+	r.PasswordEnc = runtime.Bytes(rv[16])
 	return nil
 }
 
@@ -2139,7 +2226,7 @@ func (q Query) OneMeta(ctx context.Context, ex runtime.Executor) (MetaRow, bool,
 
 // insertSQL does not vary: the column list is fixed by the table, so
 // the placeholders are known at build time and nothing is spliced.
-const insertSQL = `INSERT INTO "jobs" ("id", "created_at", "updated_at", "owner", "status", "input_format", "output_format", "file_name", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING "id", "created_at", "updated_at", "owner", "status", "input_format", "output_format", "file_name", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result"`
+const insertSQL = `INSERT INTO "jobs" ("id", "created_at", "updated_at", "owner", "status", "input_format", "output_format", "file_name", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result", "password_protected", "password_enc") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING "id", "created_at", "updated_at", "owner", "status", "input_format", "output_format", "file_name", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result", "password_protected", "password_enc"`
 
 const updatePrefix = `UPDATE "jobs" SET `
 const deletePrefix = `DELETE FROM "jobs"`
@@ -2147,46 +2234,50 @@ const deletePrefix = `DELETE FROM "jobs"`
 // Dirty bits. One per updatable column; the set of them is an UPDATE's
 // identity, exactly as a token stream is a SELECT's.
 const (
-	dUpdatedAt    uint64 = 1 << 0
-	dOwner        uint64 = 1 << 1
-	dStatus       uint64 = 1 << 2
-	dInputFormat  uint64 = 1 << 3
-	dOutputFormat uint64 = 1 << 4
-	dFileName     uint64 = 1 << 5
-	dPayload      uint64 = 1 << 6
-	dWebhookURL   uint64 = 1 << 7
-	dAttempts     uint64 = 1 << 8
-	dLeaseExpires uint64 = 1 << 9
-	dStartedAt    uint64 = 1 << 10
-	dFinishedAt   uint64 = 1 << 11
-	dExpiresAt    uint64 = 1 << 12
-	dError        uint64 = 1 << 13
-	dWarnings     uint64 = 1 << 14
-	dResultBytes  uint64 = 1 << 15
-	dResult       uint64 = 1 << 16
+	dUpdatedAt         uint64 = 1 << 0
+	dOwner             uint64 = 1 << 1
+	dStatus            uint64 = 1 << 2
+	dInputFormat       uint64 = 1 << 3
+	dOutputFormat      uint64 = 1 << 4
+	dFileName          uint64 = 1 << 5
+	dPayload           uint64 = 1 << 6
+	dWebhookURL        uint64 = 1 << 7
+	dAttempts          uint64 = 1 << 8
+	dLeaseExpires      uint64 = 1 << 9
+	dStartedAt         uint64 = 1 << 10
+	dFinishedAt        uint64 = 1 << 11
+	dExpiresAt         uint64 = 1 << 12
+	dError             uint64 = 1 << 13
+	dWarnings          uint64 = 1 << 14
+	dResultBytes       uint64 = 1 << 15
+	dResult            uint64 = 1 << 16
+	dPasswordProtected uint64 = 1 << 17
+	dPasswordEnc       uint64 = 1 << 18
 )
 
-const nUpdatable = 17
+const nUpdatable = 19
 
 // setFrags is every assignment this table can make, lowered at build time.
 var setFrags = [nUpdatable]runtime.Frag{
-	{A: "\"updated_at\" = $", B: ""},    // updated_at
-	{A: "\"owner\" = $", B: ""},         // owner
-	{A: "\"status\" = $", B: ""},        // status
-	{A: "\"input_format\" = $", B: ""},  // input_format
-	{A: "\"output_format\" = $", B: ""}, // output_format
-	{A: "\"file_name\" = $", B: ""},     // file_name
-	{A: "\"payload\" = $", B: ""},       // payload
-	{A: "\"webhook_url\" = $", B: ""},   // webhook_url
-	{A: "\"attempts\" = $", B: ""},      // attempts
-	{A: "\"lease_expires\" = $", B: ""}, // lease_expires
-	{A: "\"started_at\" = $", B: ""},    // started_at
-	{A: "\"finished_at\" = $", B: ""},   // finished_at
-	{A: "\"expires_at\" = $", B: ""},    // expires_at
-	{A: "\"error\" = $", B: ""},         // error
-	{A: "\"warnings\" = $", B: ""},      // warnings
-	{A: "\"result_bytes\" = $", B: ""},  // result_bytes
-	{A: "\"result\" = $", B: ""},        // result
+	{A: "\"updated_at\" = $", B: ""},         // updated_at
+	{A: "\"owner\" = $", B: ""},              // owner
+	{A: "\"status\" = $", B: ""},             // status
+	{A: "\"input_format\" = $", B: ""},       // input_format
+	{A: "\"output_format\" = $", B: ""},      // output_format
+	{A: "\"file_name\" = $", B: ""},          // file_name
+	{A: "\"payload\" = $", B: ""},            // payload
+	{A: "\"webhook_url\" = $", B: ""},        // webhook_url
+	{A: "\"attempts\" = $", B: ""},           // attempts
+	{A: "\"lease_expires\" = $", B: ""},      // lease_expires
+	{A: "\"started_at\" = $", B: ""},         // started_at
+	{A: "\"finished_at\" = $", B: ""},        // finished_at
+	{A: "\"expires_at\" = $", B: ""},         // expires_at
+	{A: "\"error\" = $", B: ""},              // error
+	{A: "\"warnings\" = $", B: ""},           // warnings
+	{A: "\"result_bytes\" = $", B: ""},       // result_bytes
+	{A: "\"result\" = $", B: ""},             // result
+	{A: "\"password_protected\" = $", B: ""}, // password_protected
+	{A: "\"password_enc\" = $", B: ""},       // password_enc
 }
 
 // exprFrags is the SERVER-side assignment each column may take instead
@@ -2210,6 +2301,8 @@ var exprFrags = [nUpdatable]runtime.Frag{
 	{},                                            // warnings has no server-side form
 	{A: "\"result_bytes\" = \"result_bytes\" + 1", B: ""}, // result_bytes = its own value plus one
 	{}, // result has no server-side form
+	{}, // password_protected has no server-side form
+	{}, // password_enc has no server-side form
 }
 
 // addFrags adds a bound amount to a counter's own value. A column set
@@ -2235,6 +2328,8 @@ var addFrags = [nUpdatable]runtime.Frag{
 	{}, // warnings cannot be added to
 	{A: "\"result_bytes\" = \"result_bytes\" + $", B: ""}, // result_bytes = its own value plus an amount
 	{}, // result cannot be added to
+	{}, // password_protected cannot be added to
+	{}, // password_enc cannot be added to
 }
 
 // pkFrags addresses one row.
@@ -2246,28 +2341,30 @@ var pkFrags = [1]runtime.Frag{
 // assigned, so every other column takes its database default — which is
 // the only way a DEFAULT gen_random_uuid() can ever fire.
 const (
-	iID           uint64 = 1 << 0
-	iCreatedAt    uint64 = 1 << 1
-	iUpdatedAt    uint64 = 1 << 2
-	iOwner        uint64 = 1 << 3
-	iStatus       uint64 = 1 << 4
-	iInputFormat  uint64 = 1 << 5
-	iOutputFormat uint64 = 1 << 6
-	iFileName     uint64 = 1 << 7
-	iPayload      uint64 = 1 << 8
-	iWebhookURL   uint64 = 1 << 9
-	iAttempts     uint64 = 1 << 10
-	iLeaseExpires uint64 = 1 << 11
-	iStartedAt    uint64 = 1 << 12
-	iFinishedAt   uint64 = 1 << 13
-	iExpiresAt    uint64 = 1 << 14
-	iError        uint64 = 1 << 15
-	iWarnings     uint64 = 1 << 16
-	iResultBytes  uint64 = 1 << 17
-	iResult       uint64 = 1 << 18
+	iID                uint64 = 1 << 0
+	iCreatedAt         uint64 = 1 << 1
+	iUpdatedAt         uint64 = 1 << 2
+	iOwner             uint64 = 1 << 3
+	iStatus            uint64 = 1 << 4
+	iInputFormat       uint64 = 1 << 5
+	iOutputFormat      uint64 = 1 << 6
+	iFileName          uint64 = 1 << 7
+	iPayload           uint64 = 1 << 8
+	iWebhookURL        uint64 = 1 << 9
+	iAttempts          uint64 = 1 << 10
+	iLeaseExpires      uint64 = 1 << 11
+	iStartedAt         uint64 = 1 << 12
+	iFinishedAt        uint64 = 1 << 13
+	iExpiresAt         uint64 = 1 << 14
+	iError             uint64 = 1 << 15
+	iWarnings          uint64 = 1 << 16
+	iResultBytes       uint64 = 1 << 17
+	iResult            uint64 = 1 << 18
+	iPasswordProtected uint64 = 1 << 19
+	iPasswordEnc       uint64 = 1 << 20
 )
 
-const nInsertable = 19
+const nInsertable = 21
 
 // insCols is the quoted column name for each insert bit.
 var insCols = [nInsertable]string{
@@ -2290,6 +2387,8 @@ var insCols = [nInsertable]string{
 	"\"warnings\"",
 	"\"result_bytes\"",
 	"\"result\"",
+	"\"password_protected\"",
+	"\"password_enc\"",
 }
 
 // insParts and insPlaceholder come from the back end at build time; the
@@ -2298,7 +2397,7 @@ var insParts = runtime.InsertParts{Open: " (", Sep: ", ", Mid: ") VALUES (", Clo
 var insPlaceholder = runtime.Placeholder{}
 
 const insPrefix = "INSERT INTO \"jobs\""
-const insReturning = " RETURNING \"id\", \"created_at\", \"updated_at\", \"owner\", \"status\", \"input_format\", \"output_format\", \"file_name\", \"payload\", \"webhook_url\", \"attempts\", \"lease_expires\", \"started_at\", \"finished_at\", \"expires_at\", \"error\", \"warnings\", \"result_bytes\", \"result\""
+const insReturning = " RETURNING \"id\", \"created_at\", \"updated_at\", \"owner\", \"status\", \"input_format\", \"output_format\", \"file_name\", \"payload\", \"webhook_url\", \"attempts\", \"lease_expires\", \"started_at\", \"finished_at\", \"expires_at\", \"error\", \"warnings\", \"result_bytes\", \"result\", \"password_protected\", \"password_enc\""
 
 var insCache = runtime.NewMaskCache()
 
@@ -2317,7 +2416,7 @@ var updOpCache = runtime.NewMaskCache()
 // part of it. Without it m.Row() would hold what the row held BEFORE
 // the statement, so a caller reading back the counter it just
 // incremented would get the old number and never know.
-const updReturning = " RETURNING \"id\", \"created_at\", \"updated_at\", \"owner\", \"status\", \"input_format\", \"output_format\", \"file_name\", \"payload\", \"webhook_url\", \"attempts\", \"lease_expires\", \"started_at\", \"finished_at\", \"expires_at\", \"error\", \"warnings\", \"result_bytes\", \"result\""
+const updReturning = " RETURNING \"id\", \"created_at\", \"updated_at\", \"owner\", \"status\", \"input_format\", \"output_format\", \"file_name\", \"payload\", \"webhook_url\", \"attempts\", \"lease_expires\", \"started_at\", \"finished_at\", \"expires_at\", \"error\", \"warnings\", \"result_bytes\", \"result\", \"password_protected\", \"password_enc\""
 
 // Masks reports how many distinct UPDATE shapes have compiled.
 func Masks() int { return updCache.Masks() }
@@ -2579,6 +2678,18 @@ func (m *Mut) SetResult(v []byte) {
 	m.expr &^= dResult
 }
 
+func (m *Mut) SetPasswordProtected(v bool) {
+	m.row.PasswordProtected = v
+	m.dirty |= dPasswordProtected
+	m.expr &^= dPasswordProtected
+}
+
+func (m *Mut) SetPasswordEnc(v []byte) {
+	m.row.PasswordEnc = v
+	m.dirty |= dPasswordEnc
+	m.expr &^= dPasswordEnc
+}
+
 // Ins stages a new row, with a setter for every insertable column. A column
 // left unset is absent from the statement, so the database default applies;
 // a zero value that was set is written.
@@ -2648,6 +2759,10 @@ func (n *Ins) insertArgs(args []any) []any {
 			args = append(args, n.row.ResultBytes)
 		case 18:
 			args = append(args, n.row.Result)
+		case 19:
+			args = append(args, n.row.PasswordProtected)
+		case 20:
+			args = append(args, n.row.PasswordEnc)
 		}
 	}
 	return args
@@ -2810,6 +2925,16 @@ func (n *Ins) SetResult(v []byte) {
 	n.set |= iResult
 }
 
+func (n *Ins) SetPasswordProtected(v bool) {
+	n.row.PasswordProtected = v
+	n.set |= iPasswordProtected
+}
+
+func (n *Ins) SetPasswordEnc(v []byte) {
+	n.row.PasswordEnc = v
+	n.set |= iPasswordEnc
+}
+
 // The conflict encoding: 0 none, 1 DO NOTHING on any unique index,
 // 2+2*i target i DO UPDATE, 3+2*i target i DO NOTHING.
 const conflictAny = 1
@@ -2845,7 +2970,7 @@ var conflictSpecs = []string{
 
 // assignable is the columns target i may overwrite, given the mask.
 func assignable(i uint8, mask uint64) []string {
-	set := make([]string, 0, 17)
+	set := make([]string, 0, 19)
 	for j, bit := range assignBits[i] {
 		if mask&(1<<bit) != 0 {
 			set = append(set, assignNames[i][j])
@@ -2858,11 +2983,11 @@ func assignable(i uint8, mask uint64) []string {
 // of each column it may overwrite. An empty row is a target whose key
 // covers every updatable column.
 var assignBits = [1][]uint8{
-	{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18},
+	{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
 }
 
 var assignNames = [1][]string{
-	{"updated_at", "owner", "status", "input_format", "output_format", "file_name", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result"},
+	{"updated_at", "owner", "status", "input_format", "output_format", "file_name", "payload", "webhook_url", "attempts", "lease_expires", "started_at", "finished_at", "expires_at", "error", "warnings", "result_bytes", "result", "password_protected", "password_enc"},
 }
 
 // OnConflictID upserts on the unique index over (id).
@@ -2916,23 +3041,25 @@ func assignAdded(c string, add uint64) (string, bool) {
 }
 
 var assignFor = map[string]string{
-	"updated_at":    "\"updated_at\" = EXCLUDED.\"updated_at\"",
-	"owner":         "\"owner\" = EXCLUDED.\"owner\"",
-	"status":        "\"status\" = EXCLUDED.\"status\"",
-	"input_format":  "\"input_format\" = EXCLUDED.\"input_format\"",
-	"output_format": "\"output_format\" = EXCLUDED.\"output_format\"",
-	"file_name":     "\"file_name\" = EXCLUDED.\"file_name\"",
-	"payload":       "\"payload\" = EXCLUDED.\"payload\"",
-	"webhook_url":   "\"webhook_url\" = EXCLUDED.\"webhook_url\"",
-	"attempts":      "\"attempts\" = EXCLUDED.\"attempts\"",
-	"lease_expires": "\"lease_expires\" = EXCLUDED.\"lease_expires\"",
-	"started_at":    "\"started_at\" = EXCLUDED.\"started_at\"",
-	"finished_at":   "\"finished_at\" = EXCLUDED.\"finished_at\"",
-	"expires_at":    "\"expires_at\" = EXCLUDED.\"expires_at\"",
-	"error":         "\"error\" = EXCLUDED.\"error\"",
-	"warnings":      "\"warnings\" = EXCLUDED.\"warnings\"",
-	"result_bytes":  "\"result_bytes\" = EXCLUDED.\"result_bytes\"",
-	"result":        "\"result\" = EXCLUDED.\"result\"",
+	"updated_at":         "\"updated_at\" = EXCLUDED.\"updated_at\"",
+	"owner":              "\"owner\" = EXCLUDED.\"owner\"",
+	"status":             "\"status\" = EXCLUDED.\"status\"",
+	"input_format":       "\"input_format\" = EXCLUDED.\"input_format\"",
+	"output_format":      "\"output_format\" = EXCLUDED.\"output_format\"",
+	"file_name":          "\"file_name\" = EXCLUDED.\"file_name\"",
+	"payload":            "\"payload\" = EXCLUDED.\"payload\"",
+	"webhook_url":        "\"webhook_url\" = EXCLUDED.\"webhook_url\"",
+	"attempts":           "\"attempts\" = EXCLUDED.\"attempts\"",
+	"lease_expires":      "\"lease_expires\" = EXCLUDED.\"lease_expires\"",
+	"started_at":         "\"started_at\" = EXCLUDED.\"started_at\"",
+	"finished_at":        "\"finished_at\" = EXCLUDED.\"finished_at\"",
+	"expires_at":         "\"expires_at\" = EXCLUDED.\"expires_at\"",
+	"error":              "\"error\" = EXCLUDED.\"error\"",
+	"warnings":           "\"warnings\" = EXCLUDED.\"warnings\"",
+	"result_bytes":       "\"result_bytes\" = EXCLUDED.\"result_bytes\"",
+	"result":             "\"result\" = EXCLUDED.\"result\"",
+	"password_protected": "\"password_protected\" = EXCLUDED.\"password_protected\"",
+	"password_enc":       "\"password_enc\" = EXCLUDED.\"password_enc\"",
 }
 
 func assignExcluded(c string) string { return assignFor[c] }
@@ -3008,7 +3135,7 @@ func Inserts() int { return insCache.Masks() }
 // Insert writes every insertable column, zero values included, and reads
 // the row back so database defaults land in r.
 func Insert(ctx context.Context, ex runtime.Executor, r *Row) error {
-	args := make([]any, 0, 19)
+	args := make([]any, 0, 21)
 	args = append(args, r.ID)
 	args = append(args, r.CreatedAt)
 	args = append(args, r.UpdatedAt)
@@ -3028,6 +3155,8 @@ func Insert(ctx context.Context, ex runtime.Executor, r *Row) error {
 	args = append(args, r.Warnings)
 	args = append(args, r.ResultBytes)
 	args = append(args, r.Result)
+	args = append(args, r.PasswordProtected)
+	args = append(args, r.PasswordEnc)
 	rows, err := ex.Query(ctx, insertSQL, args)
 	if err != nil {
 		return err
@@ -3073,13 +3202,15 @@ var copyCols = []string{
 	"warnings",
 	"result_bytes",
 	"result",
+	"password_protected",
+	"password_enc",
 }
 
 // rowSource walks a []Row for CopyFrom without copying any of it.
 type rowSource struct {
 	rows []Row
 	i    int
-	buf  [19]any
+	buf  [21]any
 }
 
 func (s *rowSource) Next() bool {
@@ -3110,6 +3241,8 @@ func (s *rowSource) Values() []any {
 	s.buf[16] = &r.Warnings
 	s.buf[17] = &r.ResultBytes
 	s.buf[18] = &r.Result
+	s.buf[19] = &r.PasswordProtected
+	s.buf[20] = &r.PasswordEnc
 	return s.buf[:]
 }
 
@@ -3130,7 +3263,7 @@ func InsertAll(ctx context.Context, ex runtime.Executor, rows []Row) (int64, err
 func InsertOp(r Row) runtime.BatchOp {
 	const mask = 1<<nInsertable - 1 // every insertable column
 	st := stmtForInsertNoReturn(mask, 0, 0)
-	args := make([]any, 0, 19)
+	args := make([]any, 0, 21)
 	args = append(args, r.ID)
 	args = append(args, r.CreatedAt)
 	args = append(args, r.UpdatedAt)
@@ -3150,6 +3283,8 @@ func InsertOp(r Row) runtime.BatchOp {
 	args = append(args, r.Warnings)
 	args = append(args, r.ResultBytes)
 	args = append(args, r.Result)
+	args = append(args, r.PasswordProtected)
+	args = append(args, r.PasswordEnc)
 	return runtime.BatchOp{SQL: st.SQL, Args: args}
 }
 
@@ -3399,6 +3534,10 @@ func (m Mut) updateArgs(args []any) []any {
 			args = append(args, m.row.ResultBytes)
 		case 16:
 			args = append(args, m.row.Result)
+		case 17:
+			args = append(args, m.row.PasswordProtected)
+		case 18:
+			args = append(args, m.row.PasswordEnc)
 		}
 	}
 	return args

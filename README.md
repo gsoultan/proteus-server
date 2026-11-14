@@ -80,9 +80,32 @@ links and images; see the engine's README for the mapping). `Options` holds
 settings for every format (extra CSS, media type, metadata, `allow_remote`),
 `options.page` for paged formats (size, orientation, margins in
 millimetres), `options.pdf` for PDF only (bookmarks, tagging) and
-`options.spreadsheet` for XLSX only (`detect_numbers`); options that do not
-fit the output format are refused with `INVALID_ARGUMENT`. Every field is
-documented in the proto file.
+`options.spreadsheet` for XLSX only (`detect_numbers`, `images_in_cells`);
+options that do not fit the output format are refused with `INVALID_ARGUMENT`.
+Every field is documented in the proto file.
+
+### Password-protected results
+
+`options.protection` encrypts the result with AES-256 (PDF and XLSX alike).
+Give a `password`, or set `generate: true` and let the server make a strong
+random one; `owner_password` (PDF only) unlocks editing and printing
+restrictions and defaults to the open password. Responses and jobs report
+`password_protected`.
+
+A generated password is handled so that it never reaches anyone but the
+caller:
+
+- `Convert` returns it once in `password` on the response.
+- For a job, the webhook payload and `GetJob` say only `password_protected`
+  and `password_available`. The API key that submitted the job calls
+  `GetJobPassword` to receive the password **once**; the server then forgets
+  it, so a second call (or any other key) gets `NOT_FOUND`, and
+  `FAILED_PRECONDITION` while the job has not succeeded yet.
+- Passwords are never written to server logs or webhook history. While the
+  server holds a generated password it is encrypted with `PROTEUS_SECRET_KEY`
+  (AES-256-GCM), as is the queued document itself; without the key the server
+  uses a random per-process key, which is fine for the in-memory store but
+  required when several instances share Postgres.
 
 ### Adding a format
 
@@ -103,8 +126,8 @@ registered get `INVALID_ARGUMENT`.
 | `INVALID_ARGUMENT` | Invalid input, a blocked resource, or output over the size limit. |
 | `RESOURCE_EXHAUSTED` | Rate limit hit, every conversion slot busy, the job queue full, or a message over the size limit. Retry with backoff. |
 | `DEADLINE_EXCEEDED` | Conversion exceeded `PROTEUS_TIMEOUT`. |
-| `NOT_FOUND` | Unknown, expired or someone else's job. |
-| `FAILED_PRECONDITION` | Result or delete asked for before the job finished, or the job failed. |
+| `NOT_FOUND` | Unknown, expired or someone else's job; a job password already fetched or never generated. |
+| `FAILED_PRECONDITION` | Result, password or delete asked for before the job finished, or the job failed. |
 | `UNAVAILABLE` | The server is shutting down. |
 
 Error messages are written for callers; internal causes stay in the server log.
@@ -216,6 +239,7 @@ has no page-count or memory budget yet.
 | `PROTEUS_JOB_TTL` | `1h` | How long finished jobs and results are kept. |
 | `PROTEUS_MAX_JOBS` | `1000` | Jobs held by the memory store. |
 | `PROTEUS_WEBHOOK_SECRET` | | HMAC key (32+ characters); enables webhooks. |
+| `PROTEUS_SECRET_KEY` | | 64 hex characters (32 bytes); encrypts queued documents and generated passwords at rest. Required with `PROTEUS_DATABASE_URL`; make one with `openssl rand -hex 32`. |
 | `PROTEUS_SHUTDOWN_TIMEOUT` | `30s` | Drain time on `SIGTERM`. |
 | `PROTEUS_LOG_LEVEL` / `PROTEUS_LOG_FORMAT` | `info` / `json` | `debug`…`error`; `json` or `text`. |
 
