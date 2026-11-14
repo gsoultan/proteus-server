@@ -13,7 +13,18 @@
   ErrQueueFull / rate limit -> ResourceExhausted, ErrTimeout -> DeadlineExceeded, ErrClosed ->
   Unavailable, ErrNotFound -> NotFound, ErrNotFinished or failed job -> FailedPrecondition, else
   Internal with the cause kept server-side only.
-- Jobs are scoped to the API key id that created them; others get NotFound (no IDOR).
+- Jobs and templates are scoped to the API key id that created them; others get NotFound (no IDOR).
+- Templates: a filled template is an ordinary Document in the template's input format, then the
+  normal convert path / jobs.Submit (so every registry route works; jobs store the rendered doc).
+  Render sandbox (internal/templates/render.go), because key holders run code on the shared
+  server: html/template (auto-escaping, Markdown escaped as HTML), missingkey=zero, no
+  define/template/block, max 3 nested range, no range over number literals, data numbers are
+  Number (float, prints without exponent, can't be ranged; compare with 3.0), non-empty lists are
+  List iterators that spend a per-render step budget (1M) and check ctx each step, empty lists
+  are []any (falsy), len/index/join overridden to accept List and also spend steps, two-variable
+  ranges are rewritten to pipe through `pairs`, objects max 500 keys, output capped
+  (PROTEUS_MAX_REQUEST_BYTES), render timeout PROTEUS_TEMPLATE_RENDER_TIMEOUT. Template is
+  re-parsed per render (funcs are bound to the render; html/template can't Clone after Execute).
 - Passwords (user rule): never in webhook payloads, server logs, webhook history or stored in plain
   text. Job records only carry password_protected / password_available; the generated password is
   sealed (AES-GCM) in jobs.password_enc, handed out once by GetJobPassword to the submitting key,
@@ -43,6 +54,8 @@ Known gaps / next steps:
 - Results in bytea; plan object storage with presigned URLs.
 - Engine checks ctx only between stages; no page-count or memory budget.
 - Engine rescans Config.FontDirs on every conversion (prefer system font dirs).
-- Not yet: header/footer, PDF/A, templates, batch merge, DOCX, tracing. XLSX file names still
-  come only from options.metadata.title (FileName), not from the document <title>.
+- Not yet: header/footer, PDF/A, batch merge, DOCX, tracing. XLSX file names still come only from
+  options.metadata.title (FileName), not from the document <title>.
+- Templates: no versions history (only a revision counter), no sharing between keys, no
+  per-template JSON schema for data; Markdown values inside code blocks show HTML entities.
 - Docker image build is verified in CI only (no Docker daemon in the dev container).
