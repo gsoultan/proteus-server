@@ -14,7 +14,8 @@ proteus-server     this repo: gRPC API, auth, limits, jobs, metrics
 ```
 
 The API is defined in Protocol Buffers ([`proto/proteus/v1/conversion.proto`](proto/proteus/v1/conversion.proto),
-[`proto/proteus/v1/template.proto`](proto/proteus/v1/template.proto)) and served with [ConnectRPC](https://connectrpc.com) (connect-go v2). One
+[`proto/proteus/v1/template.proto`](proto/proteus/v1/template.proto),
+[`proto/proteus/v1/pdf.proto`](proto/proteus/v1/pdf.proto)) and served with [ConnectRPC](https://connectrpc.com) (connect-go v2). One
 listener answers native **gRPC** (HTTP/2, h2c), **gRPC-Web** and the
 **Connect** protocol, so the same service works from Go/Java/Python gRPC
 clients and from browsers through `@connectrpc/connect-web`. There is no REST
@@ -76,6 +77,13 @@ Neither needs a key. Prometheus metrics are on a separate admin listener
 | `ConvertTemplate` | Fill a template with data and convert it synchronously, like `Convert`. |
 | `SubmitTemplateJob` | Fill a template with data and queue the conversion; follow it with the job RPCs. |
 
+`proteus.v1.PdfService` (see [Merging and splitting PDFs](#merging-and-splitting-pdfs)):
+
+| RPC | Use |
+| --- | --- |
+| `MergePdfs` | Join the selected pages of several PDFs, in order, into one file. |
+| `SplitPdf` | Split one PDF into parts, by page ranges or every n pages. |
+
 Send the key as `authorization: Bearer <key>` or `x-api-key: <key>`. Jobs and
 templates are visible only to the key that created them; any other key gets
 `NOT_FOUND`.
@@ -105,6 +113,33 @@ format it accepts. A converter gets the fetched document and the request's
 resource loader, so the security limits below apply to it unchanged.
 `ListFormats` reports the new routes on its own; requests for routes nobody
 registered get `INVALID_ARGUMENT`.
+
+### Merging and splitting PDFs
+
+`MergePdfs` takes a list of `PdfInput`s, each a PDF file (`content`, or `url`
+when remote resources are enabled) with an optional page selection in `pages`
+(`"1-3,5,8-"`, `"3-1"` reversed, `"-2"`, `"last"`; pages may repeat; empty
+means every page) and a `password` for encrypted inputs. `SplitPdf` takes one
+input and either `ranges` (one part per selection) or `every` (parts of at most
+n pages; 1 gives one file per page). Outputs are `PdfFile`s with content, MIME
+type, a safe file name (`file_name`, or `merged.pdf` / `part-<n>.pdf`) and the
+page count.
+
+Pages are copied as stored in the input: no re-rendering, no recompression of
+images or fonts, and a stream shared by several inputs (a logo, a font file) is
+written once. Output is written while it is copied and stops as soon as it
+passes `PROTEUS_MAX_OUTPUT_BYTES` (all parts together) or the conversion time limit.
+Each call takes a conversion slot like `Convert`. A merge takes at most 100
+inputs, a split at most 1000 parts, and the output at most 10000 pages.
+Forms (AcroForm), bookmarks and the structure tree are not carried over; the
+document information comes from the first input.
+
+`protection` (the shared `Protection` message) encrypts the output with
+AES-256: give `password` (and optionally `owner_password`), or set `generate`
+to have the server make a 20-character password, returned once in the
+response's `password` field. Input and output passwords are never logged,
+stored or put in error messages. A protected input without its password gets
+`INVALID_ARGUMENT` ("password protected: give its password").
 
 ### Templates
 
@@ -324,6 +359,7 @@ it is stale.
    templates filled from JSON data.
 2. Results in object storage behind presigned URLs instead of `bytea`, and
    CORS for browser clients.
-3. Header and footer templates, PDF/A, batch merging.
+3. Header and footer templates, PDF/A, PDF merge/split as jobs (sync
+   `PdfService` is done).
 4. More formats through the registry: output such as DOCX, PNG and HTML,
    and DOCX input, as the engine (or another converter) supports them.

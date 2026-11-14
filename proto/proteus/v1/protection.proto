@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package proteus.v1;
+
+option go_package = "github.com/gsoultan/proteus-server/gen/proteus/v1;proteusv1";
+
+// Protection password-protects an output file.
+message Protection {
+  // Password the recipient types to open the file. Leave empty and set
+  // generate to let the server make one.
+  string password = 1;
+  // The server generates a random password. For jobs it is fetched once with
+  // ConversionService.GetJobPassword by the API key that created the job;
+  // it is never in webhook payloads or logs. Sync responses carry it in
+  // their own `password` field.
+  bool generate = 2;
+  // PDF only: owner password that unlocks editing; defaults to the open
+  // password.
+  string owner_password = 3;
+}

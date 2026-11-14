@@ -12,7 +12,13 @@ SubmitJob, GetJob, DownloadJobResult (server stream, 1 MiB chunks), DeleteJob; a
 proto/proteus/v1/template.proto, service proteus.v1.TemplateService with CreateTemplate,
 GetTemplate, ListTemplates (by name, page_token = base64url of last name), UpdateTemplate
 (revision = optimistic lock), DeleteTemplate, RenderTemplate (stored id or unsaved template,
-returns filled document), ConvertTemplate, SubmitTemplateJob (both take output_format). Served by
+returns filled document), ConvertTemplate, SubmitTemplateJob (both take output_format). And
+proto/proteus/v1/pdf.proto, service proteus.v1.PdfService with MergePdfs and SplitPdf (sync,
+take a conversion slot + PROTEUS_TIMEOUT; PdfInput = content|url + pages "1-3,5,8-" + password;
+split by PageRanges or every n; output PdfFile with safe file_name, page_count,
+password_protected; uses the shared Protection message from protection.proto, whose canonical
+copy belongs to PR 6 (excel thread), generated password returned once in response `password`).
+Served by
 connect-go v2 (connectrpc.com/connect/v2) so one h2c listener answers gRPC, gRPC-Web and Connect.
 Also grpc.health.v1 (grpchealth/v2) and reflection (grpcreflect/v2). Metrics on a separate admin
 listener (PROTEUS_ADMIN_ADDR :9090, GET /metrics).
@@ -41,6 +47,11 @@ Layout:
   render.go (html/template sandbox, see conventions), store.go (Store interface, MemoryStore),
   storetest conformance suite. Body column = proto-marshalled Template with only content, assets,
   options, sample_data.
+- internal/pdfops: Service.Merge/Split over gpdf streaming doc.MergeTo (stored-encoding stream
+  copy, cross-input stream dedup, AES-256 output), limitedBuffer stops writing on ctx done or
+  MaxOutputBytes (one budget across split parts), limits 100 inputs / 1000 parts / 10000 pages,
+  panic -> BadRequest, GeneratePassword (20 chars, no look-alikes). rpc/pdf.go = pdfService
+  (TryAcquire slot, svc.Timeout, outputName sanitizer); convert.Service.RemoteClient() for url inputs.
 - internal/jobs: Manager over a Store interface (store.go), MemoryStore (memstore.go),
   storetest conformance suite; workers claim with leases, webhooks HMAC-signed.
 - internal/storage/model: storm models Job and Template (unique owner+name, Meta projection
