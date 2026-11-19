@@ -6,6 +6,11 @@ formats can be added; today only HTML/Markdown -> PDF exists. Conversions run on
 which uses gpdf). The server holds transport, auth, limits, jobs and metrics only; no conversion
 logic. DOCX comes later via the engine. User rule: gRPC only, no REST; storm for anything database.
 
+Setup: first run (no settings saved) logs a setup token; the web UI's /setup wizard (token ->
+storage Postgres/memory -> basics -> admin key) completes it; everything else is in /settings.
+Stays env-only: addresses, shutdown timeout, logging, data dir, setup token, env API keys,
+ALLOW_NO_AUTH; database settings env or bootstrap file. proto/proteus/v1/setup.proto.
+
 API: proto/proteus/v1/conversion.proto, service proteus.v1.ConversionService with ListFormats,
 Convert,
 SubmitJob, GetJob, DownloadJobResult (server stream, 1 MiB chunks), DeleteJob; and
@@ -69,7 +74,28 @@ Layout:
   internal/storage/pgstore: jobs.Store on Postgres (claim = Take with ForUpdateSkipLocked,
   automigrate of both models via migrate.AutoPool with Schema + DeclaredOnly) and
   Store.Templates() = templates.Store (update is UpdateAll WHERE revision = read revision).
-- internal/auth: API keys "id:sha256hex", per-key rate limiter. internal/metrics: Prometheus.
+- internal/auth: API keys "id:sha256hex[:admin]" (role client unless :admin), per-key rate limiter,
+  env keys fixed + UI keys swapped in with SetStored; Identify returns id and role; ctx WithRole/IsAdmin.
+- internal/config/fields.go: Fields table (name, group, label, help, Kind, default, Editable,
+  Bootstrap) kept in sync with FromEnv by a test; Layered(env, layers...) getenv; ValidateSaved
+  (editable only, whole config must parse) and ValidateBootstrap (database fields only).
+- internal/settings: Doc{Values map PROTEUS_*->text, SetupCompletedAt, Revision}, APIKey{ID k_xxx,
+  Name, Role, Hash, Prefix}; Store interface (Load/Save with revision, ListKeys/CreateKey/DeleteKey);
+  FileStore ($PROTEUS_DATA_DIR/settings.json, 0600, atomic rename), MemoryStore, storetest suite;
+  ReadBootstrap/WriteBootstrap ($PROTEUS_DATA_DIR/bootstrap.json: database url/schema/automigrate).
+  pgstore.Settings() implements it (models ServerSetting one row scope=server with JSON body,
+  APIKey table api_keys).
+- internal/rpc/setup.go: SetupService (GetSetupStatus public; CheckSetupToken, TestDatabase,
+  CompleteSetup need the setup token, rate limited, refused once setup is done) and AdminService
+  (GetSettings, UpdateSettings, ListApiKeys, CreateApiKey, DeleteApiKey; admin role only). Control
+  struct (store, env, bootstrap, data dir, storage, env keys, token, OpenDatabase, FileStore,
+  Restart) set with API.WithControl. gate(): no key at all and not ALLOW_NO_AUTH -> before setup
+  FailedPrecondition "open /setup", after setup Unauthenticated.
+- cmd main: serve() loops run(); Restart cancels run's ctx with errRestart, graceful shutdown, run
+  again with fresh layered config (env > bootstrap > saved). kept{} holds memory stores and the
+  setup token across restarts. Postgres instances poll every 15s (watchSettings): reload keys,
+  restart on a new settings revision. Setup token logged at WARN on first run (or
+  PROTEUS_SETUP_TOKEN). internal/metrics: Prometheus.
 
 Docker: golang:1.27 build -> distroless static nonroot with fonts; compose.yaml adds postgres:17.
 CI: buf lint + generate, storm verify -stale, git diff on generated code, vet, gofmt,

@@ -18,7 +18,8 @@ COPY --from=web /web/dist ./web/dist
 ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -trimpath \
     -ldflags="-s -w -X github.com/gsoultan/proteus-server/internal/rpc.Version=${VERSION}" \
-    -o /out/proteus-server ./cmd/proteus-server
+    -o /out/proteus-server ./cmd/proteus-server \
+ && mkdir -p /out/data
 
 # Collect fonts so output is identical on every host.
 FROM debian:bookworm-slim AS fonts
@@ -29,9 +30,13 @@ RUN apt-get update \
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=fonts /usr/share/fonts /usr/share/fonts
 COPY --from=build /out/proteus-server /proteus-server
+# Settings and the setup wizard's bootstrap file; mount a volume here.
+COPY --from=build --chown=65532:65532 /out/data /var/lib/proteus
 ENV PROTEUS_ADDR=:8080 \
     PROTEUS_ADMIN_ADDR=:9090 \
-    PROTEUS_SYSTEM_FONTS=true
+    PROTEUS_SYSTEM_FONTS=true \
+    PROTEUS_DATA_DIR=/var/lib/proteus
+VOLUME /var/lib/proteus
 EXPOSE 8080 9090
 USER nonroot:nonroot
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s CMD ["/proteus-server", "healthcheck"]

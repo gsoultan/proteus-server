@@ -54,6 +54,8 @@ export default defineConfig({
     proxy: {
       "/proteus.v1.ConversionService": { target: process.env.PROTEUS_URL ?? "http://localhost:8080", changeOrigin: true },
       "/proteus.v1.TemplateService": { target: process.env.PROTEUS_URL ?? "http://localhost:8080", changeOrigin: true },
+      "/proteus.v1.SetupService": { target: process.env.PROTEUS_URL ?? "http://localhost:8080", changeOrigin: true },
+      "/proteus.v1.AdminService": { target: process.env.PROTEUS_URL ?? "http://localhost:8080", changeOrigin: true },
     },
   },
 });

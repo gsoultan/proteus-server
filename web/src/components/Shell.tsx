@@ -2,7 +2,7 @@
 
 import { ActionIcon, Anchor, type ActionIconProps, Badge, Box, Button, Code, Group, Modal, PasswordInput, Stack, Text, TextInput, Tooltip } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconKey } from "@tabler/icons-react";
+import { IconKey, IconSettings } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 
@@ -93,6 +93,11 @@ export function Header({ crumbs, children }: { crumbs?: { label: string; to?: st
       {children}
       <ConnectionBadge />
       <SettingsButton />
+      <Tooltip label="Settings and API keys">
+        <ActionIcon component={Link} to="/settings" variant="default" size={30} aria-label="Settings">
+          <IconSettings size={16} />
+        </ActionIcon>
+      </Tooltip>
     </Box>
   );
 }

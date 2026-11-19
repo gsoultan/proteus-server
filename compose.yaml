@@ -1,6 +1,8 @@
 # Local stack: the server plus Postgres for the shared job queue.
 #   docker compose up --build
-# Then call it with gRPC, for example:
+# Open http://localhost:8080/ and finish /setup with the setup_token from
+# `docker compose logs proteus`; then create API keys in Settings.
+# Call it with gRPC, for example (add -H "authorization: Bearer pk_..."):
 #   buf curl --protocol grpc --http2-prior-knowledge \
 #     --data '{"document":{"format":"INPUT_FORMAT_MARKDOWN","content":"IyBIaQ=="}}' \
 #     http://localhost:8080/proteus.v1.ConversionService/Convert
@@ -21,8 +23,12 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      PROTEUS_ALLOW_NO_AUTH: "true" # local only; set PROTEUS_API_KEYS anywhere else
       PROTEUS_DATABASE_URL: postgres://proteus:proteus@postgres:5432/proteus?sslmode=disable
+    volumes:
+      - proteus-data:/var/lib/proteus
     ports:
       - "8080:8080"
       - "9090:9090"
+
+volumes:
+  proteus-data:

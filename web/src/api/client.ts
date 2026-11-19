@@ -6,6 +6,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { ConversionService } from "@/gen/proteus/v1/conversion_pb.js";
+import { AdminService, SetupService } from "@/gen/proteus/v1/setup_pb.js";
 import { TemplateDataErrorSchema, TemplateService, type DataProblem } from "@/gen/proteus/v1/template_pb.js";
 
 /** Connection settings, kept in localStorage on this device. */
@@ -30,6 +31,8 @@ export const useSettings = create<Settings>()(
 export interface Proteus {
   conversion: Client<typeof ConversionService>;
   templates: Client<typeof TemplateService>;
+  setup: Client<typeof SetupService>;
+  admin: Client<typeof AdminService>;
 }
 
 function apiKeyInterceptor(apiKey: string): Interceptor {
@@ -54,7 +57,12 @@ export function proteus(baseUrl: string, apiKey: string): Proteus {
       useBinaryFormat: true,
       interceptors: [apiKeyInterceptor(apiKey)],
     });
-    p = { conversion: createClient(ConversionService, transport), templates: createClient(TemplateService, transport) };
+    p = {
+      conversion: createClient(ConversionService, transport),
+      templates: createClient(TemplateService, transport),
+      setup: createClient(SetupService, transport),
+      admin: createClient(AdminService, transport),
+    };
     cache.set(k, p);
   }
   return p;
@@ -83,6 +91,10 @@ export function errorMessage(err: unknown): string {
 
 export function isUnauthenticated(err: unknown): boolean {
   return ConnectError.from(err).code === Code.Unauthenticated;
+}
+
+export function isPermissionDenied(err: unknown): boolean {
+  return ConnectError.from(err).code === Code.PermissionDenied;
 }
 
 /** Saves bytes as a file download. */

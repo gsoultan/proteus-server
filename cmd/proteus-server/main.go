@@ -1,7 +1,8 @@
 // Command proteus-server serves document conversion (today HTML and Markdown
 // to PDF) over gRPC (ConnectRPC: gRPC, gRPC-Web and the Connect protocol).
 //
-//	proteus-server              run the server (configured by PROTEUS_* variables)
+//	proteus-server              run the server (first run: open /setup in a browser;
+//	                            PROTEUS_* variables override what the web UI saves)
 //	proteus-server keygen ID    print a new API key and its PROTEUS_API_KEYS entry
 //	proteus-server hash KEY     print the SHA-256 of an existing key
 //	proteus-server healthcheck  gRPC health check against PROTEUS_ADDR (for Docker)
@@ -9,6 +10,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -25,6 +28,7 @@ import (
 	"connectrpc.com/connect/v2/connecthttp"
 	"connectrpc.com/grpchealth/v2"
 
+	proteusv1 "github.com/gsoultan/proteus-server/gen/proteus/v1"
 	"github.com/gsoultan/proteus-server/internal/auth"
 	"github.com/gsoultan/proteus-server/internal/config"
 	"github.com/gsoultan/proteus-server/internal/convert"
@@ -33,6 +37,7 @@ import (
 	"github.com/gsoultan/proteus-server/internal/metrics"
 	"github.com/gsoultan/proteus-server/internal/rpc"
 	"github.com/gsoultan/proteus-server/internal/safefetch"
+	"github.com/gsoultan/proteus-server/internal/settings"
 	"github.com/gsoultan/proteus-server/internal/storage/pgstore"
 	"github.com/gsoultan/proteus-server/internal/templates"
 )
@@ -41,7 +46,7 @@ func main() {
 	if len(os.Args) > 1 {
 		os.Exit(subcommand(os.Args[1:]))
 	}
-	if err := run(); err != nil {
+	if err := serve(); err != nil {
 		fmt.Fprintln(os.Stderr, "proteus-server:", err)
 		os.Exit(1)
 	}
@@ -102,23 +107,122 @@ func healthcheck(addr string) error {
 	return nil
 }
 
-func run() error {
-	cfg, err := config.FromEnv(nil)
+// errRestart ends run so serve starts it again with fresh settings.
+var errRestart = errors.New("restart to apply settings")
+
+// kept survives in-place restarts: the in-memory stores (so saving a setting
+// does not lose jobs and templates when there is no database) and the setup
+// token (so the one in the log stays valid).
+type kept struct {
+	jobs       jobs.Store
+	templates  templates.Store
+	setupToken string
+}
+
+// serve runs the server, restarting it in place whenever the web UI saves
+// settings or setup completes.
+func serve() error {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	var k kept
+	for {
+		err := run(ctx, &k)
+		if !errors.Is(err, errRestart) {
+			return err
+		}
+		slog.Info("restarting to apply settings")
+	}
+}
+
+// pgDatabase adapts pgstore.Store for the setup wizard.
+type pgDatabase struct{ *pgstore.Store }
+
+func (d pgDatabase) Settings() settings.Store { return d.Store.Settings() }
+
+func openDatabase(ctx context.Context, cfg config.Config, migrate bool, log *slog.Logger) (*pgstore.Store, error) {
+	return pgstore.Open(ctx, cfg.DatabaseURL, cfg.DatabaseSchema, migrate && cfg.AutoMigrate, func(f string, a ...any) {
+		log.Info("migrate: " + fmt.Sprintf(f, a...))
+	})
+}
+
+func run(parent context.Context, k *kept) error {
+	// Settings come in layers: the environment, then the bootstrap file the
+	// setup wizard wrote (the database), then what the web UI saved.
+	dataDir := strings.TrimSpace(os.Getenv("PROTEUS_DATA_DIR"))
+	if dataDir == "" {
+		dataDir = "data"
+	}
+	bootstrap, err := settings.ReadBootstrap(dataDir)
 	if err != nil {
 		return err
 	}
-	log := newLogger(cfg)
+	boot, err := config.FromEnv(config.Layered(os.Getenv, bootstrap))
+	if err != nil {
+		return err
+	}
+	log := newLogger(boot)
 	slog.SetDefault(log)
 
-	keys, err := auth.ParseKeys(cfg.APIKeys)
+	ctx, cancel := context.WithCancelCause(parent)
+	defer cancel(nil)
+
+	var (
+		store     jobs.Store
+		tplStore  templates.Store
+		setStore  settings.Store
+		pingDB    func(context.Context) error
+		storage   = proteusv1.Storage_STORAGE_MEMORY
+		fileStore = func() settings.Store { return settings.NewFileStore(dataDir) }
+	)
+	if boot.DatabaseURL != "" {
+		octx, ocancel := context.WithTimeout(ctx, 60*time.Second)
+		pg, err := openDatabase(octx, boot, true, log)
+		ocancel()
+		if err != nil {
+			return err
+		}
+		defer pg.Close()
+		store, tplStore, setStore, pingDB = pg, pg.Templates(), pg.Settings(), pg.Ping
+		storage = proteusv1.Storage_STORAGE_POSTGRES
+		log.Info("job, template and settings store: postgres", "auto_migrate", boot.AutoMigrate)
+	} else {
+		if k.jobs == nil {
+			k.jobs, k.templates = jobs.NewMemoryStore(boot.MaxJobs), templates.NewMemoryStore()
+		}
+		store, tplStore, setStore = k.jobs, k.templates, fileStore()
+		log.Warn("job and template store: memory; templates are lost on restart "+
+			"(choose PostgreSQL in /setup or set PROTEUS_DATABASE_URL to keep them and share jobs across instances)",
+			"settings", filepath.Join(dataDir, settings.SettingsFile))
+	}
+	doc, err := setStore.Load(ctx)
 	if err != nil {
 		return err
 	}
-	if len(keys) == 0 && !cfg.AllowNoAuth {
-		return errors.New("no API keys configured: set PROTEUS_API_KEYS (see `proteus-server keygen`) " +
-			"or PROTEUS_ALLOW_NO_AUTH=true for local development")
+	cfg, err := config.FromEnv(config.Layered(os.Getenv, bootstrap, doc.Values))
+	if err != nil {
+		return fmt.Errorf("saved settings: %w", err)
 	}
-	if len(keys) == 0 {
+
+	envKeys, err := auth.ParseKeys(cfg.APIKeys)
+	if err != nil {
+		return err
+	}
+	uiKeys, err := setStore.ListKeys(ctx)
+	if err != nil {
+		return err
+	}
+	switch {
+	case !doc.SetupDone():
+		if k.setupToken == "" {
+			k.setupToken = cfg.SetupToken
+		}
+		if k.setupToken == "" {
+			k.setupToken = newSetupToken()
+		}
+		log.Warn("first run: open /setup in a browser to set up proteus-server", "setup_token", k.setupToken)
+	case len(envKeys)+len(uiKeys) == 0 && !cfg.AllowNoAuth:
+		log.Error("no API keys: every call is refused; set PROTEUS_API_KEYS with an admin key (`proteus-server keygen ops`, then add :admin)")
+	case len(envKeys)+len(uiKeys) == 0:
 		log.Warn("authentication disabled (PROTEUS_ALLOW_NO_AUTH=true); do not expose this server")
 	}
 
@@ -129,32 +233,6 @@ func run() error {
 	jobWorkers := cfg.JobWorkers
 	if jobWorkers == 0 {
 		jobWorkers = max(1, workers/2)
-	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	var (
-		store    jobs.Store
-		tplStore templates.Store
-		pingDB   func(context.Context) error
-	)
-	if cfg.DatabaseURL != "" {
-		octx, cancel := context.WithTimeout(ctx, 60*time.Second)
-		pg, err := pgstore.Open(octx, cfg.DatabaseURL, cfg.DatabaseSchema, cfg.AutoMigrate, func(f string, a ...any) {
-			log.Info("migrate: " + fmt.Sprintf(f, a...))
-		})
-		cancel()
-		if err != nil {
-			return err
-		}
-		defer pg.Close()
-		store, tplStore, pingDB = pg, pg.Templates(), pg.Ping
-		log.Info("job and template store: postgres", "auto_migrate", cfg.AutoMigrate)
-	} else {
-		store, tplStore = jobs.NewMemoryStore(cfg.MaxJobs), templates.NewMemoryStore()
-		log.Warn("job and template store: memory; templates are lost on restart " +
-			"(set PROTEUS_DATABASE_URL to keep them and share jobs across instances)")
 	}
 
 	m := metrics.New(workers)
@@ -188,8 +266,31 @@ func run() error {
 		MaxPerOwner: cfg.MaxTemplates, MaxAssets: cfg.MaxAssets, MaxBytes: cfg.MaxTemplateBytes,
 		MaxOutput: cfg.MaxRequestBytes, RenderTimeout: cfg.TemplateRenderTimeout,
 	})
-	api := rpc.New(rpc.Config{MaxRequestBytes: cfg.MaxRequestBytes, MaxAssets: cfg.MaxAssets, MaxOutputBytes: cfg.MaxOutput},
-		svc, jm, ts, auth.New(keys, cfg.RateLimit, cfg.RateBurst), m, log, pingDB)
+	authn := auth.New(envKeys, cfg.RateLimit, cfg.RateBurst)
+	api := rpc.New(rpc.Config{MaxRequestBytes: cfg.MaxRequestBytes, MaxAssets: cfg.MaxAssets, MaxOutputBytes: cfg.MaxOutput, AllowNoAuth: cfg.AllowNoAuth},
+		svc, jm, ts, authn, m, log, pingDB)
+	api.WithControl(&rpc.Control{
+		Store: setStore, Env: os.Getenv, Bootstrap: bootstrap, DataDir: dataDir,
+		Storage: storage, StorageFromEnv: strings.TrimSpace(os.Getenv("PROTEUS_DATABASE_URL")) != "",
+		EnvKeys: envKeys, SetupDone: doc.SetupDone(), SetupToken: k.setupToken,
+		OpenDatabase: func(ctx context.Context, values map[string]string, migrate bool) (rpc.Database, error) {
+			c, err := config.FromEnv(config.Layered(func(string) string { return "" }, values))
+			if err != nil {
+				return nil, err
+			}
+			pg, err := openDatabase(ctx, c, migrate, log)
+			if err != nil {
+				return nil, err
+			}
+			return pgDatabase{pg}, nil
+		},
+		FileStore: fileStore,
+		Restart:   func() { cancel(errRestart) },
+	})
+	authn.SetStored(rpcKeys(uiKeys))
+	if storage == proteusv1.Storage_STORAGE_POSTGRES {
+		go watchSettings(ctx, setStore, api, doc.Revision, func() { cancel(errRestart) }, log)
+	}
 
 	protocols := new(http.Protocols)
 	protocols.SetHTTP1(true)            // Connect and gRPC-Web from browsers
@@ -232,17 +333,22 @@ func run() error {
 	}
 	api.SetReady(true)
 	log.Info("listening", "addr", ln.Addr().String(), "admin", cfg.AdminAddr, "workers", workers,
-		"job_workers", jobWorkers, "remote_resources", cfg.AllowRemote, "auth", len(keys) > 0, "version", rpc.Version)
+		"job_workers", jobWorkers, "remote_resources", cfg.AllowRemote, "auth", authn.Enabled(), "version", rpc.Version)
 
 	select {
 	case err := <-errc:
 		return err
 	case <-ctx.Done():
 	}
-	log.Info("shutting down")
+	restart := errors.Is(context.Cause(ctx), errRestart)
+	if restart {
+		log.Info("applying settings: stopping services")
+	} else {
+		log.Info("shutting down")
+	}
 	api.SetReady(false)
-	sctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
-	defer cancel()
+	sctx, scancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+	defer scancel()
 	httpErr := srv.Shutdown(sctx)
 	jobErr := jm.Shutdown(sctx)
 	var adminErr error
@@ -252,8 +358,62 @@ func run() error {
 	if err := errors.Join(httpErr, jobErr, adminErr); err != nil {
 		return fmt.Errorf("shutdown: %w", err)
 	}
+	if restart {
+		return errRestart
+	}
 	log.Info("stopped")
 	return nil
+}
+
+// newSetupToken returns about 99 random bits as five groups of four letters and
+// digits, easy to copy from a log.
+func newSetupToken() string {
+	var b [20]byte
+	_, _ = rand.Read(b[:])
+	const alphabet = "abcdefghjkmnpqrstuvwxyz23456789"
+	var sb strings.Builder
+	for i, c := range b {
+		if i > 0 && i%4 == 0 {
+			sb.WriteByte('-')
+		}
+		sb.WriteByte(alphabet[int(c)%len(alphabet)])
+	}
+	return sb.String()
+}
+
+func rpcKeys(keys []settings.APIKey) []auth.Key {
+	out := make([]auth.Key, len(keys))
+	for i, k := range keys {
+		out[i] = auth.Key{ID: k.ID, Hash: k.Hash, Role: k.Role}
+	}
+	return out
+}
+
+// watchSettings keeps instances that share a database in step: it reloads
+// the API keys and restarts when another instance saved new settings.
+func watchSettings(ctx context.Context, store settings.Store, api *rpc.API, revision int64, restart func(), log *slog.Logger) {
+	t := time.NewTicker(15 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		if err := api.ReloadKeys(ctx); err != nil {
+			log.Warn("reload api keys", "error", err)
+		}
+		d, err := store.Load(ctx)
+		if err != nil {
+			log.Warn("reload settings", "error", err)
+			continue
+		}
+		if d.Revision != revision {
+			log.Info("settings changed on another instance")
+			restart()
+			return
+		}
+	}
 }
 
 func warmUp(ctx context.Context, svc *convert.Service) error {

@@ -6,3 +6,4 @@
 .vscode/
 graphify-out/cache/
 graphify-out/.graphify_*
+/data/

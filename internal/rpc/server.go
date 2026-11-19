@@ -1,5 +1,6 @@
-// Package rpc is the transport: the ConnectRPC ConversionService and
-// TemplateService plus gRPC health and reflection, behind interceptors for
+// Package rpc is the transport: the ConnectRPC ConversionService,
+// TemplateService, SetupService (first-run wizard) and AdminService
+// (settings and API keys) plus gRPC health and reflection, behind interceptors for
 // request ids, logging, metrics, panic recovery and API keys. The same handlers answer gRPC,
 // gRPC-Web and the Connect protocol; there is no REST API.
 package rpc
@@ -38,6 +39,7 @@ type Config struct {
 	MaxRequestBytes int64 // largest request message; default 20 MiB
 	MaxAssets       int   // assets per document; default 64
 	MaxOutputBytes  int64 // largest response message (sync PDF); default 100 MiB
+	AllowNoAuth     bool  // serve without any API key even before setup (local development)
 }
 
 // API wires the service to its dependencies.
@@ -51,6 +53,7 @@ type API struct {
 	log       *slog.Logger
 	ready     atomic.Bool
 	pingDB    func(context.Context) error
+	ctl       *control // setup wizard and admin pages; nil without WithControl
 }
 
 // New builds the API. pingDB, when set, is part of the health check.
@@ -79,6 +82,8 @@ func (a *API) Handler() http.Handler {
 	conv := &conversionService{api: a}
 	proteusv1connect.RegisterConversionServiceHandler(server, conv)
 	proteusv1connect.RegisterTemplateServiceHandler(server, &templateService{conv: conv})
+	proteusv1connect.RegisterSetupServiceHandler(server, &setupService{api: a})
+	proteusv1connect.RegisterAdminServiceHandler(server, &adminService{api: a})
 	grpchealth.Register(server, healthChecker{a})
 	grpcreflect.Register(server)
 	mux := http.NewServeMux()
@@ -210,11 +215,16 @@ func isOps(procedure string) bool {
 }
 
 // authenticate checks the API key ("authorization: Bearer <key>" or
-// "x-api-key") and the key's rate limit.
+// "x-api-key") and the key's rate limit. The setup wizard checks its own
+// token instead; until setup is done and while no key exists, every other
+// call is refused.
 func (a *API) authenticate(next connect.ServerFunc) connect.ServerFunc {
 	return func(ctx context.Context, spec connect.Spec, stream connect.ServerStream) error {
-		if isOps(spec.Procedure) {
+		if isOps(spec.Procedure) || isSetup(spec.Procedure) {
 			return next(ctx, spec, stream)
+		}
+		if err := a.gate(); err != nil {
+			return err
 		}
 		info, ok := connect.CallInfoForServerContext(ctx)
 		if !ok {
@@ -225,7 +235,7 @@ func (a *API) authenticate(next connect.ServerFunc) connect.ServerFunc {
 		if v, ok := strings.CutPrefix(h.Get("Authorization"), "Bearer "); secret == "" && ok {
 			secret = strings.TrimSpace(v)
 		}
-		id, err := a.auth.Check(secret)
+		id, role, err := a.auth.Identify(secret)
 		switch {
 		case errors.Is(err, auth.ErrUnauthorized):
 			return connect.NewError(connect.CodeUnauthenticated, err.Error())
@@ -237,6 +247,6 @@ func (a *API) authenticate(next connect.ServerFunc) connect.ServerFunc {
 		if li, ok := ctx.Value(logInfoKey).(*logInfo); ok {
 			li.caller = id
 		}
-		return next(auth.WithCaller(ctx, id), spec, stream)
+		return next(auth.WithRole(auth.WithCaller(ctx, id), role), spec, stream)
 	}
 }
