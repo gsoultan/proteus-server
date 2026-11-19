@@ -25,6 +25,22 @@ and in memory otherwise.
 ## Quick start
 
 ```sh
+go run ./cmd/proteus-server
+# WARN first run: open /setup in a browser ... setup_token=mc8h-edmr-fk9x-gfau-m5p6
+```
+
+Open <http://localhost:8080/>: a fresh server sends every page to the
+**/setup** wizard. Enter the setup token from the log, choose PostgreSQL (with
+a connection test) or "this server only", pick a few basics, and the wizard
+creates the first admin API key, signs this browser in with it and restarts
+the server's services in place to apply everything. After that `/setup` is
+closed for good, and **Settings** (gear at the top right) changes every other
+setting and creates or revokes API keys. Until setup is done, every API call
+answers `FAILED_PRECONDITION`, so a fresh server is never open.
+
+Keys can still come from the environment, for scripts and CI:
+
+```sh
 go run ./cmd/proteus-server keygen ci
 # API key (give to the client, shown once): pk_...
 # PROTEUS_API_KEYS entry:                    ci:3f9a...
@@ -282,13 +298,40 @@ has no page-count or memory budget yet.
 
 ## Configuration
 
+Settings come in three layers, highest first:
+
+1. **Environment variables** (the table below). A setting set here is shown
+   locked in the web UI.
+2. **The bootstrap file** `$PROTEUS_DATA_DIR/bootstrap.json` (mode 0600),
+   written by the `/setup` wizard: the database URL, schema and auto-migrate
+   flag, which cannot live in the database itself.
+3. **Settings saved in the web UI** (`AdminService.UpdateSettings`), kept in
+   Postgres (table `server_settings`, shared by every instance) or, without a
+   database, in `$PROTEUS_DATA_DIR/settings.json`. Saving restarts the
+   server's services in place (in-flight requests drain first; in-memory jobs
+   and templates are kept). Instances sharing a database poll every 15 s,
+   reload API keys and restart when another instance saved settings.
+
+Everything in the table can be saved from the UI except the listen
+addresses, shutdown timeout, logging, data folder, setup token, environment
+API keys, `PROTEUS_ALLOW_NO_AUTH` and the database settings: those are read
+before the settings store can be opened, or are operator escape hatches.
+
+API keys created in the UI are stored as SHA-256 hashes (table `api_keys`)
+with a role: **client** (conversions, jobs, templates) or **admin** (also
+`AdminService`: settings and keys). Environment keys are clients unless the
+entry ends in `:admin`. The last admin key and the caller's own key cannot be
+revoked.
+
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `PROTEUS_ADDR` | `:8080` | RPC listener (gRPC, gRPC-Web, Connect). |
 | `PROTEUS_ADMIN_ADDR` | `:9090` | Metrics listener; `off` disables it. |
-| `PROTEUS_API_KEYS` | | `id:sha256hex` entries, comma or newline separated. |
+| `PROTEUS_DATA_DIR` | `data` | Bootstrap file and, without a database, saved settings and keys. `/var/lib/proteus` in the image. |
+| `PROTEUS_SETUP_TOKEN` | random | Token for the `/setup` wizard; a random one is logged at first start. |
+| `PROTEUS_API_KEYS` | | `id:sha256hex[:admin]` entries, comma or newline separated. |
 | `PROTEUS_API_KEYS_FILE` | | File with more entries (`#` comments allowed). |
-| `PROTEUS_ALLOW_NO_AUTH` | `false` | Run without keys (local development only). |
+| `PROTEUS_ALLOW_NO_AUTH` | `false` | Serve without any key, even before setup (local development only). |
 | `PROTEUS_RATE_LIMIT` / `PROTEUS_RATE_BURST` | `10` / `20` | Requests per second and burst, per key. `0` disables. |
 | `PROTEUS_WORKERS` | CPU count | Concurrent conversions (sync and async share the pool). |
 | `PROTEUS_TIMEOUT` | `30s` | Per conversion. |
@@ -363,7 +406,10 @@ bun run build      # writes web/dist/, then `go build` embeds it
 Without a build the binary still runs; `/` then explains how to build the UI.
 The Docker image builds the UI in a Bun stage. The API key is kept in the
 browser only and sent as a bearer token; the server URL is configurable in
-the UI for a build served from elsewhere. TypeScript message types come from
+the UI for a build served from elsewhere. Routes: `/` templates, `/new`,
+`/t/$id` builder, `/setup` first-run wizard (`SetupService`, guarded by the
+setup token, closed once setup completes) and `/settings` (`AdminService`,
+admin keys only). TypeScript message types come from
 `buf generate` (protoc-gen-es into `web/src/gen/`), which CI checks.
 
 ## Development

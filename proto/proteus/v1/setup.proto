@@ -1,0 +1,258 @@
+syntax = "proto3";
+
+package proteus.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/gsoultan/proteus-server/gen/proteus/v1;proteusv1";
+
+// SetupService runs the first-run wizard at /setup in the web UI. It needs no
+// API key, because none exists yet; instead every call that changes or
+// probes anything needs the setup token, which the server prints to its log
+// at startup (or takes from PROTEUS_SETUP_TOKEN). Once setup is complete,
+// every call but GetSetupStatus answers FAILED_PRECONDITION, so the wizard
+// cannot run twice.
+service SetupService {
+  // GetSetupStatus says whether the server still needs setting up. It is
+  // the only call open to anyone, and reveals nothing else.
+  rpc GetSetupStatus(GetSetupStatusRequest) returns (GetSetupStatusResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // CheckSetupToken checks a token without changing anything, so the
+  // wizard can confirm it on the first step. PERMISSION_DENIED when wrong;
+  // RESOURCE_EXHAUSTED after too many wrong tokens.
+  rpc CheckSetupToken(CheckSetupTokenRequest) returns (CheckSetupTokenResponse);
+
+  // TestDatabase connects to a PostgreSQL database and reports whether it
+  // can be used. It never stores anything.
+  rpc TestDatabase(TestDatabaseRequest) returns (TestDatabaseResponse);
+
+  // CompleteSetup saves the storage choice and settings, creates the first
+  // admin API key and returns it (shown once), then restarts the server's
+  // services in place to apply everything.
+  rpc CompleteSetup(CompleteSetupRequest) returns (CompleteSetupResponse);
+}
+
+// AdminService is the web UI's settings and API key pages. Every call needs
+// an API key with the admin role.
+service AdminService {
+  // GetSettings lists every setting, where its value comes from and whether
+  // the web UI may change it.
+  rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // UpdateSettings saves settings and restarts the server's services in
+  // place to apply them (requests in flight finish first). INVALID_ARGUMENT
+  // names every bad value; ABORTED when revision is stale.
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
+
+  // ListApiKeys lists the keys created in the web UI and, read-only, the
+  // keys from PROTEUS_API_KEYS.
+  rpc ListApiKeys(ListApiKeysRequest) returns (ListApiKeysResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // CreateApiKey creates a key and returns it; the server keeps only its
+  // hash, so it cannot be shown again.
+  rpc CreateApiKey(CreateApiKeyRequest) returns (CreateApiKeyResponse);
+
+  // DeleteApiKey revokes a key created in the web UI. Its templates and jobs
+  // stay but nobody can reach them. FAILED_PRECONDITION when it is the last
+  // admin key or the key making the call.
+  rpc DeleteApiKey(DeleteApiKeyRequest) returns (DeleteApiKeyResponse);
+}
+
+// Storage is where jobs, templates, settings and keys are kept.
+enum Storage {
+  STORAGE_UNSPECIFIED = 0;
+  // In memory, with settings and keys in a file in the data folder. Jobs
+  // and templates are lost on restart. For trying proteus out.
+  STORAGE_MEMORY = 1;
+  // PostgreSQL, shared by every server instance.
+  STORAGE_POSTGRES = 2;
+}
+
+message GetSetupStatusRequest {}
+
+message GetSetupStatusResponse {
+  // True until the wizard completes.
+  bool needs_setup = 1;
+  // The storage in use now.
+  Storage storage = 2;
+  // The database is set by PROTEUS_DATABASE_URL, so the wizard cannot
+  // change it.
+  bool storage_from_environment = 3;
+  // Keys from PROTEUS_API_KEYS already work.
+  bool has_environment_keys = 4;
+  string version = 5;
+}
+
+message CheckSetupTokenRequest {
+  string setup_token = 1;
+}
+
+message CheckSetupTokenResponse {}
+
+// Database is a PostgreSQL connection.
+message Database {
+  // postgres://user:password@host:5432/dbname?sslmode=require
+  string url = 1;
+  // Schema for proteus's tables; default public.
+  string schema = 2;
+  // Create and update the tables at startup; default true.
+  optional bool auto_migrate = 3;
+}
+
+message TestDatabaseRequest {
+  string setup_token = 1;
+  Database database = 2;
+}
+
+message TestDatabaseResponse {
+  // False with a readable reason in error.
+  bool ok = 1;
+  string error = 2;
+  // Server version, e.g. "PostgreSQL 17.2".
+  string server_version = 3;
+}
+
+message CompleteSetupRequest {
+  string setup_token = 1;
+  // Where to keep data. Ignored when the database comes from the
+  // environment.
+  Storage storage = 2;
+  // Required for STORAGE_POSTGRES.
+  Database database = 3;
+  // Settings by PROTEUS_* name (see GetSettings); only editable ones.
+  // Missing ones keep their defaults.
+  map<string, string> settings = 4;
+  // Name of the first admin key, e.g. "Admin".
+  string admin_key_name = 5;
+}
+
+message CompleteSetupResponse {
+  ApiKey admin_key = 1;
+  // The key itself; shown once.
+  string secret = 2;
+}
+
+// Setting is one PROTEUS_* setting.
+message Setting {
+  // The environment variable name, e.g. PROTEUS_TIMEOUT.
+  string name = 1;
+  // UI section, e.g. "Limits".
+  string group = 2;
+  string label = 3;
+  string help = 4;
+  Kind kind = 5;
+  // The value in effect as text. Empty for secrets.
+  string value = 6;
+  string default_value = 7;
+  Source source = 8;
+  // The web UI may save this setting. Others are read before settings can
+  // be loaded (listen address, logging, data folder, database) and stay in
+  // the environment.
+  bool editable = 9;
+  // For secrets: whether a value is set.
+  bool is_set = 10;
+
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_STRING = 1;
+    KIND_INT = 2;
+    KIND_FLOAT = 3;
+    KIND_BOOL = 4;
+    // Go duration text: 30s, 5m, 1h30m.
+    KIND_DURATION = 5;
+    // Bytes with an optional KiB, MiB or GiB suffix.
+    KIND_BYTES = 6;
+    // Comma separated.
+    KIND_LIST = 7;
+    // Write-only.
+    KIND_SECRET = 8;
+  }
+
+  enum Source {
+    SOURCE_UNSPECIFIED = 0;
+    SOURCE_DEFAULT = 1;
+    // Saved from the web UI.
+    SOURCE_SAVED = 2;
+    // The bootstrap file the setup wizard wrote (database settings).
+    SOURCE_BOOTSTRAP = 3;
+    // A PROTEUS_* environment variable; wins over everything else.
+    SOURCE_ENVIRONMENT = 4;
+  }
+}
+
+message GetSettingsRequest {}
+
+message GetSettingsResponse {
+  repeated Setting settings = 1;
+  // Pass back to UpdateSettings.
+  int64 revision = 2;
+  Storage storage = 3;
+  // Folder holding the bootstrap file and, with STORAGE_MEMORY, the settings.
+  string data_dir = 4;
+}
+
+message UpdateSettingsRequest {
+  // New values by name. An empty value returns the setting to its default.
+  // Secrets left out keep their value.
+  map<string, string> values = 1;
+  // From GetSettings.
+  int64 revision = 2;
+}
+
+message UpdateSettingsResponse {
+  int64 revision = 1;
+  // The server is restarting its services to apply the change.
+  bool restarting = 2;
+}
+
+// ApiKey describes a key; the key itself is never returned after creation.
+message ApiKey {
+  // Owner id of the key's jobs and templates.
+  string id = 1;
+  string name = 2;
+  Role role = 3;
+  // The first characters of the key, to recognise it.
+  string prefix = 4;
+  google.protobuf.Timestamp create_time = 5;
+  // From PROTEUS_API_KEYS: read-only here.
+  bool from_environment = 6;
+
+  enum Role {
+    ROLE_UNSPECIFIED = 0;
+    // Conversions, jobs and templates.
+    ROLE_CLIENT = 1;
+    // Also settings and API keys.
+    ROLE_ADMIN = 2;
+  }
+}
+
+message ListApiKeysRequest {}
+
+message ListApiKeysResponse {
+  repeated ApiKey keys = 1;
+  // The id of the key making the call.
+  string caller_id = 2;
+}
+
+message CreateApiKeyRequest {
+  string name = 1;
+  ApiKey.Role role = 2;
+}
+
+message CreateApiKeyResponse {
+  ApiKey key = 1;
+  // The key itself; shown once.
+  string secret = 2;
+}
+
+message DeleteApiKeyRequest {
+  string id = 1;
+}
+
+message DeleteApiKeyResponse {}

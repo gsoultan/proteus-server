@@ -8,6 +8,20 @@ import (
 	m0 "github.com/gsoultan/proteus-server/internal/storage/model"
 )
 
+// _assertAPIKeyShape fails to compile if m0.APIKey gains, loses, renames or
+// reorders a field. Regenerate: `storm generate`.
+func _assertAPIKeyShape(m m0.APIKey) {
+	type shape m0.APIKey
+	_ = shape{
+		m.Model,
+		m.KeyID,
+		m.Name,
+		m.Role,
+		m.Hash,
+		m.Prefix,
+	}
+}
+
 // _assertJobShape fails to compile if m0.Job gains, loses, renames or
 // reorders a field. Regenerate: `storm generate`.
 func _assertJobShape(m m0.Job) {
@@ -30,6 +44,18 @@ func _assertJobShape(m m0.Job) {
 		m.Warnings,
 		m.ResultBytes,
 		m.Result,
+	}
+}
+
+// _assertServerSettingShape fails to compile if m0.ServerSetting gains, loses, renames or
+// reorders a field. Regenerate: `storm generate`.
+func _assertServerSettingShape(m m0.ServerSetting) {
+	type shape m0.ServerSetting
+	_ = shape{
+		m.Model,
+		m.Scope,
+		m.Revision,
+		m.Body,
 	}
 }
 

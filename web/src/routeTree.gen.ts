@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NewRouteImport } from './routes/new'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as TIdRouteImport } from './routes/t.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +25,16 @@ const NewRoute = NewRouteImport.update({
   path: '/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TIdRoute = TIdRouteImport.update({
   id: '/t/$id',
   path: '/t/$id',
@@ -32,30 +44,38 @@ const TIdRoute = TIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/new': typeof NewRoute
+  '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
   '/t/$id': typeof TIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/new': typeof NewRoute
+  '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
   '/t/$id': typeof TIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/new': typeof NewRoute
+  '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
   '/t/$id': typeof TIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/new' | '/t/$id'
+  fullPaths: '/' | '/new' | '/settings' | '/setup' | '/t/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/new' | '/t/$id'
-  id: '__root__' | '/' | '/new' | '/t/$id'
+  to: '/' | '/new' | '/settings' | '/setup' | '/t/$id'
+  id: '__root__' | '/' | '/new' | '/settings' | '/setup' | '/t/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   NewRoute: typeof NewRoute
+  SettingsRoute: typeof SettingsRoute
+  SetupRoute: typeof SetupRoute
   TIdRoute: typeof TIdRoute
 }
 
@@ -75,6 +95,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/t/$id': {
       id: '/t/$id'
       path: '/t/$id'
@@ -88,6 +122,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NewRoute: NewRoute,
+  SettingsRoute: SettingsRoute,
+  SetupRoute: SetupRoute,
   TIdRoute: TIdRoute,
 }
 export const routeTree = rootRouteImport

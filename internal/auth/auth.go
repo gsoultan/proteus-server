@@ -3,6 +3,7 @@
 // Keys are never stored in plain text: the server is configured with
 // "<id>:<sha256-hex>" entries and compares the SHA-256 of the presented key.
 // Keys are high-entropy random strings, so an unsalted fast hash is enough.
+// Keys created in the web UI are kept the same way (internal/settings).
 package auth
 
 import (
@@ -14,19 +15,29 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"golang.org/x/time/rate"
+)
+
+// Roles. An admin key may also change settings and manage keys in the web UI.
+const (
+	RoleAdmin  = "admin"
+	RoleClient = "client"
 )
 
 // Key is one configured API key.
 type Key struct {
 	ID   string
 	Hash [32]byte
+	Role string // RoleAdmin or RoleClient
 }
 
-// ParseKeys parses comma or newline separated "<id>:<sha256-hex>" entries.
+// ParseKeys parses comma or newline separated "<id>:<sha256-hex>[:<role>]"
+// entries. The role is client unless given as admin.
 func ParseKeys(spec string) ([]Key, error) {
 	var keys []Key
 	seen := map[string]bool{}
@@ -39,6 +50,13 @@ func ParseKeys(spec string) ([]Key, error) {
 		if !ok || id == "" {
 			return nil, fmt.Errorf("auth: key entry %q must be <id>:<sha256-hex>", redact(f))
 		}
+		role := RoleClient
+		if hh, r, ok := strings.Cut(h, ":"); ok {
+			h, role = hh, strings.TrimSpace(r)
+			if role != RoleAdmin && role != RoleClient {
+				return nil, fmt.Errorf("auth: key %q: role must be admin or client", id)
+			}
+		}
 		raw, err := hex.DecodeString(strings.TrimSpace(h))
 		if err != nil || len(raw) != 32 {
 			return nil, fmt.Errorf("auth: key %q: hash must be 64 hex characters", id)
@@ -47,7 +65,7 @@ func ParseKeys(spec string) ([]Key, error) {
 			return nil, fmt.Errorf("auth: duplicate key id %q", id)
 		}
 		seen[id] = true
-		k := Key{ID: id}
+		k := Key{ID: id, Role: role}
 		copy(k.Hash[:], raw)
 		keys = append(keys, k)
 	}
@@ -82,11 +100,14 @@ var ErrUnauthorized = errors.New("missing or invalid API key")
 // ErrRateLimited means the key exceeded its rate.
 var ErrRateLimited = errors.New("rate limit exceeded")
 
-// Authenticator validates keys and holds one limiter per key.
+// Authenticator validates keys and holds one limiter per key. Keys from the
+// environment are fixed; keys created in the web UI are swapped in with
+// SetStored whenever they change.
 type Authenticator struct {
-	keys  []Key
-	rps   rate.Limit
-	burst int
+	keys   []Key
+	stored atomic.Pointer[[]Key]
+	rps    rate.Limit
+	burst  int
 
 	mu       sync.Mutex
 	limiters map[string]*rate.Limiter
@@ -105,8 +126,21 @@ func New(keys []Key, rps float64, burst int) *Authenticator {
 	return &Authenticator{keys: keys, rps: lim, burst: burst, limiters: map[string]*rate.Limiter{}}
 }
 
+// SetStored replaces the keys created in the web UI.
+func (a *Authenticator) SetStored(keys []Key) {
+	keys = slices.Clone(keys)
+	a.stored.Store(&keys)
+}
+
+func (a *Authenticator) storedKeys() []Key {
+	if p := a.stored.Load(); p != nil {
+		return *p
+	}
+	return nil
+}
+
 // Enabled reports whether keys are required.
-func (a *Authenticator) Enabled() bool { return len(a.keys) > 0 }
+func (a *Authenticator) Enabled() bool { return len(a.keys) > 0 || len(a.storedKeys()) > 0 }
 
 // Anonymous is the caller id used when authentication is disabled.
 const Anonymous = "anonymous"
@@ -114,26 +148,36 @@ const Anonymous = "anonymous"
 // Check returns the key id for the presented secret and consumes one token
 // from that key's rate limiter.
 func (a *Authenticator) Check(secret string) (string, error) {
-	id := Anonymous
+	id, _, err := a.Identify(secret)
+	return id, err
+}
+
+// Identify is Check that also returns the key's role. With authentication
+// disabled the anonymous caller is an admin: whoever can reach the server
+// can do everything anyway.
+func (a *Authenticator) Identify(secret string) (id, role string, err error) {
+	id, role = Anonymous, RoleAdmin
 	if a.Enabled() {
 		if secret == "" {
-			return "", ErrUnauthorized
+			return "", "", ErrUnauthorized
 		}
 		h := sha256.Sum256([]byte(secret))
 		id = ""
-		for _, k := range a.keys {
-			if subtle.ConstantTimeCompare(h[:], k.Hash[:]) == 1 {
-				id = k.ID
+		for _, ks := range [][]Key{a.keys, a.storedKeys()} {
+			for _, k := range ks {
+				if subtle.ConstantTimeCompare(h[:], k.Hash[:]) == 1 {
+					id, role = k.ID, k.Role
+				}
 			}
 		}
 		if id == "" {
-			return "", ErrUnauthorized
+			return "", "", ErrUnauthorized
 		}
 	}
 	if !a.limiter(id).Allow() {
-		return id, ErrRateLimited
+		return id, role, ErrRateLimited
 	}
-	return id, nil
+	return id, role, nil
 }
 
 func (a *Authenticator) limiter(id string) *rate.Limiter {
@@ -149,6 +193,8 @@ func (a *Authenticator) limiter(id string) *rate.Limiter {
 
 type ctxKey struct{}
 
+type roleKey struct{}
+
 // WithCaller stores the caller id in ctx.
 func WithCaller(ctx context.Context, id string) context.Context {
 	return context.WithValue(ctx, ctxKey{}, id)
@@ -158,4 +204,15 @@ func WithCaller(ctx context.Context, id string) context.Context {
 func Caller(ctx context.Context) string {
 	id, _ := ctx.Value(ctxKey{}).(string)
 	return id
+}
+
+// WithRole stores the caller's role in ctx.
+func WithRole(ctx context.Context, role string) context.Context {
+	return context.WithValue(ctx, roleKey{}, role)
+}
+
+// IsAdmin reports whether the caller in ctx has the admin role.
+func IsAdmin(ctx context.Context) bool {
+	r, _ := ctx.Value(roleKey{}).(string)
+	return r == RoleAdmin
 }

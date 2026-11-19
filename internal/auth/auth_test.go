@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/sha256"
 	"errors"
 	"strings"
 	"testing"
@@ -58,5 +59,37 @@ func TestDisabled(t *testing.T) {
 	a := New(nil, 0, 0)
 	if id, err := a.Check(""); err != nil || id != Anonymous {
 		t.Fatalf("Check = %q, %v", id, err)
+	}
+}
+
+func TestRolesAndStoredKeys(t *testing.T) {
+	keys, err := ParseKeys("ops:" + HashKey("a") + ":admin,app:" + HashKey("b"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if keys[0].Role != RoleAdmin || keys[1].Role != RoleClient {
+		t.Fatalf("roles: %+v", keys)
+	}
+	if _, err := ParseKeys("x:" + HashKey("a") + ":root"); err == nil {
+		t.Fatal("unknown role accepted")
+	}
+
+	a := New(nil, 0, 0)
+	if id, role, err := a.Identify(""); err != nil || id != Anonymous || role != RoleAdmin {
+		t.Fatalf("no keys: %q %q %v", id, role, err)
+	}
+	a.SetStored([]Key{{ID: "k_1", Hash: sha256.Sum256([]byte("ui")), Role: RoleClient}})
+	if !a.Enabled() {
+		t.Fatal("stored key does not enable auth")
+	}
+	if _, _, err := a.Identify(""); err != ErrUnauthorized {
+		t.Fatalf("empty secret: %v", err)
+	}
+	if id, role, err := a.Identify("ui"); err != nil || id != "k_1" || role != RoleClient {
+		t.Fatalf("stored key: %q %q %v", id, role, err)
+	}
+	a.SetStored(nil)
+	if a.Enabled() {
+		t.Fatal("still enabled after removing the stored keys")
 	}
 }

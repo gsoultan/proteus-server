@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gsoultan/proteus-server/internal/jobs/storetest"
+	setstoretest "github.com/gsoultan/proteus-server/internal/settings/storetest"
 	"github.com/gsoultan/proteus-server/internal/storage/pgstore"
 	tplstoretest "github.com/gsoultan/proteus-server/internal/templates/storetest"
 )
@@ -54,4 +55,5 @@ func TestStore(t *testing.T) {
 	store := pgstore.New(pool)
 	t.Run("Jobs", func(t *testing.T) { storetest.Run(t, store) })
 	t.Run("Templates", func(t *testing.T) { tplstoretest.Run(t, store.Templates()) })
+	t.Run("Settings", func(t *testing.T) { setstoretest.Run(t, store.Settings()) })
 }

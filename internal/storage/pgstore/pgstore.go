@@ -57,9 +57,9 @@ func Open(ctx context.Context, dsn, schema string, autoMigrate bool, logf func(s
 	return New(pool), nil
 }
 
-// Migrate brings the jobs and templates tables in schema up to date with the models.
+// Migrate brings the jobs, templates, settings and api key tables in schema up to date with the models.
 func Migrate(ctx context.Context, pool *pgxpool.Pool, schema string, logf func(string, ...any)) error {
-	s, err := storm.Build(&model.Job{}, &model.Template{})
+	s, err := storm.Build(&model.Job{}, &model.Template{}, &model.ServerSetting{}, &model.APIKey{})
 	if err != nil {
 		return fmt.Errorf("pgstore: build schema: %w", err)
 	}
@@ -290,3 +290,14 @@ func fromMeta(r job.MetaRow) *jobs.Record {
 }
 
 var _ jobs.Store = (*Store)(nil)
+
+// ServerVersion returns the database's server_version (no query: the server
+// reports it when the connection starts).
+func (s *Store) ServerVersion(ctx context.Context) (string, error) {
+	c, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer c.Release()
+	return c.Conn().PgConn().ParameterStatus("server_version"), nil
+}

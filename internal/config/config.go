@@ -1,4 +1,6 @@
-// Package config reads server settings from environment variables.
+// Package config reads server settings: PROTEUS_* environment variables
+// layered over the bootstrap file and the settings saved from the web UI
+// (see Field and Layered).
 package config
 
 import (
@@ -49,6 +51,9 @@ type Config struct {
 	DatabaseURL    string // Postgres for jobs and templates; empty keeps both in memory
 	DatabaseSchema string // schema holding the jobs and templates tables; default public
 	AutoMigrate    bool   // create/update the tables at startup
+
+	DataDir    string // bootstrap file and, without a database, saved settings and keys
+	SetupToken string // fixed token for the /setup wizard; random when empty
 }
 
 // FromEnv reads the configuration, using getenv (os.Getenv when nil).
@@ -91,6 +96,8 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		DatabaseURL:           p.str("PROTEUS_DATABASE_URL", ""),
 		DatabaseSchema:        p.str("PROTEUS_DATABASE_SCHEMA", "public"),
 		AutoMigrate:           p.bool("PROTEUS_AUTO_MIGRATE", true),
+		DataDir:               p.str("PROTEUS_DATA_DIR", "data"),
+		SetupToken:            p.str("PROTEUS_SETUP_TOKEN", ""),
 	}
 	if f := getenv("PROTEUS_API_KEYS_FILE"); f != "" {
 		b, err := os.ReadFile(f)

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { MessageInitShape } from "@bufbuild/protobuf";
 
+import { type ApiKey_Role } from "@/gen/proteus/v1/setup_pb.js";
 import { type Template, type TemplateSchema } from "@/gen/proteus/v1/template_pb.js";
 
 import { useProteus, useSettings } from "./client";
@@ -13,6 +14,9 @@ export const keys = {
   templates: (category: string) => ["templates", category] as const,
   template: (id: string) => ["template", id] as const,
   starters: ["starters"] as const,
+  setupStatus: (url: string) => ["setup-status", url] as const,
+  settings: ["admin", "settings"] as const,
+  apiKeys: ["admin", "api-keys"] as const,
 };
 
 /** The server's formats double as the connection check. */
@@ -107,5 +111,52 @@ export function useConvertToCode() {
       qc.setQueryData(keys.template(t.id), t);
       void qc.invalidateQueries({ queryKey: ["templates"] });
     },
+  });
+}
+
+/** Whether the server still needs the first-run wizard. */
+export function useSetupStatus() {
+  const api = useProteus();
+  const { baseUrl } = useSettings();
+  return useQuery({
+    queryKey: keys.setupStatus(baseUrl),
+    queryFn: () => api.setup.getSetupStatus({}),
+    retry: false,
+    staleTime: 30_000,
+  });
+}
+
+export function useServerSettings() {
+  const api = useProteus();
+  return useQuery({ queryKey: keys.settings, queryFn: () => api.admin.getSettings({}), retry: false });
+}
+
+export function useUpdateSettings() {
+  const api = useProteus();
+  return useMutation({
+    mutationFn: (req: { values: Record<string, string>; revision: bigint }) => api.admin.updateSettings(req),
+  });
+}
+
+export function useApiKeys() {
+  const api = useProteus();
+  return useQuery({ queryKey: keys.apiKeys, queryFn: () => api.admin.listApiKeys({}), retry: false });
+}
+
+export function useCreateApiKey() {
+  const api = useProteus();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (req: { name: string; role: ApiKey_Role }) => api.admin.createApiKey(req),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.apiKeys }),
+  });
+}
+
+export function useDeleteApiKey() {
+  const api = useProteus();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.admin.deleteApiKey({ id }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.apiKeys }),
   });
 }

@@ -44,6 +44,12 @@
 - Tests: go test -race ./...; internal/rpc/rpc_test.go runs the real engine over gRPC (h2c) and
   Connect, incl. SSRF and job lifecycle; pgstore tests need PROTEUS_TEST_DATABASE_URL.
 
+- Settings: adding a PROTEUS_* variable means adding it to config.Fields too (test fails
+  otherwise); mark Editable only if it can be applied by the in-place restart. Web UI settings
+  page and /setup are generic over GetSettings, no per-setting UI code.
+- Web: root route beforeLoad redirects to /setup while GetSetupStatus.needs_setup; /setup
+  redirects to / once done. model/settings.ts holds the pure helpers (bun tests).
+
 Known gaps / next steps:
 - No CORS yet for browser clients (frontend rules from the user: TypeScript 7, Mantine 9.7.4,
   React 19, TanStack Query/Router, zustand, PWA, web + service worker, connect-es v2, buf, bun,
@@ -58,4 +64,8 @@ Known gaps / next steps:
 - Web builder (proteus-server/web, React 19 + Mantine) and the proteus-server-sdk clients
   (connect-es v2 + Go) are planned from the design artboards; not in this repo yet.
 - graphify and rtk are not installed in the dev container; graphify-out/ is refreshed when they are.
+- Setup/settings: PR 6's PROTEUS_SECRET_KEY and PR 8's webhook settings need Fields entries
+  (secret key stays env/bootstrap: it must match across instances and must not sit in the DB it
+  protects). Only server-wide settings, no per-key limits yet. Shared-DB instances pick up
+  changes within 15s.
 - Docker image build is verified in CI only (no Docker daemon in the dev container).
