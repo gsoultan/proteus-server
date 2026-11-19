@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="200" viewBox="0 0 480 200">
+  <rect x="0" y="0" width="480" height="200" fill="#ffffff"/>
+  <line x1="40" y1="170" x2="460" y2="170" stroke="#999" stroke-width="1"/>
+  <g fill="#1d4e89">
+    <rect x="60"  y="110" width="40" height="60"/>
+    <rect x="130" y="95"  width="40" height="75"/>
+    <rect x="200" y="90"  width="40" height="80"/>
+    <rect x="270" y="70"  width="40" height="100"/>
+    <rect x="340" y="55"  width="40" height="115"/>
+    <rect x="410" y="40"  width="40" height="130"/>
+  </g>
+  <g font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12" fill="#444" text-anchor="middle">
+    <text x="80" y="188">Apr</text><text x="150" y="188">May</text><text x="220" y="188">Jun</text>
+    <text x="290" y="188">Jul</text><text x="360" y="188">Aug</text><text x="430" y="188">Sep</text>
+  </g>
+</svg>

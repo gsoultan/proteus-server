@@ -1,0 +1,18 @@
+@page { size: A4; margin: 18mm 16mm; }
+body { font-family: "Liberation Sans", "DejaVu Sans", sans-serif; font-size: 10pt; color: #222; }
+header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14mm; }
+.logo { width: 46mm; }
+.from { text-align: right; line-height: 1.4; }
+h1 { font-size: 20pt; font-weight: normal; margin: 0 0 6mm; color: #1d4e89; }
+h1 span { color: #777; font-size: 14pt; }
+table { width: 100%; border-collapse: collapse; }
+.meta { width: auto; margin-bottom: 10mm; }
+.meta th { text-align: left; vertical-align: top; color: #777; font-weight: normal; padding: 1mm 8mm 1mm 0; }
+.meta td { padding: 1mm 0; }
+.items th { background: #1d4e89; color: #fff; text-align: left; padding: 2.5mm 3mm; }
+.items td { padding: 2.5mm 3mm; border-bottom: 0.3mm solid #ddd; }
+.items tbody tr:nth-child(even) td { background: #f4f7fb; }
+.items tfoot td { border-bottom: none; text-align: right; padding: 1.5mm 3mm; }
+.items tfoot .total td { font-weight: bold; font-size: 12pt; border-top: 0.5mm solid #1d4e89; }
+.num { text-align: right; white-space: nowrap; }
+.note { margin-top: 12mm; color: #555; }

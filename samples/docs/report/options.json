@@ -1,0 +1,14 @@
+{
+  "stylesheet": ".markdown-body { font-family: 'Liberation Serif', 'DejaVu Serif', serif; } .markdown-body h1, .markdown-body h2 { color: #1d4e89; } .markdown-body img { width: 100%; }",
+  "metadata": {
+    "title": "Quarterly report Q3 2026",
+    "author": "Finance team"
+  },
+  "page": {
+    "size": "PAGE_SIZE_LETTER",
+    "marginMm": 20
+  },
+  "pdf": {
+    "outline": true
+  }
+}

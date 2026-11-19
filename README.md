@@ -301,6 +301,39 @@ Sizes accept `K`, `M`, `G`, `KiB`, `MiB`, `GiB`.
 
 ## Development
 
+Run the server locally and try it with the samples:
+
+```sh
+scripts/dev.sh              # make dev: binds 127.0.0.1:8080, dev key pk_dev_local, text debug logs,
+                            # jobs in memory, rate limit off
+scripts/dev.sh --no-auth    # no API key
+scripts/dev.sh --postgres   # jobs in Postgres: the compose service on 127.0.0.1:55432,
+                            # or PROTEUS_DATABASE_URL when set
+scripts/smoke.sh            # make smoke: start the server, run every sample, stop (CI runs this)
+```
+
+Any `PROTEUS_*` variable you export overrides the dev defaults.
+
+On a Mac with [Apple container](https://github.com/apple/container) (no Docker
+needed), run the real image and Postgres in containers:
+
+```sh
+scripts/container-dev.sh          # make container-up: build proteus-server:dev, start Postgres and the
+                                  # server on 127.0.0.1:8080 / :9090 / :55432, wait until healthy
+scripts/container-dev.sh smoke    # make container-smoke: every sample over gRPC, Connect, gRPC-Web
+scripts/container-dev.sh logs     # follow the server log
+scripts/container-dev.sh down     # stop and delete the containers; reset also drops the database volume
+```
+
+Options for `up`: `--no-db` (jobs in memory), `--no-auth`, `--no-build`. It
+uses the default network and reaches Postgres by its container IP, so it needs
+no `container network create` (macOS 26 only).
+[`samples/`](samples) holds sample HTML and Markdown documents, a Go client
+built on the generated ConnectRPC client, and `buf curl` calls for every RPC;
+see [`samples/README.md`](samples/README.md).
+
+Tooling:
+
 ```sh
 go install github.com/bufbuild/buf/cmd/buf@v1.75.0
 go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.12
